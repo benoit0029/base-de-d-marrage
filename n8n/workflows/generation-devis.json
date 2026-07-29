@@ -1,0 +1,120 @@
+{
+  "name": "Devis - Génération depuis note vocale",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "devis/note-vocale",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-note",
+      "name": "Webhook note vocale/mail",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-320, 0],
+      "webhookId": "devis-note-vocale"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'claude-sonnet-5', max_tokens: 1024, messages: [{ role: 'user', content: 'Extrait une liste de prestations (description + quantité) et un montant total en euros à partir de cette note, au format JSON strict {\"lignes\":[{\"description\":string,\"montant\":number}],\"montant_total\":number} :\\n\\n' + $json.body.note_texte }] } }}"
+      },
+      "id": "http-extraction-ia",
+      "name": "Extraire les prestations (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-100, 0],
+      "notes": "Placeholder : clé API Anthropic à brancher en tâche 5 (credential 'anthropicApi').",
+      "credentials": {
+        "httpHeaderAuth": { "id": "anthropic-api-key", "name": "Anthropic API key" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Le modèle répond en JSON strict dans le premier bloc de texte.\nconst reponse = JSON.parse($json.content[0].text);\nconst body = $('Webhook note vocale/mail').item.json.body;\n\nreturn [{\n  json: {\n    client_id: body.client_id,\n    montant: reponse.montant_total,\n    lignes: reponse.lignes,\n  },\n}];"
+      },
+      "id": "code-parser-devis",
+      "name": "Construire le devis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "devis",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $json.client_id }}" },
+            { "fieldId": "montant", "fieldValue": "={{ $json.montant }}" },
+            { "fieldId": "statut", "fieldValue": "en_attente_validation" }
+          ]
+        }
+      },
+      "id": "supabase-insert-devis",
+      "name": "Enregistrer le devis (brouillon)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "validations",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $('Construire le devis').item.json.client_id }}" },
+            { "fieldId": "type_action", "fieldValue": "devis" },
+            { "fieldId": "reference_id", "fieldValue": "={{ $('Enregistrer le devis (brouillon)').item.json.id }}" },
+            {
+              "fieldId": "contenu_propose",
+              "fieldValue": "={{ { montant: $('Construire le devis').item.json.montant, lignes: $('Construire le devis').item.json.lignes } }}"
+            },
+            { "fieldId": "statut", "fieldValue": "en_attente" }
+          ]
+        }
+      },
+      "id": "supabase-insert-validation",
+      "name": "Mettre en file de validation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [560, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [780, 0]
+    }
+  ],
+  "connections": {
+    "Webhook note vocale/mail": { "main": [[{ "node": "Extraire les prestations (Claude)", "type": "main", "index": 0 }]] },
+    "Extraire les prestations (Claude)": { "main": [[{ "node": "Construire le devis", "type": "main", "index": 0 }]] },
+    "Construire le devis": { "main": [[{ "node": "Enregistrer le devis (brouillon)", "type": "main", "index": 0 }]] },
+    "Enregistrer le devis (brouillon)": { "main": [[{ "node": "Mettre en file de validation", "type": "main", "index": 0 }]] },
+    "Mettre en file de validation": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

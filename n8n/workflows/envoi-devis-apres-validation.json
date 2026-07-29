@@ -1,0 +1,112 @@
+{
+  "name": "Devis - Envoi après validation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "validations/devis-approuve",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-validation",
+      "name": "Hook Supabase (validation mise à jour)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-320, 0],
+      "webhookId": "validations-devis-approuve"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Déclenché par un Database Webhook Supabase sur UPDATE de `validations`\n// (filtré côté Supabase : type_action = 'devis' AND statut IN ('valide','modifie')).\nconst record = $json.body.record;\nreturn [{\n  json: {\n    validation_statut: record.statut,\n    devis_id: record.reference_id,\n    client_id: record.client_id,\n    contenu: record.contenu_propose,\n  },\n}];"
+      },
+      "id": "code-extraire",
+      "name": "Extraire le devis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-100, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.validation_statut }}",
+              "rightValue": "rejete",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-non-rejete",
+      "name": "Validation approuvée ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "devis",
+        "filterType": "manual",
+        "matchingColumns": ["id"],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "id", "fieldValue": "={{ $json.devis_id }}" },
+            { "fieldId": "montant", "fieldValue": "={{ $json.contenu.montant }}" },
+            { "fieldId": "statut", "fieldValue": "envoye" },
+            { "fieldId": "date_envoi", "fieldValue": "={{ $now.toISO() }}" }
+          ]
+        }
+      },
+      "id": "supabase-update-devis",
+      "name": "Marquer le devis envoyé",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, -80],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TODO-generation-pdf-et-envoi-email.example/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { client_id: $('Extraire le devis').item.json.client_id, montant: $('Extraire le devis').item.json.contenu.montant, lignes: $('Extraire le devis').item.json.contenu.lignes } }}"
+      },
+      "id": "http-envoyer",
+      "name": "Générer le PDF et l'envoyer (à brancher)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, -80],
+      "notes": "Placeholder : génération PDF + envoi email réel en tâche 5."
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [780, 0]
+    }
+  ],
+  "connections": {
+    "Hook Supabase (validation mise à jour)": { "main": [[{ "node": "Extraire le devis", "type": "main", "index": 0 }]] },
+    "Extraire le devis": { "main": [[{ "node": "Validation approuvée ?", "type": "main", "index": 0 }]] },
+    "Validation approuvée ?": {
+      "main": [
+        [{ "node": "Marquer le devis envoyé", "type": "main", "index": 0 }],
+        [{ "node": "Répondre 200", "type": "main", "index": 0 }]
+      ]
+    },
+    "Marquer le devis envoyé": { "main": [[{ "node": "Générer le PDF et l'envoyer (à brancher)", "type": "main", "index": 0 }]] },
+    "Générer le PDF et l'envoyer (à brancher)": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

@@ -43,5 +43,16 @@ Deux workflows liés pour la relance impayés, avec validation humaine à **chaq
 
 Rien ne part au client tant que vous n'avez pas approuvé/modifié la relance dans la file de validation du dashboard — le rejet arrête la chaîne.
 
+## generation-devis.json + envoi-devis-apres-validation.json
+Même principe que la relance impayés, appliqué au devis :
+
+1. **Génération** : reçoit une note (vocale transcrite, ou texte issu d'un mail) via webhook, appelle Claude pour en extraire les lignes de prestation et un montant, crée un devis en `en_attente_validation` + une entrée dans la file de validation. **Rien n'est envoyé au client à ce stade.**
+2. **Envoi après validation** : Database Webhook Supabase sur `validations` (type_action = devis, statut IN valide/modifie) → marque le devis "envoyé" et déclenche la génération PDF + l'envoi email (fournisseur à choisir en tâche 5).
+
+Non résolu pour l'instant, à trancher en tâche 5 :
+- Comment la note vocale est capturée et transcrite (quel canal : message WhatsApp, appli dédiée, autre ?)
+- Clé API Anthropic à configurer (credential `anthropicApi`)
+- Outil de génération PDF + envoi email
+
 ## Limite actuelle
 Ces workflows sont écrits à la main au format d'export n8n et validés en JSON, mais **pas encore exécutés sur une instance n8n réelle** (pas d'instance n8n disponible dans cet environnement de travail). À importer et tester avec les commandes `curl` ci-dessus une fois n8n installé sur le VPS Hostinger.
