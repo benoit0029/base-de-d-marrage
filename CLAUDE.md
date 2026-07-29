@@ -27,6 +27,12 @@ Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
 - Devis/factures générés nativement par le système (pas de dépendance à un logiciel de facturation existant côté artisan) ; connexion à un outil tiers ajoutée seulement si un client le demande explicitement
 - **V1 = dashboard interne agence uniquement.** La vue cliente légère (widgets personnalisables) est reportée en **phase 2**, une fois le dashboard interne validé sur les premiers clients réels. L'architecture (rôles, cloisonnement des données) est prévue dès la V1 pour ne pas avoir à tout redécouper plus tard.
 
+## Placement des agents IA / automatisations
+- Règle générale : tout ce qui engage de l'argent ou une communication externe non générique passe par une **validation humaine avant envoi** (file d'attente d'approbation dans le dashboard). Le reste (extraction, classement, optimisation d'itinéraire, rappels standards) tourne en automatique.
+- Agent vocal (Synthflow) : automatique de bout en bout, la validation humaine est déjà native à l'offre (urgence → SMS/transfert à l'artisan)
+- Gestion globale : validation humaine requise avant devis, avant mise en demeure (relance impayé), avant bon de commande fournisseur, et avant réponse email si cas non générique. Facturation, rappels J+1/J+15, tri emails génériques, optimisation planning = automatiques.
+- Dashboard interne : agent superviseur possible (détection d'anomalies sur le portefeuille) qui alerte l'agence sans agir seul
+
 ## Exigence transverse critique
 - **Sécurité & RGPD & contrôle d'accès client** : avec l'ajout d'une vue cliente (même légère), il faut un vrai cloisonnement des accès (un artisan ne doit voir QUE ses propres données), authentification séparée agence/client, et traitement RGPD-conforme des données clients exposées côté client. À valider dès la conception technique, pas en fin de projet.
 
