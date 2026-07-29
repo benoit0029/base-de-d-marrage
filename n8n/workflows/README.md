@@ -63,5 +63,15 @@ Même patron que devis/relances, déclenché quand un devis passe à "signé" (w
 1. **Génération** : récupère le devis + le fournisseur habituel du client (`client_config`, clé `fournisseur_habituel` — c'est la couche personnalisable par client), demande à Claude la liste des matériaux et un montant estimé, crée une commande en `en_attente` + une entrée de validation. **Rien n'est envoyé au fournisseur à ce stade.**
 2. **Envoi après validation** : Database Webhook Supabase sur `validations` (type_action = commande_fournisseur) → marque la commande envoyée et déclenche l'envoi réel (canal à choisir en tâche 5 : email, EDI...).
 
+## tri-emails.json + envoi-email-apres-validation.json
+Tri automatique des emails entrants (webhook `emails/recu`) :
+
+- **Claude classe** l'email (demande_devis / urgence / pub_spam / question_recurrente / autre) et rédige une réponse si la question est générique.
+- **Spam** → archivé, rien d'autre.
+- **Générique** → réponse envoyée automatiquement (décision projet : pas de validation humaine sur ce cas).
+- **Non générique** (demande de devis, urgence, cas ambigu...) → réponse proposée mise en file de validation ; envoyée seulement après votre approbation/modification via le hook Supabase habituel.
+
+Tout est tracé dans la nouvelle table `emails`, consultable depuis le dashboard.
+
 ## Limite actuelle
 Ces workflows sont écrits à la main au format d'export n8n et validés en JSON, mais **pas encore exécutés sur une instance n8n réelle** (pas d'instance n8n disponible dans cet environnement de travail). À importer et tester avec les commandes `curl` ci-dessus une fois n8n installé sur le VPS Hostinger.

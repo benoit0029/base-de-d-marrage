@@ -1,0 +1,235 @@
+{
+  "name": "Emails - Tri et réponse",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "emails/recu",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-email",
+      "name": "Webhook email reçu",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-540, 0],
+      "webhookId": "emails-recu"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'claude-sonnet-5', max_tokens: 1024, messages: [{ role: 'user', content: 'Classe cet email dans une catégorie (demande_devis, urgence, pub_spam, question_recurrente, autre) et, si la question est récurrente et générique (tarifs indicatifs, zone d\\'intervention, horaires), rédige une réponse courte et polie. Réponds en JSON strict {\"categorie\":string,\"generique\":boolean,\"reponse_suggeree\":string|null} :\\n\\nDe : ' + $json.body.from + '\\nSujet : ' + $json.body.subject + '\\n\\n' + $json.body.body }] } }}"
+      },
+      "id": "http-classification-ia",
+      "name": "Classer l'email (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-320, 0],
+      "notes": "Placeholder : clé API Anthropic à brancher en tâche 5 (credential 'anthropicApi').",
+      "credentials": {
+        "httpHeaderAuth": { "id": "anthropic-api-key", "name": "Anthropic API key" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const reponse = JSON.parse($json.content[0].text);\nconst body = $('Webhook email reçu').item.json.body;\n\nreturn [{\n  json: {\n    client_id: body.client_id,\n    expediteur: body.from,\n    sujet: body.subject,\n    corps: body.body,\n    categorie: reponse.categorie,\n    generique: Boolean(reponse.generique),\n    reponse_suggeree: reponse.reponse_suggeree,\n  },\n}];"
+      },
+      "id": "code-parser",
+      "name": "Interpréter la classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-100, 0]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  { "leftValue": "={{ $json.categorie }}", "rightValue": "pub_spam", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "spam"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  { "leftValue": "={{ $json.generique }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "generique"
+            }
+          ]
+        },
+        "fallbackOutput": "nonGenerique",
+        "options": {}
+      },
+      "id": "switch-categorie",
+      "name": "Spam ? Générique ? Sinon...",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "emails",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $json.client_id }}" },
+            { "fieldId": "expediteur", "fieldValue": "={{ $json.expediteur }}" },
+            { "fieldId": "sujet", "fieldValue": "={{ $json.sujet }}" },
+            { "fieldId": "corps", "fieldValue": "={{ $json.corps }}" },
+            { "fieldId": "categorie", "fieldValue": "={{ $json.categorie }}" },
+            { "fieldId": "statut", "fieldValue": "ignore" }
+          ]
+        }
+      },
+      "id": "supabase-log-spam",
+      "name": "Archiver (spam)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, -160],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "emails",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $json.client_id }}" },
+            { "fieldId": "expediteur", "fieldValue": "={{ $json.expediteur }}" },
+            { "fieldId": "sujet", "fieldValue": "={{ $json.sujet }}" },
+            { "fieldId": "corps", "fieldValue": "={{ $json.corps }}" },
+            { "fieldId": "categorie", "fieldValue": "={{ $json.categorie }}" },
+            { "fieldId": "reponse", "fieldValue": "={{ $json.reponse_suggeree }}" },
+            { "fieldId": "statut", "fieldValue": "repondu_auto" }
+          ]
+        }
+      },
+      "id": "supabase-log-generique",
+      "name": "Enregistrer (réponse auto)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TODO-envoi-email.example/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { to: $json.expediteur, body: $json.reponse_suggeree } }}"
+      },
+      "id": "http-envoyer-generique",
+      "name": "Envoyer la réponse (à brancher)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 0],
+      "notes": "Automatique par décision projet : question récurrente/générique, pas de validation humaine."
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "emails",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $json.client_id }}" },
+            { "fieldId": "expediteur", "fieldValue": "={{ $json.expediteur }}" },
+            { "fieldId": "sujet", "fieldValue": "={{ $json.sujet }}" },
+            { "fieldId": "corps", "fieldValue": "={{ $json.corps }}" },
+            { "fieldId": "categorie", "fieldValue": "={{ $json.categorie }}" },
+            { "fieldId": "reponse", "fieldValue": "={{ $json.reponse_suggeree }}" },
+            { "fieldId": "statut", "fieldValue": "en_attente_validation" }
+          ]
+        }
+      },
+      "id": "supabase-log-non-generique",
+      "name": "Enregistrer (à valider)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, 160],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "validations",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $('Interpréter la classification').item.json.client_id }}" },
+            { "fieldId": "type_action", "fieldValue": "email" },
+            { "fieldId": "reference_id", "fieldValue": "={{ $('Enregistrer (à valider)').item.json.id }}" },
+            {
+              "fieldId": "contenu_propose",
+              "fieldValue": "={{ { destinataire: $('Interpréter la classification').item.json.expediteur, sujet: $('Interpréter la classification').item.json.sujet, categorie: $('Interpréter la classification').item.json.categorie, reponse_suggeree: $('Interpréter la classification').item.json.reponse_suggeree } }}"
+            },
+            { "fieldId": "statut", "fieldValue": "en_attente" }
+          ]
+        }
+      },
+      "id": "supabase-insert-validation",
+      "name": "Mettre en file de validation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [560, 160],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [780, 0]
+    }
+  ],
+  "connections": {
+    "Webhook email reçu": { "main": [[{ "node": "Classer l'email (Claude)", "type": "main", "index": 0 }]] },
+    "Classer l'email (Claude)": { "main": [[{ "node": "Interpréter la classification", "type": "main", "index": 0 }]] },
+    "Interpréter la classification": { "main": [[{ "node": "Spam ? Générique ? Sinon...", "type": "main", "index": 0 }]] },
+    "Spam ? Générique ? Sinon...": {
+      "main": [
+        [{ "node": "Archiver (spam)", "type": "main", "index": 0 }],
+        [{ "node": "Enregistrer (réponse auto)", "type": "main", "index": 0 }],
+        [{ "node": "Enregistrer (à valider)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Archiver (spam)": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] },
+    "Enregistrer (réponse auto)": { "main": [[{ "node": "Envoyer la réponse (à brancher)", "type": "main", "index": 0 }]] },
+    "Envoyer la réponse (à brancher)": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] },
+    "Enregistrer (à valider)": { "main": [[{ "node": "Mettre en file de validation", "type": "main", "index": 0 }]] },
+    "Mettre en file de validation": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,111 @@
+{
+  "name": "Emails - Envoi après validation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "validations/email-approuve",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-validation",
+      "name": "Hook Supabase (validation mise à jour)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-320, 0],
+      "webhookId": "validations-email-approuve"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Déclenché par un Database Webhook Supabase sur UPDATE de `validations`\n// (filtré côté Supabase : type_action = 'email' AND statut IN ('valide','modifie')).\nconst record = $json.body.record;\nreturn [{\n  json: {\n    validation_statut: record.statut,\n    email_id: record.reference_id,\n    contenu: record.contenu_propose,\n  },\n}];"
+      },
+      "id": "code-extraire",
+      "name": "Extraire l'email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-100, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.validation_statut }}",
+              "rightValue": "rejete",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-non-rejete",
+      "name": "Validation approuvée ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "emails",
+        "filterType": "manual",
+        "matchingColumns": ["id"],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "id", "fieldValue": "={{ $json.email_id }}" },
+            { "fieldId": "reponse", "fieldValue": "={{ $json.contenu.reponse_suggeree }}" },
+            { "fieldId": "statut", "fieldValue": "envoye" }
+          ]
+        }
+      },
+      "id": "supabase-update-email",
+      "name": "Marquer l'email envoyé",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, -80],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TODO-envoi-email.example/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { to: $('Extraire l\\'email').item.json.contenu.destinataire, subject: 'Re: ' + $('Extraire l\\'email').item.json.contenu.sujet, body: $('Extraire l\\'email').item.json.contenu.reponse_suggeree } }}"
+      },
+      "id": "http-envoyer",
+      "name": "Envoyer l'email (à brancher)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, -80],
+      "notes": "Placeholder : fournisseur email réel (SMTP/API) à choisir en tâche 5."
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [780, 0]
+    }
+  ],
+  "connections": {
+    "Hook Supabase (validation mise à jour)": { "main": [[{ "node": "Extraire l'email", "type": "main", "index": 0 }]] },
+    "Extraire l'email": { "main": [[{ "node": "Validation approuvée ?", "type": "main", "index": 0 }]] },
+    "Validation approuvée ?": {
+      "main": [
+        [{ "node": "Marquer l'email envoyé", "type": "main", "index": 0 }],
+        [{ "node": "Répondre 200", "type": "main", "index": 0 }]
+      ]
+    },
+    "Marquer l'email envoyé": { "main": [[{ "node": "Envoyer l'email (à brancher)", "type": "main", "index": 0 }]] },
+    "Envoyer l'email (à brancher)": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
