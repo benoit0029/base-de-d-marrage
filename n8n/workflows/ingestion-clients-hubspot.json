@@ -1,0 +1,105 @@
+{
+  "name": "Ingestion clients - HubSpot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hubspot/client-actif",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-hubspot",
+      "name": "Webhook HubSpot",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-160, 0],
+      "webhookId": "hubspot-client-actif"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Déclenché par un workflow HubSpot quand un deal passe au statut \"Client actif\".\n// Propriété deal attendue : offres = \"agent_vocal,gestion_globale\" (une ou les deux, séparées par une virgule)\nconst deal = $json.body;\n\nreturn [{\n  json: {\n    hubspot_id: String(deal.company_id),\n    nom: deal.company_name,\n    secteur: deal.secteur ?? 'Non renseigné',\n    email: deal.contact_email ?? null,\n    telephone: deal.contact_phone ?? null,\n    offres: String(deal.offres ?? '').split(',').map((o) => o.trim()).filter(Boolean),\n  },\n}];"
+      },
+      "id": "code-mapper",
+      "name": "Mapper les champs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [60, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/clients?on_conflict=hubspot_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { hubspot_id: $json.hubspot_id, nom: $json.nom, secteur: $json.secteur, email: $json.email, telephone: $json.telephone } }}"
+      },
+      "id": "http-upsert-client",
+      "name": "Upsert client (Supabase REST)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 0],
+      "credentials": {
+        "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase - Service role key" }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "offres",
+        "options": {}
+      },
+      "id": "split-offres",
+      "name": "Une ligne par offre",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/client_offres?on_conflict=client_id,offre",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "resolution=ignore-duplicates" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { client_id: $('Upsert client (Supabase REST)').item.json[0].id, offre: $json.offres } }}"
+      },
+      "id": "http-insert-offre",
+      "name": "Insérer l'offre souscrite",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 0],
+      "credentials": {
+        "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase - Service role key" }
+      }
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [940, 0]
+    }
+  ],
+  "connections": {
+    "Webhook HubSpot": { "main": [[{ "node": "Mapper les champs", "type": "main", "index": 0 }]] },
+    "Mapper les champs": { "main": [[{ "node": "Upsert client (Supabase REST)", "type": "main", "index": 0 }]] },
+    "Upsert client (Supabase REST)": { "main": [[{ "node": "Une ligne par offre", "type": "main", "index": 0 }]] },
+    "Une ligne par offre": { "main": [[{ "node": "Insérer l'offre souscrite", "type": "main", "index": 0 }]] },
+    "Insérer l'offre souscrite": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

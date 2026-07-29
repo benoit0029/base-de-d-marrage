@@ -1,0 +1,119 @@
+{
+  "name": "Ingestion appels - Synthflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "synthflow/appel-termine",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-synthflow",
+      "name": "Webhook Synthflow",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-160, 0],
+      "webhookId": "synthflow-appel-termine"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chaque agent Synthflow est configuré avec l'URL du client dans son webhook :\n//   /webhook/synthflow/appel-termine?client_id=<uuid clients.id>\n// Documentation complète : n8n/workflows/README.md\nconst clientId = $json.query.client_id;\nif (!clientId) {\n  throw new Error('client_id manquant dans la query du webhook Synthflow');\n}\n\nconst body = $json.body;\nconst statut = body.spam ? 'spam' : body.decroche ? 'decroche' : 'manque';\n\nreturn [{\n  json: {\n    client_id: clientId,\n    statut,\n    rdv_pris: Boolean(body.rdv_pris),\n    duree_secondes: body.duree_secondes ?? null,\n    urgence: Boolean(body.urgence_detectee),\n    urgence_description: body.urgence_description ?? null,\n    urgence_sms_envoye: Boolean(body.urgence_sms_envoye),\n    urgence_transfert: Boolean(body.urgence_transfert),\n  },\n}];"
+      },
+      "id": "code-mapper",
+      "name": "Mapper les champs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [60, 0]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "appels",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $json.client_id }}" },
+            { "fieldId": "statut", "fieldValue": "={{ $json.statut }}" },
+            { "fieldId": "rdv_pris", "fieldValue": "={{ $json.rdv_pris }}" },
+            { "fieldId": "duree_secondes", "fieldValue": "={{ $json.duree_secondes }}" }
+          ]
+        }
+      },
+      "id": "supabase-insert-appel",
+      "name": "Insérer l'appel",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [280, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Mapper les champs').item.json.urgence }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-urgence",
+      "name": "Urgence détectée ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "urgences",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "appel_id", "fieldValue": "={{ $('Insérer l\\'appel').item.json.id }}" },
+            { "fieldId": "client_id", "fieldValue": "={{ $('Mapper les champs').item.json.client_id }}" },
+            { "fieldId": "description", "fieldValue": "={{ $('Mapper les champs').item.json.urgence_description }}" },
+            { "fieldId": "sms_envoye", "fieldValue": "={{ $('Mapper les champs').item.json.urgence_sms_envoye }}" },
+            { "fieldId": "transfert", "fieldValue": "={{ $('Mapper les champs').item.json.urgence_transfert }}" }
+          ]
+        }
+      },
+      "id": "supabase-insert-urgence",
+      "name": "Insérer l'urgence",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [720, -80],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [720, 80]
+    }
+  ],
+  "connections": {
+    "Webhook Synthflow": { "main": [[{ "node": "Mapper les champs", "type": "main", "index": 0 }]] },
+    "Mapper les champs": { "main": [[{ "node": "Insérer l'appel", "type": "main", "index": 0 }]] },
+    "Insérer l'appel": { "main": [[{ "node": "Urgence détectée ?", "type": "main", "index": 0 }]] },
+    "Urgence détectée ?": {
+      "main": [
+        [{ "node": "Insérer l'urgence", "type": "main", "index": 0 }],
+        [{ "node": "Répondre 200", "type": "main", "index": 0 }]
+      ]
+    },
+    "Insérer l'urgence": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
