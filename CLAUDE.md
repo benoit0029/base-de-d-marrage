@@ -30,8 +30,15 @@ Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
 ## Placement des agents IA / automatisations
 - Règle générale : tout ce qui engage de l'argent ou une communication externe non générique passe par une **validation humaine avant envoi** (file d'attente d'approbation dans le dashboard). Le reste (extraction, classement, optimisation d'itinéraire, rappels standards) tourne en automatique.
 - Agent vocal (Synthflow) : automatique de bout en bout, la validation humaine est déjà native à l'offre (urgence → SMS/transfert à l'artisan)
-- Gestion globale : validation humaine requise avant devis, avant mise en demeure (relance impayé), avant bon de commande fournisseur, et avant réponse email si cas non générique. Facturation, rappels J+1/J+15, tri emails génériques, optimisation planning = automatiques.
+- Gestion globale : validation humaine requise avant devis, avant **chaque rappel de relance impayé (J+1, J+15, mise en demeure)**, avant bon de commande fournisseur, et avant réponse email si cas non générique. Facturation, tri emails génériques, optimisation planning = automatiques.
 - Dashboard interne : agent superviseur possible (détection d'anomalies sur le portefeuille) qui alerte l'agence sans agir seul
+
+## Ordre de construction (pour éviter les bugs de dépendance)
+1. Schéma de données (Supabase/Postgres) — tout le reste en dépend
+2. Composant file d'attente de validation humaine (transversal, réutilisé partout)
+3. Squelette du dashboard interne (portefeuille + drill-down)
+4. Workflows n8n un par un : ingestion (HubSpot/Synthflow → base) puis relance impayés (webhook d'approbation + boucle sur les factures en retard), devis, factures, commandes fournisseurs
+5. Intégrations réelles (API Synthflow, API HubSpot) branchées en dernier, une fois la structure testée avec des données factices
 
 ## Exigence transverse critique
 - **Sécurité & RGPD & contrôle d'accès client** : avec l'ajout d'une vue cliente (même légère), il faut un vrai cloisonnement des accès (un artisan ne doit voir QUE ses propres données), authentification séparée agence/client, et traitement RGPD-conforme des données clients exposées côté client. À valider dès la conception technique, pas en fin de projet.
