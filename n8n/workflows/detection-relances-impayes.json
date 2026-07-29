@@ -1,0 +1,111 @@
+{
+  "name": "Relances impayés - Détection quotidienne",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 * * *" }] }
+      },
+      "id": "cron-daily",
+      "name": "Tous les jours à 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-320, 0]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "factures",
+        "returnAll": true,
+        "filters": {
+          "conditions": [{ "keyName": "statut", "condition": "eq", "keyValue": "impayee" }]
+        }
+      },
+      "id": "supabase-get-factures",
+      "name": "Récupérer les factures impayées",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-100, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Détermine, pour chaque facture impayée, si un rappel tombe aujourd'hui.\n// J+1 et J+15 comptés depuis la date d'échéance ; mise en demeure à J+30.\nconst today = new Date(); today.setHours(0, 0, 0, 0);\nconst DAY = 24 * 60 * 60 * 1000;\n\nconst results = [];\nfor (const item of $input.all()) {\n  const facture = item.json;\n  const echeance = new Date(facture.date_echeance);\n  const joursDeRetard = Math.round((today - echeance) / DAY);\n\n  let type = null;\n  if (joursDeRetard === 1) type = 'j1';\n  else if (joursDeRetard === 15) type = 'j15';\n  else if (joursDeRetard === 30) type = 'mise_en_demeure';\n\n  if (type) {\n    results.push({ json: { facture_id: facture.id, client_id: facture.client_id, montant: facture.montant, type, date_echeance: facture.date_echeance } });\n  }\n}\nreturn results;"
+      },
+      "id": "code-filtrer-echeances",
+      "name": "Filtrer les échéances du jour",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": { "batchSize": 1, "options": {} },
+      "id": "loop-factures",
+      "name": "Boucle sur les factures",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [340, 0]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "relances",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "facture_id", "fieldValue": "={{ $json.facture_id }}" },
+            { "fieldId": "type", "fieldValue": "={{ $json.type }}" },
+            { "fieldId": "statut", "fieldValue": "en_attente" },
+            { "fieldId": "date_prevue", "fieldValue": "={{ $today.toISODate() }}" }
+          ]
+        }
+      },
+      "id": "supabase-insert-relance",
+      "name": "Créer la relance",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [560, -80],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "validations",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $('Boucle sur les factures').item.json.client_id }}" },
+            { "fieldId": "type_action", "fieldValue": "relance_impaye" },
+            { "fieldId": "reference_id", "fieldValue": "={{ $('Créer la relance').item.json.id }}" },
+            {
+              "fieldId": "contenu_propose",
+              "fieldValue": "={{ { montant: $('Boucle sur les factures').item.json.montant, type_rappel: $('Boucle sur les factures').item.json.type, echeance: $('Boucle sur les factures').item.json.date_echeance } }}"
+            },
+            { "fieldId": "statut", "fieldValue": "en_attente" }
+          ]
+        }
+      },
+      "id": "supabase-insert-validation",
+      "name": "Mettre en file de validation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [780, -80],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    }
+  ],
+  "connections": {
+    "Tous les jours à 8h": { "main": [[{ "node": "Récupérer les factures impayées", "type": "main", "index": 0 }]] },
+    "Récupérer les factures impayées": { "main": [[{ "node": "Filtrer les échéances du jour", "type": "main", "index": 0 }]] },
+    "Filtrer les échéances du jour": { "main": [[{ "node": "Boucle sur les factures", "type": "main", "index": 0 }]] },
+    "Boucle sur les factures": { "main": [[], [{ "node": "Créer la relance", "type": "main", "index": 0 }]] },
+    "Créer la relance": { "main": [[{ "node": "Mettre en file de validation", "type": "main", "index": 0 }]] },
+    "Mettre en file de validation": { "main": [[{ "node": "Boucle sur les factures", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

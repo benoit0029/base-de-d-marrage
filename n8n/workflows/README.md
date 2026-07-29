@@ -35,5 +35,13 @@ curl -X POST "https://<votre-n8n>/webhook/hubspot/client-actif" \
 ```
 Rejouer la même requête ne doit pas créer de doublon (upsert sur `hubspot_id`, ignore-duplicates sur `client_offres`).
 
+## detection-relances-impayes.json + envoi-relance-apres-validation.json
+Deux workflows liés pour la relance impayés, avec validation humaine à **chaque** rappel (J+1, J+15, mise en demeure) :
+
+1. **Détection quotidienne** (cron 8h) : boucle sur les factures impayées (`Loop Over Items`), crée une ligne `relances` + une ligne `validations` pour chaque échéance du jour. Rien n'est envoyé automatiquement.
+2. **Envoi après validation** : un **Database Webhook Supabase** (à créer dans Supabase → Database → Webhooks) sur `UPDATE` de la table `validations`, filtré sur `type_action = relance_impaye AND statut IN ('valide','modifie')`, appelle ce workflow n8n. Il marque la relance envoyée et déclenche le SMS/email (fournisseur à brancher en tâche 5, nœud "Envoyer SMS/email" en placeholder).
+
+Rien ne part au client tant que vous n'avez pas approuvé/modifié la relance dans la file de validation du dashboard — le rejet arrête la chaîne.
+
 ## Limite actuelle
 Ces workflows sont écrits à la main au format d'export n8n et validés en JSON, mais **pas encore exécutés sur une instance n8n réelle** (pas d'instance n8n disponible dans cet environnement de travail). À importer et tester avec les commandes `curl` ci-dessus une fois n8n installé sur le VPS Hostinger.
