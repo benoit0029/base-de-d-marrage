@@ -23,6 +23,9 @@ Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
   - *Agent vocal* : nb d'appels traités, taux de décroché, RDV pris, urgences détectées, spams filtrés
   - *Gestion globale* : devis en attente de signature, factures émises, impayés en cours (montant + ancienneté), CA piloté
 - HubSpot = source de données en arrière-plan uniquement ; tout doit être consultable depuis l'interface unique du dashboard (pas besoin d'aller sur HubSpot)
+- Plateforme unique pour agence et clients : 1 seule app (Lovable + Supabase pour auth/DB), 1 seule base de données, 1 seul hébergement (VPS Hostinger) — cloisonnement par rôle/permissions, pas par instance séparée
+- Devis/factures générés nativement par le système (pas de dépendance à un logiciel de facturation existant côté artisan) ; connexion à un outil tiers ajoutée seulement si un client le demande explicitement
+- **V1 = dashboard interne agence uniquement.** La vue cliente légère (widgets personnalisables) est reportée en **phase 2**, une fois le dashboard interne validé sur les premiers clients réels. L'architecture (rôles, cloisonnement des données) est prévue dès la V1 pour ne pas avoir à tout redécouper plus tard.
 
 ## Exigence transverse critique
 - **Sécurité & RGPD & contrôle d'accès client** : avec l'ajout d'une vue cliente (même légère), il faut un vrai cloisonnement des accès (un artisan ne doit voir QUE ses propres données), authentification séparée agence/client, et traitement RGPD-conforme des données clients exposées côté client. À valider dès la conception technique, pas en fin de projet.
@@ -30,9 +33,8 @@ Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
 ## En attente de validation
 - Librairie UI définitive (shadcn/ui par défaut via Lovable, alternative envisagée : Tremor)
 - Outil de monitoring d'erreurs (Sentry envisagé, alternative envisagée : GlitchTip self-hosted pour rester RGPD-friendly)
-- Logiciel(s) de facturation utilisés par les clients artisans (à interfacer via n8n, potentiellement différent par client)
+- Logiciel(s) de facturation utilisés par les clients artisans (inconnu pour l'instant — non bloquant, voir décision de génération native ci-dessus)
 - Identité visuelle de l'agence : pas encore de logo/charte graphique, utilisateur va essayer de créer via Canva
-- Portée V1 exacte de la vue cliente (widgets personnalisables) : inclus dès le lancement ou phase 2 ?
 
 ## Historique des échanges
 Ce fichier sert de mémoire de projet entre les sessions. À mettre à jour au fur et à mesure des décisions.
