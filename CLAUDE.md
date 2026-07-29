@@ -25,6 +25,7 @@ Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
 - HubSpot = source de données en arrière-plan uniquement ; tout doit être consultable depuis l'interface unique du dashboard (pas besoin d'aller sur HubSpot)
 - Plateforme unique pour agence et clients : 1 seule app (Lovable + Supabase pour auth/DB), 1 seule base de données, 1 seul hébergement (VPS Hostinger) — cloisonnement par rôle/permissions, pas par instance séparée
 - Devis/factures générés nativement par le système (pas de dépendance à un logiciel de facturation existant côté artisan) ; connexion à un outil tiers ajoutée seulement si un client le demande explicitement
+- Couche personnalisable par client : chaque artisan a son propre catalogue tarifaire (matériaux + prestations/MO, table `catalogue_client`), utilisé pour chiffrer devis et commandes fournisseurs avec ses vrais prix
 - **V1 = dashboard interne agence uniquement.** La vue cliente légère (widgets personnalisables) est reportée en **phase 2**, une fois le dashboard interne validé sur les premiers clients réels. L'architecture (rôles, cloisonnement des données) est prévue dès la V1 pour ne pas avoir à tout redécouper plus tard.
 
 ## Placement des agents IA / automatisations

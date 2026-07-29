@@ -57,6 +57,28 @@
     },
     {
       "parameters": {
+        "operation": "getAll",
+        "tableId": "catalogue_client",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            { "keyName": "client_id", "condition": "eq", "keyValue": "={{ $('Récupérer le devis').item.json.client_id }}" },
+            { "keyName": "type", "condition": "eq", "keyValue": "materiau" }
+          ]
+        }
+      },
+      "id": "supabase-get-catalogue",
+      "name": "Récupérer le catalogue matériaux",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [230, 0],
+      "notes": "Couche personnalisable par client : prix réels des matériaux/prestations MO.",
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.anthropic.com/v1/messages",
         "sendHeaders": true,
@@ -68,7 +90,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { model: 'claude-sonnet-5', max_tokens: 1024, messages: [{ role: 'user', content: 'À partir de ce devis signé, établis la liste des matériaux nécessaires et un montant total d\\'achat estimé, au format JSON strict {\"materiaux\":[{\"designation\":string,\"quantite\":number}],\"montant_estime\":number} :\\n\\n' + JSON.stringify($('Récupérer le devis').item.json) }] } }}"
+        "jsonBody": "={{ { model: 'claude-sonnet-5', max_tokens: 1024, messages: [{ role: 'user', content: 'Catalogue matériaux du client (désignation + prix unitaire en euros) :\\n' + JSON.stringify($input.all().map(i => i.json)) + '\\n\\nÀ partir de ce devis signé, établis la liste des matériaux nécessaires en utilisant les désignations et prix du catalogue quand ils correspondent, et un montant total d\\'achat estimé, au format JSON strict {\"materiaux\":[{\"designation\":string,\"quantite\":number}],\"montant_estime\":number} :\\n\\n' + JSON.stringify($('Récupérer le devis').item.json) }] } }}"
       },
       "id": "http-extraction-ia",
       "name": "Déterminer les matériaux (Claude)",
@@ -153,7 +175,8 @@
   "connections": {
     "Webhook devis signé": { "main": [[{ "node": "Récupérer le devis", "type": "main", "index": 0 }]] },
     "Récupérer le devis": { "main": [[{ "node": "Récupérer le fournisseur habituel", "type": "main", "index": 0 }]] },
-    "Récupérer le fournisseur habituel": { "main": [[{ "node": "Déterminer les matériaux (Claude)", "type": "main", "index": 0 }]] },
+    "Récupérer le fournisseur habituel": { "main": [[{ "node": "Récupérer le catalogue matériaux", "type": "main", "index": 0 }]] },
+    "Récupérer le catalogue matériaux": { "main": [[{ "node": "Déterminer les matériaux (Claude)", "type": "main", "index": 0 }]] },
     "Déterminer les matériaux (Claude)": { "main": [[{ "node": "Construire la commande", "type": "main", "index": 0 }]] },
     "Construire la commande": { "main": [[{ "node": "Enregistrer la commande (brouillon)", "type": "main", "index": 0 }]] },
     "Enregistrer la commande (brouillon)": { "main": [[{ "node": "Mettre en file de validation", "type": "main", "index": 0 }]] },

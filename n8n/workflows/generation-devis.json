@@ -12,8 +12,27 @@
       "name": "Webhook note vocale/mail",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-320, 0],
+      "position": [-540, 0],
       "webhookId": "devis-note-vocale"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "catalogue_client",
+        "returnAll": true,
+        "filters": {
+          "conditions": [{ "keyName": "client_id", "condition": "eq", "keyValue": "={{ $json.body.client_id }}" }]
+        }
+      },
+      "id": "supabase-get-catalogue",
+      "name": "Récupérer le catalogue du client",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-320, 0],
+      "notes": "Couche personnalisable par client : matériaux/prestations/MO propres à chaque artisan.",
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
     },
     {
       "parameters": {
@@ -28,7 +47,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { model: 'claude-sonnet-5', max_tokens: 1024, messages: [{ role: 'user', content: 'Extrait une liste de prestations (description + quantité) et un montant total en euros à partir de cette note, au format JSON strict {\"lignes\":[{\"description\":string,\"montant\":number}],\"montant_total\":number} :\\n\\n' + $json.body.note_texte }] } }}"
+        "jsonBody": "={{ { model: 'claude-sonnet-5', max_tokens: 1024, messages: [{ role: 'user', content: 'Voici le catalogue tarifaire du client (matériaux et prestations/MO, en euros) :\\n' + JSON.stringify($input.all().map(i => i.json)) + '\\n\\nÀ partir de cette note et en utilisant UNIQUEMENT les prix du catalogue ci-dessus (si une prestation ne figure pas au catalogue, estime un prix raisonnable et signale-le), extrait une liste de lignes et un montant total en euros, au format JSON strict {\"lignes\":[{\"description\":string,\"montant\":number}],\"montant_total\":number} :\\n\\n' + $('Webhook note vocale/mail').item.json.body.note_texte }] } }}"
       },
       "id": "http-extraction-ia",
       "name": "Extraire les prestations (Claude)",
@@ -109,7 +128,8 @@
     }
   ],
   "connections": {
-    "Webhook note vocale/mail": { "main": [[{ "node": "Extraire les prestations (Claude)", "type": "main", "index": 0 }]] },
+    "Webhook note vocale/mail": { "main": [[{ "node": "Récupérer le catalogue du client", "type": "main", "index": 0 }]] },
+    "Récupérer le catalogue du client": { "main": [[{ "node": "Extraire les prestations (Claude)", "type": "main", "index": 0 }]] },
     "Extraire les prestations (Claude)": { "main": [[{ "node": "Construire le devis", "type": "main", "index": 0 }]] },
     "Construire le devis": { "main": [[{ "node": "Enregistrer le devis (brouillon)", "type": "main", "index": 0 }]] },
     "Enregistrer le devis (brouillon)": { "main": [[{ "node": "Mettre en file de validation", "type": "main", "index": 0 }]] },

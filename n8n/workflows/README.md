@@ -46,7 +46,7 @@ Rien ne part au client tant que vous n'avez pas approuvé/modifié la relance da
 ## generation-devis.json + envoi-devis-apres-validation.json
 Même principe que la relance impayés, appliqué au devis :
 
-1. **Génération** : reçoit une note (vocale transcrite, ou texte issu d'un mail) via webhook, appelle Claude pour en extraire les lignes de prestation et un montant, crée un devis en `en_attente_validation` + une entrée dans la file de validation. **Rien n'est envoyé au client à ce stade.**
+1. **Génération** : reçoit une note (vocale transcrite, ou texte issu d'un mail) via webhook, récupère le **catalogue tarifaire du client** (`catalogue_client` — couche personnalisable par client : matériaux et prestations/MO avec leurs vrais prix), appelle Claude pour en extraire les lignes de prestation chiffrées avec ces tarifs et un montant total, crée un devis en `en_attente_validation` + une entrée dans la file de validation. **Rien n'est envoyé au client à ce stade.**
 2. **Envoi après validation** : Database Webhook Supabase sur `validations` (type_action = devis, statut IN valide/modifie) → marque le devis "envoyé" et déclenche la génération PDF + l'envoi email (fournisseur à choisir en tâche 5).
 
 Non résolu pour l'instant, à trancher en tâche 5 :
