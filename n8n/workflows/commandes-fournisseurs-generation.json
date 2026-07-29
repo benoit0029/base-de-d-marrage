@@ -1,0 +1,164 @@
+{
+  "name": "Commandes fournisseurs - Génération depuis devis signé",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "devis/signe",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-devis-signe",
+      "name": "Webhook devis signé",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-320, 0],
+      "webhookId": "devis-signe"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "devis",
+        "filterType": "manual",
+        "matchingColumns": ["id"],
+        "fieldsUi": { "fieldValues": [{ "fieldId": "id", "fieldValue": "={{ $json.body.devis_id }}" }] }
+      },
+      "id": "supabase-get-devis",
+      "name": "Récupérer le devis",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-100, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "client_config",
+        "filterType": "manual",
+        "matchingColumns": ["client_id", "cle"],
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $json.client_id }}" },
+            { "fieldId": "cle", "fieldValue": "fournisseur_habituel" }
+          ]
+        }
+      },
+      "id": "supabase-get-fournisseur",
+      "name": "Récupérer le fournisseur habituel",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [120, 0],
+      "notes": "Couche personnalisable par client : fournisseur_habituel stocké dans client_config.",
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'claude-sonnet-5', max_tokens: 1024, messages: [{ role: 'user', content: 'À partir de ce devis signé, établis la liste des matériaux nécessaires et un montant total d\\'achat estimé, au format JSON strict {\"materiaux\":[{\"designation\":string,\"quantite\":number}],\"montant_estime\":number} :\\n\\n' + JSON.stringify($('Récupérer le devis').item.json) }] } }}"
+      },
+      "id": "http-extraction-ia",
+      "name": "Déterminer les matériaux (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, 0],
+      "notes": "Placeholder : clé API Anthropic à brancher en tâche 5 (credential 'anthropicApi').",
+      "credentials": {
+        "httpHeaderAuth": { "id": "anthropic-api-key", "name": "Anthropic API key" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const reponse = JSON.parse($json.content[0].text);\nconst devis = $('Récupérer le devis').item.json;\nconst fournisseur = $('Récupérer le fournisseur habituel').item.json?.valeur ?? 'Fournisseur non renseigné';\n\nreturn [{\n  json: {\n    client_id: devis.client_id,\n    devis_id: devis.id,\n    fournisseur,\n    montant: reponse.montant_estime,\n    materiaux: reponse.materiaux,\n  },\n}];"
+      },
+      "id": "code-construire-commande",
+      "name": "Construire la commande",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 0]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "commandes_fournisseurs",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $json.client_id }}" },
+            { "fieldId": "devis_id", "fieldValue": "={{ $json.devis_id }}" },
+            { "fieldId": "fournisseur", "fieldValue": "={{ $json.fournisseur }}" },
+            { "fieldId": "montant", "fieldValue": "={{ $json.montant }}" },
+            { "fieldId": "statut", "fieldValue": "en_attente" }
+          ]
+        }
+      },
+      "id": "supabase-insert-commande",
+      "name": "Enregistrer la commande (brouillon)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [780, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "validations",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $('Construire la commande').item.json.client_id }}" },
+            { "fieldId": "type_action", "fieldValue": "commande_fournisseur" },
+            { "fieldId": "reference_id", "fieldValue": "={{ $('Enregistrer la commande (brouillon)').item.json.id }}" },
+            {
+              "fieldId": "contenu_propose",
+              "fieldValue": "={{ { fournisseur: $('Construire la commande').item.json.fournisseur, montant: $('Construire la commande').item.json.montant, materiaux: $('Construire la commande').item.json.materiaux } }}"
+            },
+            { "fieldId": "statut", "fieldValue": "en_attente" }
+          ]
+        }
+      },
+      "id": "supabase-insert-validation",
+      "name": "Mettre en file de validation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1000, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1220, 0]
+    }
+  ],
+  "connections": {
+    "Webhook devis signé": { "main": [[{ "node": "Récupérer le devis", "type": "main", "index": 0 }]] },
+    "Récupérer le devis": { "main": [[{ "node": "Récupérer le fournisseur habituel", "type": "main", "index": 0 }]] },
+    "Récupérer le fournisseur habituel": { "main": [[{ "node": "Déterminer les matériaux (Claude)", "type": "main", "index": 0 }]] },
+    "Déterminer les matériaux (Claude)": { "main": [[{ "node": "Construire la commande", "type": "main", "index": 0 }]] },
+    "Construire la commande": { "main": [[{ "node": "Enregistrer la commande (brouillon)", "type": "main", "index": 0 }]] },
+    "Enregistrer la commande (brouillon)": { "main": [[{ "node": "Mettre en file de validation", "type": "main", "index": 0 }]] },
+    "Mettre en file de validation": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

@@ -54,5 +54,14 @@ Non résolu pour l'instant, à trancher en tâche 5 :
 - Clé API Anthropic à configurer (credential `anthropicApi`)
 - Outil de génération PDF + envoi email
 
+## facturation-automatique.json
+Déclenché quand un chantier est marqué terminé (webhook `chantier/termine` avec `devis_id`). **Aucune validation humaine** : règle fixe (échéance J+30), décision déjà actée dans `CLAUDE.md`. Crée la facture et déclenche l'envoi PDF/email directement.
+
+## commandes-fournisseurs-generation.json + commandes-fournisseurs-envoi-apres-validation.json
+Même patron que devis/relances, déclenché quand un devis passe à "signé" (webhook `devis/signe`) :
+
+1. **Génération** : récupère le devis + le fournisseur habituel du client (`client_config`, clé `fournisseur_habituel` — c'est la couche personnalisable par client), demande à Claude la liste des matériaux et un montant estimé, crée une commande en `en_attente` + une entrée de validation. **Rien n'est envoyé au fournisseur à ce stade.**
+2. **Envoi après validation** : Database Webhook Supabase sur `validations` (type_action = commande_fournisseur) → marque la commande envoyée et déclenche l'envoi réel (canal à choisir en tâche 5 : email, EDI...).
+
 ## Limite actuelle
 Ces workflows sont écrits à la main au format d'export n8n et validés en JSON, mais **pas encore exécutés sur une instance n8n réelle** (pas d'instance n8n disponible dans cet environnement de travail). À importer et tester avec les commandes `curl` ci-dessus une fois n8n installé sur le VPS Hostinger.

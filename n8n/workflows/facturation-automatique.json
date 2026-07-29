@@ -1,0 +1,102 @@
+{
+  "name": "Facturation - Automatique (chantier terminé)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chantier/termine",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-chantier",
+      "name": "Webhook chantier terminé",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-320, 0],
+      "webhookId": "chantier-termine"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "devis",
+        "filterType": "manual",
+        "matchingColumns": ["id"],
+        "fieldsUi": { "fieldValues": [{ "fieldId": "id", "fieldValue": "={{ $json.body.devis_id }}" }] }
+      },
+      "id": "supabase-get-devis",
+      "name": "Récupérer le devis signé",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-100, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Règle fixe (pas de validation humaine) : échéance à 30 jours à compter d'aujourd'hui.\nconst devis = $json;\nconst echeance = new Date();\necheance.setDate(echeance.getDate() + 30);\n\nreturn [{\n  json: {\n    client_id: devis.client_id,\n    devis_id: devis.id,\n    montant: devis.montant,\n    date_echeance: echeance.toISOString().slice(0, 10),\n  },\n}];"
+      },
+      "id": "code-calculer-echeance",
+      "name": "Calculer l'échéance (J+30)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "factures",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $json.client_id }}" },
+            { "fieldId": "devis_id", "fieldValue": "={{ $json.devis_id }}" },
+            { "fieldId": "montant", "fieldValue": "={{ $json.montant }}" },
+            { "fieldId": "statut", "fieldValue": "emise" },
+            { "fieldId": "date_echeance", "fieldValue": "={{ $json.date_echeance }}" }
+          ]
+        }
+      },
+      "id": "supabase-insert-facture",
+      "name": "Créer la facture",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TODO-generation-pdf-et-envoi-email.example/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { client_id: $json.client_id, montant: $json.montant, facture_id: $('Créer la facture').item.json.id } }}"
+      },
+      "id": "http-envoyer-facture",
+      "name": "Générer le PDF et l'envoyer (à brancher)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 0],
+      "notes": "Automatique par décision projet (pas de validation humaine) : règle fixe, pas de jugement engagé."
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [780, 0]
+    }
+  ],
+  "connections": {
+    "Webhook chantier terminé": { "main": [[{ "node": "Récupérer le devis signé", "type": "main", "index": 0 }]] },
+    "Récupérer le devis signé": { "main": [[{ "node": "Calculer l'échéance (J+30)", "type": "main", "index": 0 }]] },
+    "Calculer l'échéance (J+30)": { "main": [[{ "node": "Créer la facture", "type": "main", "index": 0 }]] },
+    "Créer la facture": { "main": [[{ "node": "Générer le PDF et l'envoyer (à brancher)", "type": "main", "index": 0 }]] },
+    "Générer le PDF et l'envoyer (à brancher)": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
