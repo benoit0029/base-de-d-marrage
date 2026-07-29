@@ -1,10 +1,20 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { Layout } from '@/components/Layout'
+import { PortfolioPage } from '@/features/portefeuille/PortfolioPage'
+import { ClientDetailPage } from '@/features/portefeuille/ClientDetailPage'
 import { ValidationQueue } from '@/features/validations/ValidationQueue'
 
 function App() {
   return (
-    <main className="mx-auto max-w-5xl p-6">
-      <ValidationQueue />
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<PortfolioPage />} />
+          <Route path="clients/:clientId" element={<ClientDetailPage />} />
+          <Route path="validations" element={<ValidationQueue />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
 
