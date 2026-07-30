@@ -15,7 +15,7 @@ Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
   1. **Dashboard interne agence** (usage exclusif agence, pas un livrable) : portefeuille agrégé sur 20+ clients avec recherche/filtre, + vue détaillée par client (drill-down)
   2. **Vue cliente légère** (accès artisan) : lecture seule de ses propres widgets/KPIs, avec possibilité de choisir/masquer quels widgets afficher (ex. nb d'appels) — PAS de modification des règles métier (horaires, seuils d'urgence, etc.), juste de l'affichage
 - Pilote la livraison de deux offres agence chez des clients artisans (électricien, plombier, menuisier...) :
-  1. **Agent IA vocal** (plateforme retenue : **Synthflow AI**) : décroche 24/7, filtre le démarchage, prend RDV via agenda, détecte les urgences (transfert d'appel ou SMS prioritaire)
+  1. **Agent IA vocal** (plateforme retenue : **ElevenLabs Conversational AI**, ~0,08-0,10 $/min packagé, moins cher que Synthflow ~0,15-0,24 $/min à ce jour ; à réévaluer si le tarif ElevenLabs augmente une fois le LLM facturé — bascule facile vers Synthflow ou un autre fournisseur grâce à la couche d'ingestion dédiée) : décroche 24/7, filtre le démarchage, prend RDV via agenda, détecte les urgences (transfert d'appel ou SMS prioritaire)
   2. **IA de gestion globale** : tri emails, planning/tournées optimisées, devis/factures/avoirs automatiques, relances impayés, suivi commandes/livraisons fournisseurs
 - Architecture technique : une **base commune** (dashboard + workflows n8n) pour tous les clients + une **couche personnalisable** par client (paramètres/credentials, ex. logiciel de facturation différent par artisan)
 - Alertes urgences : reporting après-coup dans le dashboard + SMS direct sur le téléphone de l'artisan (pas d'alerte live dans le dashboard)
@@ -30,7 +30,7 @@ Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
 
 ## Placement des agents IA / automatisations
 - Règle générale : tout ce qui engage de l'argent ou une communication externe non générique passe par une **validation humaine avant envoi** (file d'attente d'approbation dans le dashboard). Le reste (extraction, classement, optimisation d'itinéraire, rappels standards) tourne en automatique.
-- Agent vocal (Synthflow) : automatique de bout en bout, la validation humaine est déjà native à l'offre (urgence → SMS/transfert à l'artisan)
+- Agent vocal (ElevenLabs) : automatique de bout en bout, la validation humaine est déjà native à l'offre (urgence → SMS/transfert à l'artisan)
 - Gestion globale : validation humaine requise avant devis, avant **chaque rappel de relance impayé (J+1, J+15, mise en demeure)**, avant bon de commande fournisseur, et avant réponse email si cas non générique. Facturation, tri emails génériques, optimisation planning = automatiques.
 - Dashboard interne : agent superviseur possible (détection d'anomalies sur le portefeuille) qui alerte l'agence sans agir seul
 
@@ -38,8 +38,8 @@ Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
 1. Schéma de données (Supabase/Postgres) — tout le reste en dépend
 2. Composant file d'attente de validation humaine (transversal, réutilisé partout)
 3. Squelette du dashboard interne (portefeuille + drill-down)
-4. Workflows n8n un par un : ingestion (HubSpot/Synthflow → base) puis relance impayés (webhook d'approbation + boucle sur les factures en retard), devis, factures, commandes fournisseurs
-5. Intégrations réelles (API Synthflow, API HubSpot) branchées en dernier, une fois la structure testée avec des données factices
+4. Workflows n8n un par un : ingestion (HubSpot/ElevenLabs → base) puis relance impayés (webhook d'approbation + boucle sur les factures en retard), devis, factures, commandes fournisseurs
+5. Intégrations réelles (API ElevenLabs, API HubSpot) branchées en dernier, une fois la structure testée avec des données factices
 
 ## Exigence transverse critique
 - **Sécurité & RGPD & contrôle d'accès client** : avec l'ajout d'une vue cliente (même légère), il faut un vrai cloisonnement des accès (un artisan ne doit voir QUE ses propres données), authentification séparée agence/client, et traitement RGPD-conforme des données clients exposées côté client. À valider dès la conception technique, pas en fin de projet.

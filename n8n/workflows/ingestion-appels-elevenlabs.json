@@ -1,23 +1,46 @@
 {
-  "name": "Ingestion appels - Synthflow",
+  "name": "Ingestion appels - ElevenLabs",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "synthflow/appel-termine",
+        "path": "elevenlabs/appel-termine",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "webhook-synthflow",
-      "name": "Webhook Synthflow",
+      "id": "webhook-elevenlabs",
+      "name": "Webhook ElevenLabs (post-call)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-160, 0],
-      "webhookId": "synthflow-appel-termine"
+      "position": [-380, 0],
+      "webhookId": "elevenlabs-appel-termine"
     },
     {
       "parameters": {
-        "jsCode": "// Chaque agent Synthflow est configuré avec l'URL du client dans son webhook :\n//   /webhook/synthflow/appel-termine?client_id=<uuid clients.id>\n// Documentation complète : n8n/workflows/README.md\nconst clientId = $json.query.client_id;\nif (!clientId) {\n  throw new Error('client_id manquant dans la query du webhook Synthflow');\n}\n\nconst body = $json.body;\nconst statut = body.spam ? 'spam' : body.decroche ? 'decroche' : 'manque';\n\nreturn [{\n  json: {\n    client_id: clientId,\n    statut,\n    rdv_pris: Boolean(body.rdv_pris),\n    duree_secondes: body.duree_secondes ?? null,\n    urgence: Boolean(body.urgence_detectee),\n    urgence_description: body.urgence_description ?? null,\n    urgence_sms_envoye: Boolean(body.urgence_sms_envoye),\n    urgence_transfert: Boolean(body.urgence_transfert),\n  },\n}];"
+        "operation": "get",
+        "tableId": "client_config",
+        "filterType": "manual",
+        "matchingColumns": ["cle", "valeur"],
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "cle", "fieldValue": "elevenlabs_agent_id" },
+            { "fieldId": "valeur", "fieldValue": "={{ $json.body.data.agent_id }}" }
+          ]
+        }
+      },
+      "id": "supabase-resoudre-client",
+      "name": "Résoudre le client (agent ElevenLabs)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-160, 0],
+      "notes": "Chaque client a son propre agent ElevenLabs ; l'association agent_id -> client_id est stockée dans client_config (couche personnalisable par client).",
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format du webhook post-call ElevenLabs Conversational AI :\n// body.data.analysis.data_collection_results contient les champs personnalisés\n// configurés sur l'agent (rdv_pris, spam, urgence_detectee, urgence_description),\n// à définir dans l'onglet \"Data collection\" de l'agent ElevenLabs.\n// Documentation complète : n8n/workflows/README.md\nconst clientId = $('Résoudre le client (agent ElevenLabs)').item.json.client_id;\nif (!clientId) {\n  throw new Error('Aucun client associé à cet agent_id ElevenLabs (client_config.elevenlabs_agent_id)');\n}\n\nconst data = $('Webhook ElevenLabs (post-call)').item.json.body.data;\nconst champs = data.analysis?.data_collection_results ?? {};\nconst spam = Boolean(champs.spam?.value);\nconst decroche = data.status === 'done';\nconst statut = spam ? 'spam' : decroche ? 'decroche' : 'manque';\n\nreturn [{\n  json: {\n    client_id: clientId,\n    statut,\n    rdv_pris: Boolean(champs.rdv_pris?.value),\n    duree_secondes: data.metadata?.call_duration_secs ?? null,\n    urgence: Boolean(champs.urgence_detectee?.value),\n    urgence_description: champs.urgence_description?.value ?? null,\n    urgence_sms_envoye: Boolean(champs.urgence_sms_envoye?.value),\n    urgence_transfert: Boolean(champs.urgence_transfert?.value),\n  },\n}];"
       },
       "id": "code-mapper",
       "name": "Mapper les champs",
@@ -103,7 +126,8 @@
     }
   ],
   "connections": {
-    "Webhook Synthflow": { "main": [[{ "node": "Mapper les champs", "type": "main", "index": 0 }]] },
+    "Webhook ElevenLabs (post-call)": { "main": [[{ "node": "Résoudre le client (agent ElevenLabs)", "type": "main", "index": 0 }]] },
+    "Résoudre le client (agent ElevenLabs)": { "main": [[{ "node": "Mapper les champs", "type": "main", "index": 0 }]] },
     "Mapper les champs": { "main": [[{ "node": "Insérer l'appel", "type": "main", "index": 0 }]] },
     "Insérer l'appel": { "main": [[{ "node": "Urgence détectée ?", "type": "main", "index": 0 }]] },
     "Urgence détectée ?": {

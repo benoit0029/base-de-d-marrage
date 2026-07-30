@@ -8,23 +8,23 @@ Dans n8n : Workflows → Import from File → sélectionner le `.json` voulu.
 - **Supabase - Service role key** (type "Header Auth") : deux en-têtes, `apikey` et `Authorization: Bearer <service_role_key>` — nécessaire pour les appels REST directs (upsert) qui contournent les policies RLS.
 - Variable d'environnement n8n `SUPABASE_URL` = URL du projet Supabase.
 
-## ingestion-appels-synthflow.json
-Chaque agent Synthflow doit être configuré pour appeler :
+## ingestion-appels-elevenlabs.json
+Plateforme vocale retenue : **ElevenLabs Conversational AI** (moins cher que Synthflow à ce jour, ~0,08-0,10 $/min packagé — à réévaluer si le tarif LLM devient payant chez eux). Chaque client a son propre agent ElevenLabs ; l'association `agent_id` ElevenLabs ↔ `client_id` est stockée dans `client_config` (clé `elevenlabs_agent_id`), pas passée en query param comme on l'aurait fait avec Synthflow.
+
+Configurer le **webhook post-call** de l'agent ElevenLabs vers :
 ```
-POST https://<votre-n8n>/webhook/synthflow/appel-termine?client_id=<uuid du client>
+POST https://<votre-n8n>/webhook/elevenlabs/appel-termine
 ```
-Corps attendu (à adapter au format réel de Synthflow une fois branché, cf. tâche 5) :
-```json
-{ "decroche": true, "spam": false, "rdv_pris": true, "duree_secondes": 180,
-  "urgence_detectee": false, "urgence_description": null,
-  "urgence_sms_envoye": false, "urgence_transfert": false }
-```
-Test local avec des données factices :
+Le format exact du payload (`data.analysis.data_collection_results`, `data.metadata.call_duration_secs`, etc.) est celui documenté par ElevenLabs pour les webhooks post-appel ; les champs personnalisés (`rdv_pris`, `spam`, `urgence_detectee`, `urgence_description`, ...) doivent être configurés dans l'onglet "Data collection" de l'agent — **à vérifier et ajuster une fois le compte ElevenLabs créé** (tâche 5), le mapping exact n'est pas garanti tant qu'on n'a pas un vrai payload sous les yeux.
+
+Test local avec des données factices une fois n8n en place :
 ```bash
-curl -X POST "https://<votre-n8n>/webhook/synthflow/appel-termine?client_id=<uuid>" \
+curl -X POST "https://<votre-n8n>/webhook/elevenlabs/appel-termine" \
   -H "Content-Type: application/json" \
-  -d '{"decroche": true, "rdv_pris": true, "duree_secondes": 120, "urgence_detectee": true, "urgence_description": "Fuite d'\''eau active"}'
+  -d '{"data": {"agent_id": "<id agent ElevenLabs>", "status": "done", "metadata": {"call_duration_secs": 120}, "analysis": {"data_collection_results": {"rdv_pris": {"value": true}, "urgence_detectee": {"value": true}, "urgence_description": {"value": "Fuite d'\''eau active"}}}}}'
 ```
+
+**Basculer vers un autre fournisseur vocal (Synthflow ou autre) plus tard** : seul ce workflow d'ingestion change (webhook + mapping des champs) — le reste du système (dashboard, validations, autres workflows) reste identique, voir `CLAUDE.md`.
 
 ## ingestion-clients-hubspot.json
 Déclenché par un workflow HubSpot quand un deal passe au statut "Client actif". Propriété deal `offres` = `agent_vocal`, `gestion_globale` ou les deux séparées par une virgule.
