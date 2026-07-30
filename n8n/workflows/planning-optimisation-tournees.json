@@ -1,0 +1,113 @@
+{
+  "name": "Planning - Optimisation quotidienne des tournées",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }] }
+      },
+      "id": "cron-daily",
+      "name": "Tous les jours à 6h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-540, 0]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "interventions",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            { "keyName": "date_prevue", "condition": "eq", "keyValue": "={{ $today.toISODate() }}" },
+            { "keyName": "statut", "condition": "eq", "keyValue": "planifiee" }
+          ]
+        }
+      },
+      "id": "supabase-get-interventions",
+      "name": "Récupérer les interventions du jour",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-320, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Une tournée est optimisée par client (chaque artisan a son propre planning).\nconst parClient = {};\nfor (const item of $input.all()) {\n  const i = item.json;\n  parClient[i.client_id] ??= [];\n  parClient[i.client_id].push(i);\n}\nreturn Object.entries(parClient).map(([client_id, interventions]) => ({ json: { client_id, interventions } }));"
+      },
+      "id": "code-regrouper",
+      "name": "Regrouper par client",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-100, 0]
+    },
+    {
+      "parameters": { "batchSize": 1, "options": {} },
+      "id": "loop-clients",
+      "name": "Boucle par client",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TODO-service-optimisation-itineraire.example/optimize",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { adresses: $json.interventions.map(i => ({ id: i.id, adresse: i.adresse })) } }}"
+      },
+      "id": "http-optimiser",
+      "name": "Calculer l'itinéraire optimisé (à brancher)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, -80],
+      "notes": "Placeholder : service de calcul d'itinéraire réel (ex. Google Maps Directions API) à brancher en tâche 5."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Réponse attendue du service d'optimisation : { ordre: [{ id, position }] }\nconst ordre = $json.ordre ?? [];\nreturn ordre.map((o) => ({ json: { intervention_id: o.id, ordre_tournee: o.position } }));"
+      },
+      "id": "code-associer-ordre",
+      "name": "Associer l'ordre calculé",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, -80]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "interventions",
+        "filterType": "manual",
+        "matchingColumns": ["id"],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "id", "fieldValue": "={{ $json.intervention_id }}" },
+            { "fieldId": "ordre_tournee", "fieldValue": "={{ $json.ordre_tournee }}" }
+          ]
+        }
+      },
+      "id": "supabase-update-ordre",
+      "name": "Mettre à jour l'ordre de tournée",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [780, -80],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    }
+  ],
+  "connections": {
+    "Tous les jours à 6h": { "main": [[{ "node": "Récupérer les interventions du jour", "type": "main", "index": 0 }]] },
+    "Récupérer les interventions du jour": { "main": [[{ "node": "Regrouper par client", "type": "main", "index": 0 }]] },
+    "Regrouper par client": { "main": [[{ "node": "Boucle par client", "type": "main", "index": 0 }]] },
+    "Boucle par client": { "main": [[], [{ "node": "Calculer l'itinéraire optimisé (à brancher)", "type": "main", "index": 0 }]] },
+    "Calculer l'itinéraire optimisé (à brancher)": { "main": [[{ "node": "Associer l'ordre calculé", "type": "main", "index": 0 }]] },
+    "Associer l'ordre calculé": { "main": [[{ "node": "Mettre à jour l'ordre de tournée", "type": "main", "index": 0 }]] },
+    "Mettre à jour l'ordre de tournée": { "main": [[{ "node": "Boucle par client", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

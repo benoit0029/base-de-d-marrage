@@ -1,0 +1,109 @@
+{
+  "name": "Planning - Notification de retard",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "planning/retard-detecte",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-retard",
+      "name": "Webhook retard détecté",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-320, 0],
+      "webhookId": "planning-retard-detecte"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "interventions",
+        "returnAll": false,
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            { "keyName": "client_id", "condition": "eq", "keyValue": "={{ $json.body.client_id }}" },
+            { "keyName": "date_prevue", "condition": "eq", "keyValue": "={{ $today.toISODate() }}" },
+            { "keyName": "statut", "condition": "eq", "keyValue": "planifiee" },
+            { "keyName": "ordre_tournee", "condition": "gt", "keyValue": "={{ $json.body.ordre_tournee_actuel }}" }
+          ]
+        },
+        "sort": { "sortRules": [{ "field": "ordre_tournee", "direction": "ASC" }] }
+      },
+      "id": "supabase-get-prochaine",
+      "name": "Trouver la prochaine intervention",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-100, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const minutesRetard = $('Webhook retard détecté').item.json.body.minutes_retard;\nconst prochaine = $json;\nreturn [{ json: { intervention_id: prochaine.id, client_id: prochaine.client_id, minutes_retard: minutesRetard } }];"
+      },
+      "id": "code-calculer-retard",
+      "name": "Calculer le nouveau créneau",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "interventions",
+        "filterType": "manual",
+        "matchingColumns": ["id"],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "id", "fieldValue": "={{ $json.intervention_id }}" },
+            { "fieldId": "statut", "fieldValue": "retardee" }
+          ]
+        }
+      },
+      "id": "supabase-update-statut",
+      "name": "Marquer l'intervention retardée",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, 0],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TODO-fournisseur-sms.example/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { client_id: $json.client_id, message: 'Votre intervention est décalée d\\'environ ' + $('Calculer le nouveau créneau').item.json.minutes_retard + ' minutes suite à un imprévu sur le chantier précédent.' } }}"
+      },
+      "id": "http-prevenir-client",
+      "name": "Prévenir le client par SMS (à brancher)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 0],
+      "notes": "Automatique par décision projet : notification standard de retard, pas de validation humaine."
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [780, 0]
+    }
+  ],
+  "connections": {
+    "Webhook retard détecté": { "main": [[{ "node": "Trouver la prochaine intervention", "type": "main", "index": 0 }]] },
+    "Trouver la prochaine intervention": { "main": [[{ "node": "Calculer le nouveau créneau", "type": "main", "index": 0 }]] },
+    "Calculer le nouveau créneau": { "main": [[{ "node": "Marquer l'intervention retardée", "type": "main", "index": 0 }]] },
+    "Marquer l'intervention retardée": { "main": [[{ "node": "Prévenir le client par SMS (à brancher)", "type": "main", "index": 0 }]] },
+    "Prévenir le client par SMS (à brancher)": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

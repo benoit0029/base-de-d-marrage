@@ -73,5 +73,17 @@ Tri automatique des emails entrants (webhook `emails/recu`) :
 
 Tout est tracé dans la nouvelle table `emails`, consultable depuis le dashboard.
 
+## planning-optimisation-tournees.json + planning-notification-retard.json
+Automatiques (décision projet : optimisation planning = pas de validation humaine) :
+
+1. **Optimisation quotidienne** (cron 6h) : récupère les interventions du jour, les regroupe par client (chaque artisan a sa propre tournée), calcule un itinéraire optimisé (service à brancher en tâche 5) et met à jour l'ordre de passage.
+2. **Notification de retard** : webhook déclenché quand un artisan signale un retard sur le chantier en cours → identifie le prochain client de la tournée → l'avertit par SMS automatiquement (notification standard, pas d'engagement financier).
+
+## suivi-livraisons-fournisseurs.json
+Complète les commandes fournisseurs avec le suivi de livraison (colonnes `statut_livraison`, `date_livraison_prevue`, `date_livraison_reelle` sur `commandes_fournisseurs`) :
+
+- Un webhook reçoit la confirmation du fournisseur (canal à interfacer en tâche 5 : email/EDI).
+- Un contrôle quotidien (cron 7h) signale automatiquement en `retard` toute commande dont la date prévue est dépassée sans livraison confirmée — c'est l'agent superviseur : il rend l'anomalie visible dans le dashboard, il n'envoie rien lui-même.
+
 ## Limite actuelle
 Ces workflows sont écrits à la main au format d'export n8n et validés en JSON, mais **pas encore exécutés sur une instance n8n réelle** (pas d'instance n8n disponible dans cet environnement de travail). À importer et tester avec les commandes `curl` ci-dessus une fois n8n installé sur le VPS Hostinger.

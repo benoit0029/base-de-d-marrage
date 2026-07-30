@@ -1,0 +1,126 @@
+{
+  "name": "Commandes fournisseurs - Suivi des livraisons",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "livraisons/confirmation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-confirmation",
+      "name": "Webhook confirmation fournisseur",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-320, -80],
+      "webhookId": "livraisons-confirmation"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "commandes_fournisseurs",
+        "filterType": "manual",
+        "matchingColumns": ["id"],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "id", "fieldValue": "={{ $json.body.commande_id }}" },
+            { "fieldId": "statut_livraison", "fieldValue": "={{ $json.body.statut_livraison }}" },
+            { "fieldId": "date_livraison_prevue", "fieldValue": "={{ $json.body.date_livraison_prevue }}" },
+            { "fieldId": "date_livraison_reelle", "fieldValue": "={{ $json.body.date_livraison_reelle }}" }
+          ]
+        }
+      },
+      "id": "supabase-update-livraison",
+      "name": "Mettre à jour la livraison",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-100, -80],
+      "notes": "Déclenché par la confirmation du fournisseur (email/EDI à interfacer en tâche 5).",
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
+      "id": "respond-ok",
+      "name": "Répondre 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [120, -80]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }] }
+      },
+      "id": "cron-daily",
+      "name": "Tous les jours à 7h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-320, 80]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "commandes_fournisseurs",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            { "keyName": "statut_livraison", "condition": "neq", "keyValue": "livree" }
+          ]
+        }
+      },
+      "id": "supabase-get-en-cours",
+      "name": "Récupérer les livraisons en cours",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-100, 80],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Signale en retard toute commande dont la date de livraison prévue est dépassée\n// sans confirmation de livraison réelle. L'agence est alertée (vue dashboard), rien n'est envoyé au client.\nconst today = new Date(); today.setHours(0, 0, 0, 0);\nreturn $input.all().filter((item) => {\n  const c = item.json;\n  return c.date_livraison_prevue && new Date(c.date_livraison_prevue) < today && c.statut_livraison !== 'retard';\n});"
+      },
+      "id": "code-detecter-retards",
+      "name": "Détecter les retards",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 80]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "commandes_fournisseurs",
+        "filterType": "manual",
+        "matchingColumns": ["id"],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "id", "fieldValue": "={{ $json.id }}" },
+            { "fieldId": "statut_livraison", "fieldValue": "retard" }
+          ]
+        }
+      },
+      "id": "supabase-marquer-retard",
+      "name": "Marquer en retard (visible dashboard)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [340, 80],
+      "notes": "Agent superviseur : signale l'anomalie à l'agence via le dashboard, n'agit pas seul.",
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook confirmation fournisseur": { "main": [[{ "node": "Mettre à jour la livraison", "type": "main", "index": 0 }]] },
+    "Mettre à jour la livraison": { "main": [[{ "node": "Répondre 200", "type": "main", "index": 0 }]] },
+    "Tous les jours à 7h": { "main": [[{ "node": "Récupérer les livraisons en cours", "type": "main", "index": 0 }]] },
+    "Récupérer les livraisons en cours": { "main": [[{ "node": "Détecter les retards", "type": "main", "index": 0 }]] },
+    "Détecter les retards": { "main": [[{ "node": "Marquer en retard (visible dashboard)", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
