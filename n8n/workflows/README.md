@@ -4,9 +4,11 @@
 Dans n8n : Workflows → Import from File → sélectionner le `.json` voulu.
 
 ## Credentials à créer une fois dans n8n
-- **Supabase - Dashboard agence** (type "Supabase API") : URL du projet + clé anon/service, utilisée par les nœuds Supabase natifs.
-- **Supabase - Service role key** (type "Header Auth") : deux en-têtes, `apikey` et `Authorization: Bearer <service_role_key>` — nécessaire pour les appels REST directs (upsert) qui contournent les policies RLS.
-- Variable d'environnement n8n `SUPABASE_URL` = URL du projet Supabase.
+- **Supabase - Dashboard agence** (type "Supabase API") : URL du projet + clé service role, utilisée par les nœuds Supabase natifs (la plupart des workflows).
+- **Anthropic API key** (type "Header Auth", en-tête `x-api-key`) : utilisée par les nœuds "Claude" (extraction/génération IA dans generation-devis, commandes-fournisseurs-generation, tri-emails).
+- Variables d'environnement n8n (à définir sur le conteneur Docker, pas dans l'UI) :
+  - `SUPABASE_URL` = URL du projet Supabase
+  - `SUPABASE_SERVICE_ROLE_KEY` = clé service role Supabase (Settings → API) — utilisée uniquement par `ingestion-clients-hubspot.json`, qui fait des appels REST directs (upsert) au lieu du nœud Supabase natif, donc contourne le système de credentials n8n et lit directement ces deux en-têtes (`apikey` + `Authorization: Bearer ...`) via variable d'environnement.
 
 ## ingestion-appels-elevenlabs.json
 Plateforme vocale retenue : **ElevenLabs Conversational AI** (moins cher que Synthflow à ce jour, ~0,08-0,10 $/min packagé — à réévaluer si le tarif LLM devient payant chez eux). Chaque client a son propre agent ElevenLabs ; l'association `agent_id` ElevenLabs ↔ `client_id` est stockée dans `client_config` (clé `elevenlabs_agent_id`), pas passée en query param comme on l'aurait fait avec Synthflow.

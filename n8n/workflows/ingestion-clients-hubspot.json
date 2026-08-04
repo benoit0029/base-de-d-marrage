@@ -33,7 +33,9 @@
         "headerParameters": {
           "parameters": [
             { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" },
-            { "name": "Content-Type", "value": "application/json" }
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
           ]
         },
         "sendBody": true,
@@ -44,10 +46,7 @@
       "name": "Upsert client (Supabase REST)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [280, 0],
-      "credentials": {
-        "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase - Service role key" }
-      }
+      "position": [280, 0]
     },
     {
       "parameters": {
@@ -68,7 +67,9 @@
         "headerParameters": {
           "parameters": [
             { "name": "Prefer", "value": "resolution=ignore-duplicates" },
-            { "name": "Content-Type", "value": "application/json" }
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
           ]
         },
         "sendBody": true,
@@ -79,10 +80,7 @@
       "name": "Insérer l'offre souscrite",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 0],
-      "credentials": {
-        "httpHeaderAuth": { "id": "supabase-service-role", "name": "Supabase - Service role key" }
-      }
+      "position": [720, 0]
     },
     {
       "parameters": { "respondWith": "noData", "options": { "responseCode": 200 } },
