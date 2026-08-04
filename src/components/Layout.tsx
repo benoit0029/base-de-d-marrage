@@ -1,5 +1,7 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
+import { Button } from '@/components/ui/button'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Portefeuille', end: true },
@@ -7,11 +9,18 @@ const NAV_ITEMS = [
 ]
 
 export function Layout() {
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    navigate('/login')
+  }
+
   return (
     <div className="min-h-screen">
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-          <span className="font-semibold">Dashboard agence IA</span>
+          <span className="font-semibold">Kalonia — Dashboard agence</span>
           <nav className="flex gap-1">
             {NAV_ITEMS.map((item) => (
               <NavLink
@@ -29,6 +38,9 @@ export function Layout() {
               </NavLink>
             ))}
           </nav>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={handleLogout}>
+            Déconnexion
+          </Button>
         </div>
       </header>
       <main className="mx-auto max-w-6xl p-6">
