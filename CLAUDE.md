@@ -5,11 +5,13 @@ Dashboard pour piloter Kalonia, une agence IA. Construit avec l'aide de Claude C
 Nom retenu après vérification (aucune entreprise existante trouvée sous ce nom, domaine kalonia.fr a priori disponible — à confirmer sur un registrar avant achat définitif).
 
 ## Décisions prises
-- Front : Lovable (no-code/low-code, base React + shadcn/ui par défaut)
-- Automatisation : n8n, self-hosted sur le VPS Hostinger (pas de plan Cloud)
-- Hébergement : VPS Hostinger (dashboard + n8n)
+- Front : codé directement (React + Vite + TypeScript + Tailwind + composants shadcn/ui faits à la main), géré via Claude Code. **Lovable abandonné pour la construction du dashboard** : son intégration GitHub ne permet pas d'importer proprement un dépôt existant codé à la main (testé et confirmé — seul un connecteur "GitHub API" pour appels API depuis une app Lovable existe, pas d'import de repo comme base de projet). Décision prise en connaissance de cause, pas un abandon technique.
+- Automatisation : n8n, self-hosted sur le VPS Hostinger (pas de plan Cloud, pas de compte n8n.io nécessaire)
+- Hébergement : VPS Hostinger KVM 2 (2 vCPU / 8 Go RAM / 100 Go NVMe), souscrit sans engagement (1 mois) pour valider avant de passer sur une offre longue durée — héberge le dashboard + n8n
 - CRM / source de données : HubSpot
-- Contrainte RGPD : hébergement et sous-traitants doivent être conformes (voir section RGPD du dernier échange)
+- Contrainte RGPD : hébergement et sous-traitants doivent être conformes (voir section RGPD du dernier échange) — VPS Hostinger installé sur un datacenter européen
+- Email agence pour la création de comptes outils : `kalonia0029@outlook.fr`
+- GitHub : accès en écriture pour Claude Code débloqué en installant l'app GitHub officielle "Claude" (github.com/apps/claude) sur le dépôt — la simple autorisation OAuth ne suffit pas, il faut l'installation en plus
 
 ## Usage du dashboard
 - **Deux surfaces distinctes** :
@@ -24,7 +26,7 @@ Nom retenu après vérification (aucune entreprise existante trouvée sous ce no
   - *Agent vocal* : nb d'appels traités, taux de décroché, RDV pris, urgences détectées, spams filtrés
   - *Gestion globale* : devis en attente de signature, factures émises, impayés en cours (montant + ancienneté), CA piloté
 - HubSpot = source de données en arrière-plan uniquement ; tout doit être consultable depuis l'interface unique du dashboard (pas besoin d'aller sur HubSpot)
-- Plateforme unique pour agence et clients : 1 seule app (Lovable + Supabase pour auth/DB), 1 seule base de données, 1 seul hébergement (VPS Hostinger) — cloisonnement par rôle/permissions, pas par instance séparée
+- Plateforme unique pour agence et clients : 1 seule app (React + Supabase pour auth/DB), 1 seule base de données, 1 seul hébergement (VPS Hostinger) — cloisonnement par rôle/permissions, pas par instance séparée
 - Devis/factures générés nativement par le système (pas de dépendance à un logiciel de facturation existant côté artisan) ; connexion à un outil tiers ajoutée seulement si un client le demande explicitement
 - Couche personnalisable par client : chaque artisan a son propre catalogue tarifaire (matériaux + prestations/MO, table `catalogue_client`), utilisé pour chiffrer devis et commandes fournisseurs avec ses vrais prix
 - **V1 = dashboard interne agence uniquement.** La vue cliente légère (widgets personnalisables) est reportée en **phase 2**, une fois le dashboard interne validé sur les premiers clients réels. L'architecture (rôles, cloisonnement des données) est prévue dès la V1 pour ne pas avoir à tout redécouper plus tard.
@@ -41,6 +43,17 @@ Nom retenu après vérification (aucune entreprise existante trouvée sous ce no
 3. Squelette du dashboard interne (portefeuille + drill-down)
 4. Workflows n8n un par un : ingestion (HubSpot/ElevenLabs → base) puis relance impayés (webhook d'approbation + boucle sur les factures en retard), devis, factures, commandes fournisseurs
 5. Intégrations réelles (API ElevenLabs, API HubSpot) branchées en dernier, une fois la structure testée avec des données factices
+
+## Ordre de création des comptes/outils
+(distinct de l'ordre de construction du code ci-dessus — ici il s'agit des dépendances d'infrastructure : les clés API des étapes 3+ ne servent à rien tant que n8n ne tourne pas)
+1. ✅ GitHub (existant)
+2. ✅ Supabase (créé, migrations + RLS appliquées, credentials réelles branchées)
+3. ✅ VPS Hostinger (créé, KVM 2, 1 mois sans engagement)
+4. ⏳ n8n installé sur le VPS (en cours, via l'app en un clic Hostinger)
+5. ElevenLabs (agent vocal) — compte + clé API
+6. HubSpot (CRM source) — compte + clé API privée
+7. Anthropic API — clé (utilisée dans les workflows n8n pour tri emails, génération devis, etc.)
+8. Brevo (ou équivalent) — compte + clé API pour l'envoi SMS/email des relances
 
 ## Exigence transverse critique
 - **Sécurité & RGPD & contrôle d'accès client** : avec l'ajout d'une vue cliente (même légère), il faut un vrai cloisonnement des accès (un artisan ne doit voir QUE ses propres données), authentification séparée agence/client, et traitement RGPD-conforme des données clients exposées côté client. À valider dès la conception technique, pas en fin de projet.
