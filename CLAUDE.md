@@ -1,7 +1,8 @@
-# Projet : Dashboard agence IA
+# Projet : Dashboard agence IA "Kalonia"
 
 ## Contexte
-Dashboard pour piloter une agence IA. Construit avec l'aide de Claude Code.
+Dashboard pour piloter Kalonia, une agence IA. Construit avec l'aide de Claude Code.
+Nom retenu après vérification (aucune entreprise existante trouvée sous ce nom, domaine kalonia.fr a priori disponible — à confirmer sur un registrar avant achat définitif).
 
 ## Décisions prises
 - Front : Lovable (no-code/low-code, base React + shadcn/ui par défaut)
