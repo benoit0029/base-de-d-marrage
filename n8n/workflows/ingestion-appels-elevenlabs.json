@@ -17,18 +17,8 @@
     },
     {
       "parameters": {
-        "jsCode": "// Les nœuds HTTP Request classiques n'ont pas accès à $env par défaut (restriction de sécurité n8n).\n// Les nœuds Code, eux, y ont accès sans restriction : on lit donc les variables ici\n// et on les transmet comme données normales au nœud suivant.\nreturn [{\n  json: {\n    ...$json,\n    _supabase_url: $env.SUPABASE_URL,\n    _supabase_key: $env.SUPABASE_SERVICE_ROLE_KEY,\n  },\n}];"
-      },
-      "id": "code-lire-env",
-      "name": "Lire config Supabase",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-270, 0]
-    },
-    {
-      "parameters": {
         "method": "GET",
-        "url": "={{ $json._supabase_url }}/rest/v1/client_config",
+        "url": "https://pmucgxxmhekhmknmfvmi.supabase.co/rest/v1/client_config",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -40,8 +30,8 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $json._supabase_key }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $json._supabase_key }}" }
+            { "name": "apikey", "value": "COLLER_VOTRE_CLE_SERVICE_ROLE_ICI" },
+            { "name": "Authorization", "value": "Bearer COLLER_VOTRE_CLE_SERVICE_ROLE_ICI" }
           ]
         }
       },
@@ -50,7 +40,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [-160, 0],
-      "notes": "Chaque client a son propre agent ElevenLabs ; l'association agent_id -> client_id est stockée dans client_config (couche personnalisable par client). Appel REST direct (pas le nœud Supabase natif) car son filtre par égalité sur une colonne jsonb n'est pas fiable après import JSON."
+      "notes": "IMPORTANT : après import, remplacez COLLER_VOTRE_CLE_SERVICE_ROLE_ICI (dans les 2 en-têtes apikey et Authorization) par la vraie clé sb_secret_... de Supabase, directement dans l'interface n8n. Chaque client a son propre agent ElevenLabs ; l'association agent_id -> client_id est stockée dans client_config (couche personnalisable par client). Appel REST direct (pas le nœud Supabase natif) car son filtre par égalité sur une colonne jsonb n'est pas fiable après import JSON, et $env n'est pas accessible de façon fiable sur cette instance n8n."
     },
     {
       "parameters": {
@@ -140,8 +130,7 @@
     }
   ],
   "connections": {
-    "Webhook ElevenLabs (post-call)": { "main": [[{ "node": "Lire config Supabase", "type": "main", "index": 0 }]] },
-    "Lire config Supabase": { "main": [[{ "node": "Résoudre le client (agent ElevenLabs)", "type": "main", "index": 0 }]] },
+    "Webhook ElevenLabs (post-call)": { "main": [[{ "node": "Résoudre le client (agent ElevenLabs)", "type": "main", "index": 0 }]] },
     "Résoudre le client (agent ElevenLabs)": { "main": [[{ "node": "Mapper les champs", "type": "main", "index": 0 }]] },
     "Mapper les champs": { "main": [[{ "node": "Insérer l'appel", "type": "main", "index": 0 }]] },
     "Insérer l'appel": { "main": [[{ "node": "Urgence détectée ?", "type": "main", "index": 0 }]] },
