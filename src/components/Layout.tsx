@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Portefeuille', end: true },
+  { to: '/factures', label: 'Factures', end: false },
   { to: '/validations', label: 'File de validation', end: false },
 ]
 
