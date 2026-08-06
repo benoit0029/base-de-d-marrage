@@ -50,10 +50,14 @@ Nom retenu après vérification (aucune entreprise existante trouvée sous ce no
 2. ✅ Supabase (créé, migrations + RLS appliquées, credentials réelles branchées)
 3. ✅ VPS Hostinger (créé, KVM 2, 1 mois sans engagement)
 4. ✅ n8n installé sur le VPS (app en un clic Hostinger, Ubuntu 24.04, datacenter Francfort), 14 workflows importés, credential Supabase native branchée sur tous les nœuds, variables d'environnement SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY configurées sur le conteneur
-5. ⏳ ElevenLabs (agent vocal) — compte + clé API
+5. ⏳ ElevenLabs (agent vocal) — compte créé, agent de test "Heol" configuré (prompt, voix, langue FR), webhook post-appel branché vers n8n (HMAC). **Bug non résolu** : le nœud n8n qui retrouve le client via l'agent_id (table `client_config`) ne trouve aucune ligne alors que les données sont vérifiées correctes (hex, longueur, requêtes SQL isolées) — cause exacte non identifiée malgré investigation poussée. À reprendre à tête reposée, pas bloquant pour le reste.
 6. HubSpot (CRM source) — compte + clé API privée
 7. Anthropic API — clé (utilisée dans les workflows n8n pour tri emails, génération devis, etc.)
 8. Brevo (ou équivalent) — compte + clé API pour l'envoi SMS/email des relances
+
+## Déploiement
+- Dashboard déployé sur **Vercel** (gratuit), connecté au dépôt GitHub, branche `claude/dashboard-agence-ia-outils-tqefcv` en Production. Variables d'environnement `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` configurées. Fichier `vercel.json` ajouté pour le routing SPA (sans lui, toute route autre que `/` renvoie une 404).
+- Premier utilisateur agence créé dans Supabase Authentication, connexion testée avec succès en production. Portefeuille vide pour l'instant (normal, aucun client réel connecté — HubSpot pas encore branché).
 
 ## Exigence transverse critique
 - **Sécurité & RGPD & contrôle d'accès client** : avec l'ajout d'une vue cliente (même légère), il faut un vrai cloisonnement des accès (un artisan ne doit voir QUE ses propres données), authentification séparée agence/client, et traitement RGPD-conforme des données clients exposées côté client. À valider dès la conception technique, pas en fin de projet.
