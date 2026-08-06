@@ -49,8 +49,8 @@ Nom retenu après vérification (aucune entreprise existante trouvée sous ce no
 1. ✅ GitHub (existant)
 2. ✅ Supabase (créé, migrations + RLS appliquées, credentials réelles branchées)
 3. ✅ VPS Hostinger (créé, KVM 2, 1 mois sans engagement)
-4. ⏳ n8n installé sur le VPS (en cours, via l'app en un clic Hostinger)
-5. ElevenLabs (agent vocal) — compte + clé API
+4. ✅ n8n installé sur le VPS (app en un clic Hostinger, Ubuntu 24.04, datacenter Francfort), 14 workflows importés, credential Supabase native branchée sur tous les nœuds, variables d'environnement SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY configurées sur le conteneur
+5. ⏳ ElevenLabs (agent vocal) — compte + clé API
 6. HubSpot (CRM source) — compte + clé API privée
 7. Anthropic API — clé (utilisée dans les workflows n8n pour tri emails, génération devis, etc.)
 8. Brevo (ou équivalent) — compte + clé API pour l'envoi SMS/email des relances
