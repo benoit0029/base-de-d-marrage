@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Déclenché par un workflow HubSpot quand un deal passe au statut \"Client actif\".\n// Propriété deal attendue : offres = \"agent_vocal,gestion_globale\" (une ou les deux, séparées par une virgule)\nconst deal = $json.body;\n\nreturn [{\n  json: {\n    hubspot_id: String(deal.company_id),\n    nom: deal.company_name,\n    secteur: deal.secteur ?? 'Non renseigné',\n    email: deal.contact_email ?? null,\n    telephone: deal.contact_phone ?? null,\n    offres: String(deal.offres ?? '').split(',').map((o) => o.trim()).filter(Boolean),\n  },\n}];"
+        "jsCode": "// Déclenché par un workflow HubSpot quand un deal passe au statut \"Client actif\".\n// Propriété deal attendue : offres = \"agent_vocal,gestion_globale\" (une ou les deux, séparées par une virgule)\n// Les nœuds HTTP Request classiques n'ont pas accès à $env par défaut (restriction de sécurité n8n) ;\n// on lit donc les variables ici, dans un nœud Code, et on les transmet comme données normales.\nconst deal = $json.body;\n\nreturn [{\n  json: {\n    hubspot_id: String(deal.company_id),\n    nom: deal.company_name,\n    secteur: deal.secteur ?? 'Non renseigné',\n    email: deal.contact_email ?? null,\n    telephone: deal.contact_phone ?? null,\n    offres: String(deal.offres ?? '').split(',').map((o) => o.trim()).filter(Boolean),\n    _supabase_url: $env.SUPABASE_URL,\n    _supabase_key: $env.SUPABASE_SERVICE_ROLE_KEY,\n  },\n}];"
       },
       "id": "code-mapper",
       "name": "Mapper les champs",
@@ -28,14 +28,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/clients?on_conflict=hubspot_id",
+        "url": "={{ $json._supabase_url }}/rest/v1/clients?on_conflict=hubspot_id",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" },
             { "name": "Content-Type", "value": "application/json" },
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            { "name": "apikey", "value": "={{ $json._supabase_key }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $json._supabase_key }}" }
           ]
         },
         "sendBody": true,
@@ -62,14 +62,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/client_offres?on_conflict=client_id,offre",
+        "url": "={{ $('Mapper les champs').item.json._supabase_url }}/rest/v1/client_offres?on_conflict=client_id,offre",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             { "name": "Prefer", "value": "resolution=ignore-duplicates" },
             { "name": "Content-Type", "value": "application/json" },
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            { "name": "apikey", "value": "={{ $('Mapper les champs').item.json._supabase_key }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $('Mapper les champs').item.json._supabase_key }}" }
           ]
         },
         "sendBody": true,

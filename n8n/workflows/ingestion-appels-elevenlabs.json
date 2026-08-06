@@ -17,8 +17,18 @@
     },
     {
       "parameters": {
+        "jsCode": "// Les nœuds HTTP Request classiques n'ont pas accès à $env par défaut (restriction de sécurité n8n).\n// Les nœuds Code, eux, y ont accès sans restriction : on lit donc les variables ici\n// et on les transmet comme données normales au nœud suivant.\nreturn [{\n  json: {\n    ...$json,\n    _supabase_url: $env.SUPABASE_URL,\n    _supabase_key: $env.SUPABASE_SERVICE_ROLE_KEY,\n  },\n}];"
+      },
+      "id": "code-lire-env",
+      "name": "Lire config Supabase",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-270, 0]
+    },
+    {
+      "parameters": {
         "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/client_config",
+        "url": "={{ $json._supabase_url }}/rest/v1/client_config",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -30,8 +40,8 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+            { "name": "apikey", "value": "={{ $json._supabase_key }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $json._supabase_key }}" }
           ]
         }
       },
@@ -130,7 +140,8 @@
     }
   ],
   "connections": {
-    "Webhook ElevenLabs (post-call)": { "main": [[{ "node": "Résoudre le client (agent ElevenLabs)", "type": "main", "index": 0 }]] },
+    "Webhook ElevenLabs (post-call)": { "main": [[{ "node": "Lire config Supabase", "type": "main", "index": 0 }]] },
+    "Lire config Supabase": { "main": [[{ "node": "Résoudre le client (agent ElevenLabs)", "type": "main", "index": 0 }]] },
     "Résoudre le client (agent ElevenLabs)": { "main": [[{ "node": "Mapper les champs", "type": "main", "index": 0 }]] },
     "Mapper les champs": { "main": [[{ "node": "Insérer l'appel", "type": "main", "index": 0 }]] },
     "Insérer l'appel": { "main": [[{ "node": "Urgence détectée ?", "type": "main", "index": 0 }]] },
