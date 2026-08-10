@@ -2,12 +2,16 @@
 
 ## Contexte
 Dashboard pour piloter Kalonia, une agence IA. Construit avec l'aide de Claude Code.
-Nom retenu après vérification (aucune entreprise existante trouvée sous ce nom, domaine kalonia.fr a priori disponible — à confirmer sur un registrar avant achat définitif).
+Nom retenu après vérification (aucune entreprise existante trouvée sous ce nom). Domaine **kalonia.fr acheté**.
+
+## Recentrage de portée (décision importante)
+**Priorité actuelle = dashboard interne agence uniquement.** Le pipeline technique complet pour un client artisan (agent vocal ElevenLabs + ingestion HubSpot branchés bout en bout) est **mis en pause**, pas abandonné définitivement. Pour le premier prospect artisan envisagé, l'agence va d'abord faire un **audit classique** de ses besoins réels avant de construire quoi que ce soit de spécifique pour lui — éviter de construire une solution avant d'avoir confirmé le problème.
+Conséquence concrète : le compte ElevenLabs (agent de test "Heol", webhook) a été nettoyé/désactivé, les données de test Supabase liées à ce test ont été supprimées. Le compte HubSpot et ses propriétés personnalisées (`secteur`, `offres_souscrites`) restent en place (gratuit, inoffensif) mais ne sont plus une priorité immédiate.
 
 ## Décisions prises
 - Front : codé directement (React + Vite + TypeScript + Tailwind + composants shadcn/ui faits à la main), géré via Claude Code. **Lovable abandonné pour la construction du dashboard** : son intégration GitHub ne permet pas d'importer proprement un dépôt existant codé à la main (testé et confirmé — seul un connecteur "GitHub API" pour appels API depuis une app Lovable existe, pas d'import de repo comme base de projet). Décision prise en connaissance de cause, pas un abandon technique.
 - Automatisation : n8n, self-hosted sur le VPS Hostinger (pas de plan Cloud, pas de compte n8n.io nécessaire)
-- Hébergement : VPS Hostinger KVM 2 (2 vCPU / 8 Go RAM / 100 Go NVMe), souscrit sans engagement (1 mois) pour valider avant de passer sur une offre longue durée — héberge le dashboard + n8n
+- Hébergement : VPS Hostinger KVM 2 (2 vCPU / 8 Go RAM / 100 Go NVMe), souscrit sans engagement (1 mois), renouvellement à conserver actif (utilisation confirmée en continu) — héberge n8n. n8n installé **manuellement via Docker + Caddy** (reverse proxy, HTTPS auto) sur `https://kalonia.fr`, suite à un premier essai via l'app en un clic Hostinger (abandonné, conteneurs supprimés). Le dashboard lui-même reste sur Vercel (voir section Déploiement) — pas sur ce VPS.
 - CRM / source de données : HubSpot
 - Contrainte RGPD : hébergement et sous-traitants doivent être conformes (voir section RGPD du dernier échange) — VPS Hostinger installé sur un datacenter européen
 - Email agence pour la création de comptes outils : `kalonia0029@outlook.fr`
@@ -49,9 +53,9 @@ Nom retenu après vérification (aucune entreprise existante trouvée sous ce no
 1. ✅ GitHub (existant)
 2. ✅ Supabase (créé, migrations + RLS appliquées, credentials réelles branchées)
 3. ✅ VPS Hostinger (créé, KVM 2, 1 mois sans engagement)
-4. ✅ n8n installé sur le VPS (app en un clic Hostinger, Ubuntu 24.04, datacenter Francfort), 14 workflows importés, credential Supabase native branchée sur tous les nœuds, variables d'environnement SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY configurées sur le conteneur
-5. ⏳ ElevenLabs (agent vocal) — compte créé, agent de test "Heol" configuré (prompt, voix, langue FR), webhook post-appel branché vers n8n (HMAC). **Bug non résolu** : le nœud n8n qui retrouve le client via l'agent_id (table `client_config`) ne trouve aucune ligne alors que les données sont vérifiées correctes (hex, longueur, requêtes SQL isolées) — cause exacte non identifiée malgré investigation poussée. À reprendre à tête reposée, pas bloquant pour le reste.
-6. HubSpot (CRM source) — compte + clé API privée
+4. 🔄 n8n réinstallé manuellement sur le VPS (Docker + Caddy, guide externe suivi en autonomie) sur `https://kalonia.fr`, remplace l'installation précédente (app en un clic Hostinger, conteneurs supprimés). **À refaire à la reprise** : réimporter les 14 workflows `.json` (déjà prêts dans `n8n/workflows/`), rebrancher la credential Supabase native, reconfigurer les variables d'environnement SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY dans le `docker-compose.yml`.
+5. ⏸️ ElevenLabs — compte créé (gratuit), agent de test "Heol" avait été configuré puis **nettoyé/désactivé** suite au recentrage de portée (voir section dédiée en haut du fichier). Bug non résolu à l'époque (lookup client_config par agent_id introuvable malgré données vérifiées correctes) — sans objet tant que ce chantier n'est pas repris.
+6. ⏸️ HubSpot (CRM source) — compte créé (gratuit), clé de service créée (scopes companies/deals/contacts), propriétés personnalisées `secteur` et `offres_souscrites` créées sur l'objet Entreprise. **Découverte importante** : l'action "Webhook" dans les Workflows HubSpot nécessite un plan payant (Pro) — architecture prévue à la place : n8n interroge périodiquement l'API HubSpot (polling toutes les 30 min) au lieu d'un webhook poussé par HubSpot, 100% gratuit. Non prioritaire pour l'instant (voir recentrage de portée).
 7. Anthropic API — clé (utilisée dans les workflows n8n pour tri emails, génération devis, etc.)
 8. Brevo (ou équivalent) — compte + clé API pour l'envoi SMS/email des relances
 
