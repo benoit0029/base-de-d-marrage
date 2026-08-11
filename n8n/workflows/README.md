@@ -6,9 +6,8 @@ Dans n8n : Workflows → Import from File → sélectionner le `.json` voulu.
 ## Credentials à créer une fois dans n8n
 - **Supabase - Dashboard agence** (type "Supabase API") : URL du projet + clé service role, utilisée par les nœuds Supabase natifs (la plupart des workflows).
 - **Anthropic API key** (type "Header Auth", en-tête `x-api-key`) : utilisée par les nœuds "Claude" (extraction/génération IA dans generation-devis, commandes-fournisseurs-generation, tri-emails).
-- Variables d'environnement n8n (à définir sur le conteneur Docker, pas dans l'UI) :
-  - `SUPABASE_URL` = URL du projet Supabase
-- **Important — clé service role Supabase à coller manuellement** : `ingestion-clients-hubspot.json` (2 nœuds) et `ingestion-appels-elevenlabs.json` (1 nœud) font des appels REST directs à Supabase (au lieu du nœud Supabase natif, pour contourner des limitations d'import). Ces nœuds HTTP Request contiennent le texte `COLLER_VOTRE_CLE_SERVICE_ROLE_ICI` dans les en-têtes `apikey` et `Authorization` — après import, remplacez ce texte par la vraie clé `sb_secret_...` (Supabase → Settings → API Keys) **directement dans l'éditeur n8n**, nœud par nœud. Ce n'est pas automatisable ici : les nœuds HTTP Request classiques n'ont pas d'accès fiable aux variables d'environnement n8n (`$env`) sur cette instance, même après avoir tenté de désactiver la restriction via `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` sur le conteneur (sans effet observé).
+- **Google - Kalonia** (type OAuth2 — Google Drive / Gmail / Google Sheets) : utilisée par `facturation-agence.json` (duplication de template Slides, export PDF, envoi email, archivage, log Sheet). Un seul compte Google OAuth2 connecté dans n8n couvre les 3 scopes nécessaires (Drive, Gmail, Sheets) si les 3 credentials sont créées avec le même compte Google.
+- **Important — clé service role Supabase à coller manuellement** : `ingestion-clients-hubspot.json` (2 nœuds), `ingestion-appels-elevenlabs.json` (1 nœud) et `facturation-agence.json` (1 nœud) font des appels REST directs à Supabase (au lieu du nœud Supabase natif, pour contourner des limitations d'import). Ces nœuds HTTP Request contiennent le texte `COLLER_VOTRE_CLE_SERVICE_ROLE_ICI` dans les en-têtes `apikey` et `Authorization` — après import, remplacez ce texte par la vraie clé `sb_secret_...` (Supabase → Settings → API Keys) **directement dans l'éditeur n8n**, nœud par nœud. Ce n'est pas automatisable ici : les nœuds HTTP Request classiques n'ont pas d'accès fiable aux variables d'environnement n8n (`$env`) sur cette instance, même après avoir tenté de désactiver la restriction via `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` sur le conteneur (sans effet observé).
 
 ## ingestion-appels-elevenlabs.json
 Plateforme vocale retenue : **ElevenLabs Conversational AI** (moins cher que Synthflow à ce jour, ~0,08-0,10 $/min packagé — à réévaluer si le tarif LLM devient payant chez eux). Chaque client a son propre agent ElevenLabs ; l'association `agent_id` ElevenLabs ↔ `client_id` est stockée dans `client_config` (clé `elevenlabs_agent_id`), pas passée en query param comme on l'aurait fait avec Synthflow.
@@ -86,6 +85,19 @@ Complète les commandes fournisseurs avec le suivi de livraison (colonnes `statu
 
 - Un webhook reçoit la confirmation du fournisseur (canal à interfacer en tâche 5 : email/EDI).
 - Un contrôle quotidien (cron 7h) signale automatiquement en `retard` toute commande dont la date prévue est dépassée sans livraison confirmée — c'est l'agent superviseur : il rend l'anomalie visible dans le dashboard, il n'envoie rien lui-même.
+
+## facturation-agence.json
+**Facturation de Kalonia envers ses propres clients** (pas la facturation des artisans envers leurs clients — voir `facturation-automatique.json` pour ça, mise en pause avec le recentrage de portée). Déclenché par un **formulaire n8n** (pas de webhook externe) rempli manuellement par l'agence :
+
+1. Formulaire → recherche du client dans Supabase (`clients.nom`, correspondance exacte) → si introuvable ou montant ≤ 0, page d'erreur.
+2. Duplication d'un **template Google Slides** (variables `{{nom_client}}`, `{{montant}}`, `{{numero_facture}}`, `{{date_emission}}`, `{{date_echeance}}`, `{{description}}` à placer dans les zones de texte du template), remplacement des variables via l'API Slides, export en PDF, envoi par email au client, archivage du fichier Slides sur Drive, log dans un Google Sheet.
+3. **Dernière étape (celle qui relie au dashboard)** : insertion de la facture dans la table Supabase `factures` — c'est ce qui la fait apparaître sur la page "Factures" et la fiche client du dashboard.
+
+**À compléter après import**, dans les nœuds concernés (marqués par des notes visibles dans n8n) :
+- `COLLER_ID_DU_TEMPLATE_GOOGLE_SLIDES` : ID de la présentation Google Slides modèle
+- `COLLER_ID_DU_DOSSIER_ARCHIVE` : ID du dossier Google Drive d'archivage
+- `COLLER_ID_DU_GOOGLE_SHEET` : ID de la feuille de suivi (onglet nommé `Factures`, colonnes Numero/Client/Montant/Date emission/Date echeance en ligne 1)
+- `COLLER_VOTRE_CLE_SERVICE_ROLE_ICI` : clé service role Supabase (nœud "Chercher le client")
 
 ## Limite actuelle
 Ces workflows sont écrits à la main au format d'export n8n et validés en JSON, mais **pas encore exécutés sur une instance n8n réelle** (pas d'instance n8n disponible dans cet environnement de travail). À importer et tester avec les commandes `curl` ci-dessus une fois n8n installé sur le VPS Hostinger.

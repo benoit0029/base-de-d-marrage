@@ -1,0 +1,284 @@
+{
+  "name": "Facturation agence - Kalonia",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Facturation Kalonia",
+        "formDescription": "Générer et envoyer une facture à un client.",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "Nom du client (exact, comme dans le dashboard)", "requiredField": true },
+            { "fieldLabel": "Email du client", "fieldType": "email", "requiredField": true },
+            { "fieldLabel": "Montant (€)", "fieldType": "number", "requiredField": true },
+            { "fieldLabel": "Description / motif", "fieldType": "textarea", "requiredField": false }
+          ]
+        },
+        "options": { "responseMode": "lastNode" }
+      },
+      "id": "form-trigger",
+      "name": "Soumission du formulaire de facturation",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [-700, 0],
+      "webhookId": "facturation-agence-form"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise les champs du formulaire et prépare les variables du template.\nconst nom = ($json['Nom du client (exact, comme dans le dashboard)'] || '').trim();\nconst email = ($json['Email du client'] || '').trim();\nconst montant = Number($json['Montant (€)']);\nconst description = ($json['Description / motif'] || '').trim();\nconst numeroFacture = `KAL-${Date.now()}`;\nconst dateEmission = new Date();\nconst dateEcheance = new Date();\ndateEcheance.setDate(dateEcheance.getDate() + 30);\n\nreturn [{\n  json: {\n    nom_client: nom,\n    email_client: email,\n    montant,\n    description,\n    numero_facture: numeroFacture,\n    date_emission: dateEmission.toISOString(),\n    date_echeance: dateEcheance.toISOString().slice(0, 10),\n  },\n}];"
+      },
+      "id": "code-calculs",
+      "name": "Calculs et formatage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-480, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://pmucgxxmhekhmknmfvmi.supabase.co/rest/v1/clients",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,nom" },
+            { "name": "nom", "value": "=eq.{{ $json.nom_client }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "COLLER_VOTRE_CLE_SERVICE_ROLE_ICI" },
+            { "name": "Authorization", "value": "Bearer COLLER_VOTRE_CLE_SERVICE_ROLE_ICI" }
+          ]
+        }
+      },
+      "id": "http-chercher-client",
+      "name": "Chercher le client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-260, 0],
+      "notes": "Après import : remplacez COLLER_VOTRE_CLE_SERVICE_ROLE_ICI (apikey + Authorization) par la vraie clé sb_secret_... de Supabase."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json[0]?.id }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "exists" }
+            },
+            {
+              "leftValue": "={{ $('Calculs et formatage').item.json.montant }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-donnees-valides",
+      "name": "Données valides ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-40, 0]
+    },
+    {
+      "parameters": {
+        "formTitle": "Facturation Kalonia",
+        "formFields": {
+          "values": [{ "fieldLabel": "Erreur" }]
+        },
+        "responseMode": "onReceived",
+        "options": {
+          "formTitle": "Erreur",
+          "customCss": "",
+          "buttonLabel": "Recommencer"
+        }
+      },
+      "id": "form-erreur",
+      "name": "Notification d'erreur",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [180, 140],
+      "notes": "Client introuvable dans le dashboard (vérifier l'orthographe exacte du nom) ou montant invalide. Complétez le message d'erreur affiché dans les options du nœud."
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "copy",
+        "fileId": "COLLER_ID_DU_TEMPLATE_GOOGLE_SLIDES",
+        "options": {
+          "name": "=Facture {{ $('Calculs et formatage').item.json.numero_facture }} - {{ $('Calculs et formatage').item.json.nom_client }}"
+        }
+      },
+      "id": "drive-copier-template",
+      "name": "Duplication du template Google Slides",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [180, -100],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
+      },
+      "notes": "Remplacez COLLER_ID_DU_TEMPLATE_GOOGLE_SLIDES par l'ID de votre présentation Google Slides modèle (dans son URL : docs.google.com/presentation/d/CET_ID/edit). Le template doit contenir les variables {{nom_client}}, {{montant}}, {{numero_facture}}, {{date_emission}}, {{date_echeance}}, {{description}}."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://slides.googleapis.com/v1/presentations/{{ $json.id }}:batchUpdate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { requests: [\n  { replaceAllText: { containsText: { text: '{{nom_client}}', matchCase: true }, replaceText: String($('Calculs et formatage').item.json.nom_client) } },\n  { replaceAllText: { containsText: { text: '{{montant}}', matchCase: true }, replaceText: String($('Calculs et formatage').item.json.montant) + ' €' } },\n  { replaceAllText: { containsText: { text: '{{numero_facture}}', matchCase: true }, replaceText: String($('Calculs et formatage').item.json.numero_facture) } },\n  { replaceAllText: { containsText: { text: '{{date_emission}}', matchCase: true }, replaceText: new Date($('Calculs et formatage').item.json.date_emission).toLocaleDateString('fr-FR') } },\n  { replaceAllText: { containsText: { text: '{{date_echeance}}', matchCase: true }, replaceText: new Date($('Calculs et formatage').item.json.date_echeance).toLocaleDateString('fr-FR') } },\n  { replaceAllText: { containsText: { text: '{{description}}', matchCase: true }, replaceText: String($('Calculs et formatage').item.json.description || '') } }\n] } }}"
+      },
+      "id": "http-remplacer-variables",
+      "name": "Remplacement des variables",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, -100],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
+      },
+      "notes": "Réutilise la credential Google Drive (mêmes scopes OAuth couvrent Slides). Le fichier copié doit contenir ces {{variables}} exactement dans les zones de texte du template."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Duplication du template Google Slides').item.json.id }}/export?mimeType=application/pdf",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "http-export-pdf",
+      "name": "Conversion en PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [620, -100],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Calculs et formatage').item.json.email_client }}",
+        "subject": "=Votre facture Kalonia {{ $('Calculs et formatage').item.json.numero_facture }}",
+        "message": "=Bonjour,\n\nVeuillez trouver ci-joint votre facture {{ $('Calculs et formatage').item.json.numero_facture }} d'un montant de {{ $('Calculs et formatage').item.json.montant }} €.\n\nCordialement,\nKalonia",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [{ "property": "data" }]
+          }
+        }
+      },
+      "id": "gmail-envoyer",
+      "name": "Envoi d'email au client",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [840, -100],
+      "credentials": {
+        "gmailOAuth2": { "id": "google-kalonia", "name": "Google - Kalonia" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "move",
+        "fileId": "={{ $('Duplication du template Google Slides').item.json.id }}",
+        "driveId": { "mode": "list", "value": "My Drive" },
+        "folderId": { "mode": "id", "value": "COLLER_ID_DU_DOSSIER_ARCHIVE" }
+      },
+      "id": "drive-archiver",
+      "name": "Archivage dans Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1060, -100],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
+      },
+      "notes": "Remplacez COLLER_ID_DU_DOSSIER_ARCHIVE par l'ID du dossier Google Drive où archiver les factures générées (créez-le une fois, récupérez son ID dans son URL)."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "mode": "id", "value": "COLLER_ID_DU_GOOGLE_SHEET" },
+        "sheetName": { "mode": "name", "value": "Factures" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Numero": "={{ $('Calculs et formatage').item.json.numero_facture }}",
+            "Client": "={{ $('Calculs et formatage').item.json.nom_client }}",
+            "Montant": "={{ $('Calculs et formatage').item.json.montant }}",
+            "Date emission": "={{ $('Calculs et formatage').item.json.date_emission }}",
+            "Date echeance": "={{ $('Calculs et formatage').item.json.date_echeance }}"
+          }
+        }
+      },
+      "id": "sheets-enregistrer",
+      "name": "Enregistrement dans Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1280, -100],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
+      },
+      "notes": "Remplacez COLLER_ID_DU_GOOGLE_SHEET par l'ID de votre feuille de suivi (dans son URL), et créez un onglet nommé exactement 'Factures' avec les colonnes Numero/Client/Montant/Date emission/Date echeance en ligne 1."
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "factures",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "client_id", "fieldValue": "={{ $('Chercher le client').item.json[0].id }}" },
+            { "fieldId": "montant", "fieldValue": "={{ $('Calculs et formatage').item.json.montant }}" },
+            { "fieldId": "statut", "fieldValue": "emise" },
+            { "fieldId": "date_echeance", "fieldValue": "={{ $('Calculs et formatage').item.json.date_echeance }}" }
+          ]
+        }
+      },
+      "id": "supabase-creer-facture",
+      "name": "Créer la facture (dashboard)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1500, -100],
+      "credentials": {
+        "supabaseApi": { "id": "supabase-dashboard-agence", "name": "Supabase - Dashboard agence" }
+      },
+      "notes": "C'est ce nœud qui fait apparaître la facture dans le dashboard (table factures, visible sur la page Factures et la fiche client)."
+    },
+    {
+      "parameters": {
+        "formFields": { "values": [] },
+        "responseMode": "onReceived",
+        "options": { "formTitle": "Facture envoyée", "buttonLabel": "Fermer" }
+      },
+      "id": "form-termine",
+      "name": "Processus terminé",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [1720, -100]
+    }
+  ],
+  "connections": {
+    "Soumission du formulaire de facturation": { "main": [[{ "node": "Calculs et formatage", "type": "main", "index": 0 }]] },
+    "Calculs et formatage": { "main": [[{ "node": "Chercher le client", "type": "main", "index": 0 }]] },
+    "Chercher le client": { "main": [[{ "node": "Données valides ?", "type": "main", "index": 0 }]] },
+    "Données valides ?": {
+      "main": [
+        [{ "node": "Duplication du template Google Slides", "type": "main", "index": 0 }],
+        [{ "node": "Notification d'erreur", "type": "main", "index": 0 }]
+      ]
+    },
+    "Duplication du template Google Slides": { "main": [[{ "node": "Remplacement des variables", "type": "main", "index": 0 }]] },
+    "Remplacement des variables": { "main": [[{ "node": "Conversion en PDF", "type": "main", "index": 0 }]] },
+    "Conversion en PDF": { "main": [[{ "node": "Envoi d'email au client", "type": "main", "index": 0 }]] },
+    "Envoi d'email au client": { "main": [[{ "node": "Archivage dans Google Drive", "type": "main", "index": 0 }]] },
+    "Archivage dans Google Drive": { "main": [[{ "node": "Enregistrement dans Google Sheet", "type": "main", "index": 0 }]] },
+    "Enregistrement dans Google Sheet": { "main": [[{ "node": "Créer la facture (dashboard)", "type": "main", "index": 0 }]] },
+    "Créer la facture (dashboard)": { "main": [[{ "node": "Processus terminé", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
