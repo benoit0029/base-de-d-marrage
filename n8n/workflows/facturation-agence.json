@@ -125,78 +125,83 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://slides.googleapis.com/v1/presentations/{{ $json.id }}:batchUpdate",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleDriveOAuth2Api",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { requests: [\n  { replaceAllText: { containsText: { text: '{{nom_client}}', matchCase: true }, replaceText: String($('Calculs et formatage').item.json.nom_client) } },\n  { replaceAllText: { containsText: { text: '{{montant}}', matchCase: true }, replaceText: String($('Calculs et formatage').item.json.montant) + ' €' } },\n  { replaceAllText: { containsText: { text: '{{numero_facture}}', matchCase: true }, replaceText: String($('Calculs et formatage').item.json.numero_facture) } },\n  { replaceAllText: { containsText: { text: '{{date_emission}}', matchCase: true }, replaceText: new Date($('Calculs et formatage').item.json.date_emission).toLocaleDateString('fr-FR') } },\n  { replaceAllText: { containsText: { text: '{{date_echeance}}', matchCase: true }, replaceText: new Date($('Calculs et formatage').item.json.date_echeance).toLocaleDateString('fr-FR') } },\n  { replaceAllText: { containsText: { text: '{{description}}', matchCase: true }, replaceText: String($('Calculs et formatage').item.json.description || '') } }\n] } }}"
+        "resource": "presentation",
+        "operation": "replaceText",
+        "presentationId": { "mode": "id", "value": "={{ $json.id }}" },
+        "replaceText": {
+          "values": [
+            { "text": "{{nom_client}}", "replaceText": "={{ $('Calculs et formatage').item.json.nom_client }}" },
+            { "text": "{{montant}}", "replaceText": "={{ $('Calculs et formatage').item.json.montant }} €" },
+            { "text": "{{numero_facture}}", "replaceText": "={{ $('Calculs et formatage').item.json.numero_facture }}" },
+            { "text": "{{date_emission}}", "replaceText": "={{ new Date($('Calculs et formatage').item.json.date_emission).toLocaleDateString('fr-FR') }}" },
+            { "text": "{{date_echeance}}", "replaceText": "={{ new Date($('Calculs et formatage').item.json.date_echeance).toLocaleDateString('fr-FR') }}" },
+            { "text": "{{description}}", "replaceText": "={{ $('Calculs et formatage').item.json.description }}" }
+          ]
+        }
       },
-      "id": "http-remplacer-variables",
-      "name": "Remplacement des variables",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "slides-remplacer-variables",
+      "name": "Replace text in a presentation",
+      "type": "n8n-nodes-base.googleSlides",
+      "typeVersion": 1,
       "position": [400, -100],
       "credentials": {
-        "googleDriveOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
+        "googleSlidesOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
       },
-      "notes": "Réutilise la credential Google Drive (mêmes scopes OAuth couvrent Slides). Le fichier copié doit contenir ces {{variables}} exactement dans les zones de texte du template."
+      "notes": "Nœud natif Google Slides — vérifiez le nom exact des champs dans l'éditeur n8n après import (la structure peut différer légèrement selon la version), à ajuster comme d'habitude si besoin. Le fichier copié doit contenir ces {{variables}} exactement dans les zones de texte du template."
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Duplication du template Google Slides').item.json.id }}/export?mimeType=application/pdf",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleDriveOAuth2Api",
-        "options": { "response": { "response": { "responseFormat": "file" } } }
+        "resource": "file",
+        "operation": "download",
+        "fileId": { "mode": "id", "value": "={{ $('Duplication du template Google Slides').item.json.id }}" },
+        "options": { "googleFileConversion": { "conversion": { "docsToFormat": "application/pdf" } } }
       },
-      "id": "http-export-pdf",
-      "name": "Conversion en PDF",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "drive-telecharger-pdf",
+      "name": "Download file",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
       "position": [620, -100],
       "credentials": {
         "googleDriveOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
-      }
+      },
+      "notes": "Télécharge le fichier Slides en le convertissant en PDF (option de conversion Google)."
     },
     {
       "parameters": {
-        "sendTo": "={{ $('Calculs et formatage').item.json.email_client }}",
+        "fromEmail": "kalonia0029@outlook.fr",
+        "toEmail": "={{ $('Calculs et formatage').item.json.email_client }}",
         "subject": "=Votre facture Kalonia {{ $('Calculs et formatage').item.json.numero_facture }}",
-        "message": "=Bonjour,\n\nVeuillez trouver ci-joint votre facture {{ $('Calculs et formatage').item.json.numero_facture }} d'un montant de {{ $('Calculs et formatage').item.json.montant }} €.\n\nCordialement,\nKalonia",
-        "options": {
-          "attachmentsUi": {
-            "attachmentsBinary": [{ "property": "data" }]
-          }
-        }
+        "text": "=Bonjour,\n\nVeuillez trouver ci-joint votre facture {{ $('Calculs et formatage').item.json.numero_facture }} d'un montant de {{ $('Calculs et formatage').item.json.montant }} €.\n\nCordialement,\nKalonia",
+        "options": { "attachments": "data" }
       },
-      "id": "gmail-envoyer",
-      "name": "Envoi d'email au client",
-      "type": "n8n-nodes-base.gmail",
+      "id": "smtp-envoyer",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [840, -100],
+      "position": [840, -160],
       "credentials": {
-        "gmailOAuth2": { "id": "google-kalonia", "name": "Google - Kalonia" }
-      }
+        "smtp": { "id": "outlook-kalonia", "name": "Outlook - Kalonia (SMTP)" }
+      },
+      "notes": "Credential SMTP à créer dans n8n : hôte smtp-mail.outlook.com, port 587, TLS activé (STARTTLS), utilisateur kalonia0029@outlook.fr, mot de passe (ou mot de passe d'application si la double authentification est activée sur le compte Outlook)."
     },
     {
       "parameters": {
         "resource": "fileFolder",
-        "operation": "move",
-        "fileId": "={{ $('Duplication du template Google Slides').item.json.id }}",
-        "driveId": { "mode": "list", "value": "My Drive" },
+        "operation": "upload",
+        "name": "=Facture {{ $('Calculs et formatage').item.json.numero_facture }} - {{ $('Calculs et formatage').item.json.nom_client }}.pdf",
+        "options": {},
+        "inputDataFieldName": "data",
         "folderId": { "mode": "id", "value": "COLLER_ID_DU_DOSSIER_ARCHIVE" }
       },
       "id": "drive-archiver",
-      "name": "Archivage dans Google Drive",
+      "name": "Upload file",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [1060, -100],
+      "position": [840, -40],
       "credentials": {
         "googleDriveOAuth2Api": { "id": "google-kalonia", "name": "Google - Kalonia" }
       },
-      "notes": "Remplacez COLLER_ID_DU_DOSSIER_ARCHIVE par l'ID du dossier Google Drive où archiver les factures générées (créez-le une fois, récupérez son ID dans son URL)."
+      "notes": "Remplacez COLLER_ID_DU_DOSSIER_ARCHIVE par l'ID du dossier Google Drive où archiver les PDF de factures générées (créez-le une fois, récupérez son ID dans son URL)."
     },
     {
       "parameters": {
@@ -271,11 +276,17 @@
         [{ "node": "Notification d'erreur", "type": "main", "index": 0 }]
       ]
     },
-    "Duplication du template Google Slides": { "main": [[{ "node": "Remplacement des variables", "type": "main", "index": 0 }]] },
-    "Remplacement des variables": { "main": [[{ "node": "Conversion en PDF", "type": "main", "index": 0 }]] },
-    "Conversion en PDF": { "main": [[{ "node": "Envoi d'email au client", "type": "main", "index": 0 }]] },
-    "Envoi d'email au client": { "main": [[{ "node": "Archivage dans Google Drive", "type": "main", "index": 0 }]] },
-    "Archivage dans Google Drive": { "main": [[{ "node": "Enregistrement dans Google Sheet", "type": "main", "index": 0 }]] },
+    "Duplication du template Google Slides": { "main": [[{ "node": "Replace text in a presentation", "type": "main", "index": 0 }]] },
+    "Replace text in a presentation": { "main": [[{ "node": "Download file", "type": "main", "index": 0 }]] },
+    "Download file": {
+      "main": [
+        [
+          { "node": "Send a message", "type": "main", "index": 0 },
+          { "node": "Upload file", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Upload file": { "main": [[{ "node": "Enregistrement dans Google Sheet", "type": "main", "index": 0 }]] },
     "Enregistrement dans Google Sheet": { "main": [[{ "node": "Créer la facture (dashboard)", "type": "main", "index": 0 }]] },
     "Créer la facture (dashboard)": { "main": [[{ "node": "Processus terminé", "type": "main", "index": 0 }]] }
   },
