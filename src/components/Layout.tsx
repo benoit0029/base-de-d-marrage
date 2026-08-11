@@ -19,9 +19,9 @@ export function Layout() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b">
+      <header className="bg-primary text-primary-foreground shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-          <span className="font-semibold">Kalonia — Dashboard agence</span>
+          <span className="text-lg font-bold tracking-tight">Kalonia</span>
           <nav className="flex gap-1">
             {NAV_ITEMS.map((item) => (
               <NavLink
@@ -31,7 +31,7 @@ export function Layout() {
                 className={({ isActive }) =>
                   cn(
                     'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                    isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent/50',
+                    isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'text-primary-foreground/75 hover:bg-primary-foreground/10 hover:text-primary-foreground',
                   )
                 }
               >
@@ -39,7 +39,12 @@ export function Layout() {
               </NavLink>
             ))}
           </nav>
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={handleLogout}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto text-primary-foreground/85 hover:bg-primary-foreground/10 hover:text-primary-foreground"
+            onClick={handleLogout}
+          >
             Déconnexion
           </Button>
         </div>

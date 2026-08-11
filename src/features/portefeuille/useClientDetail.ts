@@ -32,11 +32,19 @@ export interface FactureRow {
   date_echeance: string
 }
 
+export interface AvoirRow {
+  id: string
+  montant: number
+  motif: string | null
+  date_emission: string
+}
+
 export function useClientDetail(clientId: string | undefined) {
   const [client, setClient] = useState<ClientDetail | null>(null)
   const [appels, setAppels] = useState<AppelRow[]>([])
   const [devis, setDevis] = useState<DevisRow[]>([])
   const [factures, setFactures] = useState<FactureRow[]>([])
+  const [avoirs, setAvoirs] = useState<AvoirRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +54,7 @@ export function useClientDetail(clientId: string | undefined) {
 
     async function load() {
       setLoading(true)
-      const [clientRes, appelsRes, devisRes, facturesRes] = await Promise.all([
+      const [clientRes, appelsRes, devisRes, facturesRes, avoirsRes] = await Promise.all([
         supabase.from('clients').select('*').eq('id', clientId).single<ClientDetail>(),
         supabase
           .from('appels')
@@ -67,10 +75,16 @@ export function useClientDetail(clientId: string | undefined) {
           .eq('client_id', clientId)
           .order('date_echeance', { ascending: false })
           .returns<FactureRow[]>(),
+        supabase
+          .from('avoirs')
+          .select('id, montant, motif, date_emission')
+          .eq('client_id', clientId)
+          .order('date_emission', { ascending: false })
+          .returns<AvoirRow[]>(),
       ])
 
       if (cancelled) return
-      const firstError = clientRes.error ?? appelsRes.error ?? devisRes.error ?? facturesRes.error
+      const firstError = clientRes.error ?? appelsRes.error ?? devisRes.error ?? facturesRes.error ?? avoirsRes.error
       if (firstError) {
         setError(firstError.message)
       } else {
@@ -79,6 +93,7 @@ export function useClientDetail(clientId: string | undefined) {
         setAppels(appelsRes.data ?? [])
         setDevis(devisRes.data ?? [])
         setFactures(facturesRes.data ?? [])
+        setAvoirs(avoirsRes.data ?? [])
       }
       setLoading(false)
     }
@@ -89,5 +104,5 @@ export function useClientDetail(clientId: string | undefined) {
     }
   }, [clientId])
 
-  return { client, appels, devis, factures, loading, error }
+  return { client, appels, devis, factures, avoirs, loading, error }
 }

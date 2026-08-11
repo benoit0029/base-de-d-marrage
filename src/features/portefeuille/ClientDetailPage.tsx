@@ -6,7 +6,7 @@ import { useClientDetail } from './useClientDetail'
 
 export function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>()
-  const { client, appels, devis, factures, loading, error } = useClientDetail(clientId)
+  const { client, appels, devis, factures, avoirs, loading, error } = useClientDetail(clientId)
 
   if (loading) return <p className="text-sm text-muted-foreground">Chargement…</p>
   if (error) return <p className="text-sm text-destructive">Erreur de chargement : {error}</p>
@@ -87,7 +87,7 @@ export function ClientDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle>Factures</CardTitle>
           </CardHeader>
@@ -111,6 +111,36 @@ export function ClientDetailPage() {
                       <TableCell>
                         {facture.statut === 'impayee' ? <Badge variant="destructive">Impayée</Badge> : facture.statut}
                       </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Avoirs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {avoirs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucun avoir.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Montant</TableHead>
+                    <TableHead>Motif</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {avoirs.map((avoir) => (
+                    <TableRow key={avoir.id}>
+                      <TableCell>{new Date(avoir.date_emission).toLocaleDateString('fr-FR')}</TableCell>
+                      <TableCell>{avoir.montant.toLocaleString('fr-FR')} €</TableCell>
+                      <TableCell>{avoir.motif ?? '—'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
