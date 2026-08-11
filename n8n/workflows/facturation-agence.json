@@ -168,7 +168,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "kalonia0029@outlook.fr",
+        "fromEmail": "benoit@kalonia.fr",
         "toEmail": "={{ $('Calculs et formatage').item.json.email_client }}",
         "subject": "=Votre facture Kalonia {{ $('Calculs et formatage').item.json.numero_facture }}",
         "text": "=Bonjour,\n\nVeuillez trouver ci-joint votre facture {{ $('Calculs et formatage').item.json.numero_facture }} d'un montant de {{ $('Calculs et formatage').item.json.montant }} €.\n\nCordialement,\nKalonia",
@@ -180,9 +180,9 @@
       "typeVersion": 2.1,
       "position": [840, -160],
       "credentials": {
-        "smtp": { "id": "outlook-kalonia", "name": "Outlook - Kalonia (SMTP)" }
+        "smtp": { "id": "hostinger-kalonia", "name": "Hostinger - Kalonia (SMTP)" }
       },
-      "notes": "Credential SMTP à créer dans n8n : hôte smtp-mail.outlook.com, port 587, TLS activé (STARTTLS), utilisateur kalonia0029@outlook.fr, mot de passe (ou mot de passe d'application si la double authentification est activée sur le compte Outlook)."
+      "notes": "Credential SMTP à créer dans n8n avec les identifiants trouvés sur Hostinger (section Emails → benoit@kalonia.fr → Configuration manuelle) : généralement hôte smtp.hostinger.com, port 465 (SSL) ou 587 (STARTTLS), utilisateur benoit@kalonia.fr, mot de passe défini à la création de la boîte. Vérifiez les valeurs exactes affichées par Hostinger plutôt que de vous fier uniquement à cette note."
     },
     {
       "parameters": {
