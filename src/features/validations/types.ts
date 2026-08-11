@@ -1,4 +1,4 @@
-export type TypeAction = 'devis' | 'relance_impaye' | 'commande_fournisseur' | 'email'
+export type TypeAction = 'devis' | 'relance_impaye' | 'avoir'
 export type StatutValidation = 'en_attente' | 'valide' | 'modifie' | 'rejete'
 
 export interface ValidationItem {
@@ -16,6 +16,5 @@ export interface ValidationItem {
 export const TYPE_ACTION_LABELS: Record<TypeAction, string> = {
   devis: 'Devis',
   relance_impaye: 'Relance impayé',
-  commande_fournisseur: 'Commande fournisseur',
-  email: 'Email',
+  avoir: 'Avoir',
 }
