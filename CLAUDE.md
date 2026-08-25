@@ -66,6 +66,13 @@ Conséquence concrète : le compte ElevenLabs (agent de test "Heol", webhook) a 
 ## Exigence transverse critique
 - **Sécurité & RGPD & contrôle d'accès client** : avec l'ajout d'une vue cliente (même légère), il faut un vrai cloisonnement des accès (un artisan ne doit voir QUE ses propres données), authentification séparée agence/client, et traitement RGPD-conforme des données clients exposées côté client. À valider dès la conception technique, pas en fin de projet.
 
+## Sécurité — actions faites suite à un audit rapide (25 août)
+- ✅ **Inscription publique désactivée** dans Supabase Auth ("Allow new users to sign up") — faille trouvée : la clé publique du frontend est visible de tous, et sans ce blocage n'importe qui pouvait s'auto-créer un compte et obtenir un accès complet (RLS ouverte à "authenticated" sans distinction).
+- ✅ **2FA (TOTP)** ajouté : page `/securite` (activation avec QR code), `/mfa-challenge` (saisie du code à la connexion), `RequireAuth` bloque l'accès tant que l'AAL2 n'est pas validé si un facteur est enregistré.
+- ⏸️ **Sauvegardes Supabase** : plan gratuit = aucune sauvegarde automatique. Décision : attendre les premiers clients payants avant de passer sur le plan Pro (25$/mois, 7 jours de rétention). Pas critique tant que seules des données de test existent.
+- À faire plus tard : SPF/DKIM/DMARC sur `kalonia.fr` (éviter que les emails de facturation finissent en spam), monitoring d'erreurs (Sentry/GlitchTip), registre RGPD des sous-traitants avant onboarding de vrais clients.
+- Email agence mis à jour : `benoit@kalonia.fr` (boîte réelle, Hostinger, remplace `kalonia0029@outlook.fr` utilisé au départ). Alias `agence@kalonia.fr` créé, redirige vers `benoit@kalonia.fr` — servira à couvrir plusieurs associés plus tard sans créer de boîte partagée. Chaque associé doit avoir sa propre vraie boîte, jamais de connexion dashboard partagée.
+
 ## En attente de validation
 - Librairie UI définitive (shadcn/ui par défaut via Lovable, alternative envisagée : Tremor)
 - Outil de monitoring d'erreurs (Sentry envisagé, alternative envisagée : GlitchTip self-hosted pour rester RGPD-friendly)
