@@ -6,12 +6,15 @@ import { ValidationQueue } from '@/features/validations/ValidationQueue'
 import { FacturesPage } from '@/features/factures/FacturesPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
+import { MfaChallengePage } from '@/features/auth/MfaChallengePage'
+import { SecuritePage } from '@/features/securite/SecuritePage'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="login" element={<LoginPage />} />
+        <Route path="mfa-challenge" element={<MfaChallengePage />} />
         <Route
           element={
             <RequireAuth>
@@ -23,6 +26,7 @@ function App() {
           <Route path="clients/:clientId" element={<ClientDetailPage />} />
           <Route path="factures" element={<FacturesPage />} />
           <Route path="validations" element={<ValidationQueue />} />
+          <Route path="securite" element={<SecuritePage />} />
         </Route>
       </Routes>
     </BrowserRouter>
