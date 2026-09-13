@@ -10,12 +10,37 @@ services:
       - db_data:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:5432:5432" # accès local uniquement (ex. Prisma Studio) ; jamais exposé publiquement
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-compta}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-# Le service applicatif (Next.js) sera ajouté en phase 6, une fois l'image
-# Docker de apps/web construite et l'authentification en place. D'ici là, ce
-# fichier sert à lancer une base PostgreSQL locale pour le développement :
-#   docker compose up -d
-#   cp .env.example apps/web/.env   # puis ajuster DATABASE_URL avec les identifiants ci-dessus
+  app:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./apps/web/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-compta}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-compta}
+    volumes:
+      - app_documents:/app/.data/documents
+      - app_uploads:/app/public/uploads
+    ports:
+      - "127.0.0.1:3000:3000" # Caddy fait reverse-proxy vers ce port ; jamais exposé directement à Internet
+
+# Utilisation :
+#   cp .env.example .env                 # POSTGRES_* pour ce fichier
+#   cp .env.example apps/web/.env        # variables applicatives (voir docs/DEPLOYMENT.md)
+#   docker compose up -d --build
+# La première migration (prisma migrate deploy) tourne automatiquement au
+# démarrage du conteneur app (voir apps/web/Dockerfile).
 
 volumes:
   db_data:
+  app_documents:
+  app_uploads:

@@ -6,6 +6,7 @@ import ActivitySettingsForm from "@/components/settings/ActivitySettingsForm";
 import MailboxSettingsForm from "@/components/settings/MailboxSettingsForm";
 import PaConnectionForm from "@/components/settings/PaConnectionForm";
 import { getPaConnection } from "@/server/services/pa";
+import { logout } from "@/app/actions/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,18 @@ export default async function Page() {
           Connexion à la Plateforme Agréée (facturation électronique)
         </h2>
         <PaConnectionForm status={paConnection?.status ?? "DISCONNECTED"} />
+      </section>
+
+      {/* Session */}
+      <section className="rounded-lg border bg-white p-4 md:hidden">
+        <form action={logout}>
+          <button
+            type="submit"
+            className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+          >
+            Déconnexion
+          </button>
+        </form>
       </section>
     </div>
   );

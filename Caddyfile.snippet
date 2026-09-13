@@ -1,0 +1,21 @@
+# Bloc à ajouter au Caddyfile existant du VPS (celui qui sert déjà n8n),
+# PAS un Caddyfile complet à part. Remplacer compta.example.fr par le
+# sous-domaine réel, puis recharger Caddy (`caddy reload` ou équivalent
+# selon l'installation — ex. `systemctl reload caddy`).
+
+compta.example.fr {
+	reverse_proxy 127.0.0.1:3000
+
+	# Caddy gère automatiquement le certificat TLS (Let's Encrypt) pour ce
+	# sous-domaine — rien à faire de plus ici. HTTPS forcé par défaut
+	# (Caddy redirige le port 80 vers 443 automatiquement).
+
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}

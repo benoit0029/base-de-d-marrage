@@ -1,10 +1,5 @@
 # Déploiement
 
-Ce document sera complété en phase 6 (déploiement sur le VPS Hostinger,
-sous-domaine dédié, Caddy, 2FA, sauvegardes). Pour l'instant, il documente
-uniquement ce qui est nécessaire pour faire tourner le pipeline de la phase 3
-en local.
-
 ## Développement local (phase 3)
 
 Prérequis : Node.js 22, Docker (ou un PostgreSQL local).
@@ -57,6 +52,126 @@ via une Server Action Next.js, réservée à l'utilisateur déjà dans l'app.
 
 ## VPS Hostinger (phase 6)
 
-À rédiger : sous-domaine, bloc Caddy, build de l'image Docker de `apps/web`,
-variables d'environnement de production, 2FA, sauvegardes chiffrées vers un
-stockage S3-compatible séparé, test de restauration.
+### 1. Prérequis sur le VPS
+
+Docker + Docker Compose et Caddy déjà en place (utilisés par n8n). Rien
+d'autre à installer pour l'application elle-même — `aws-cli` et `openssl`
+sont nécessaires uniquement pour les sauvegardes (§5).
+
+### 2. Récupérer le code
+
+```bash
+git clone <url-du-dépôt> compta-ferme
+cd compta-ferme
+```
+
+### 3. Configurer les variables d'environnement
+
+```bash
+cp .env.example .env               # POSTGRES_* lues par docker-compose.yml
+cp .env.example apps/web/.env      # variables applicatives
+```
+
+Éditer les deux fichiers. Valeurs à générer une fois et ne **jamais**
+changer ensuite (les secrets déjà chiffrés avec deviendraient illisibles) :
+
+```bash
+openssl rand -base64 32   # → SESSION_SECRET
+openssl rand -base64 32   # → APP_ENCRYPTION_KEY
+openssl rand -base64 32   # → INGEST_API_TOKEN
+openssl rand -base64 32   # → BACKUP_ENCRYPTION_PASSPHRASE
+```
+
+`APP_URL` doit être le sous-domaine définitif (ex.
+`https://compta.exemple.fr`) — à me communiquer si tu veux que je l'inscrive
+en dur quelque part, mais il n'y en a nul besoin : tout le code le lit
+depuis cette variable.
+
+`POSTGRES_PASSWORD` doit être identique dans `.env` (racine) et repris dans
+`DATABASE_URL` de `apps/web/.env` (voir commentaires dans `.env.example`).
+
+### 4. Lancer l'application
+
+```bash
+docker compose up -d --build
+docker compose logs -f app   # vérifier que la migration + le démarrage se passent bien
+```
+
+Le conteneur `app` applique automatiquement les migrations Prisma au
+démarrage (`prisma migrate deploy`, voir `apps/web/Dockerfile`) — aucune
+commande manuelle à lancer pour ça.
+
+### 5. Sous-domaine et Caddy
+
+Ajouter le bloc de `Caddyfile.snippet` (racine du dépôt) au Caddyfile
+existant du VPS, en remplaçant `compta.example.fr` par le sous-domaine réel,
+puis recharger Caddy (`systemctl reload caddy` ou équivalent selon
+l'installation). HTTPS est automatique (Let's Encrypt via Caddy).
+
+### 6. Premier accès : créer le compte + activer la 2FA
+
+Ouvrir `https://<sous-domaine>/` : redirige automatiquement vers `/setup`
+tant qu'aucun compte n'existe. Un seul compte est autorisé en v1 — la 2FA
+(scanner le QR code avec une app d'authentification) est obligatoire avant
+de pouvoir utiliser l'outil, pas une option à activer plus tard.
+
+**Ici, il faudra que tu te connectes toi-même** pour créer ce compte (email
++ mot de passe de ton choix) et scanner le QR code — c'est une étape qui ne
+peut pas être automatisée à ta place, pour des raisons évidentes de
+sécurité.
+
+### 7. Réglages restants (indépendants, dans n'importe quel ordre)
+
+Depuis l'onglet Réglages de l'application :
+- Identité de la micro-entreprise, logos, code AB par activité.
+- Les 3 boîtes mail de capture (IMAP), testées immédiatement à
+  l'enregistrement.
+- Connexion à la Plateforme Agréée (Abby).
+
+Puis, sur l'instance n8n existante du VPS : importer les workflows de
+`n8n/workflows/` (voir son README pour la checklist de vérification —
+credentials IMAP/SMTP à créer dans n8n, variables d'environnement n8n à
+définir).
+
+### 8. Sauvegardes chiffrées (obligatoire avant de basculer en production)
+
+**Il te faudra créer un compte** chez un fournisseur de stockage
+S3-compatible **distinct du VPS applicatif** (ex. Scaleway Object Storage,
+OVH Object Storage, Backblaze B2 — quelques centimes/mois pour ce volume) et
+me transmettre : endpoint, nom du bucket, clé d'accès et secret. Une fois
+renseignés dans `.env` (`BACKUP_S3_*`) :
+
+```bash
+# Sauvegarde manuelle (à tester une première fois) :
+set -a; source .env; set +a
+./scripts/backup.sh
+```
+
+Puis planifier une exécution quotidienne, par exemple avec cron :
+
+```bash
+crontab -e
+# ajouter :
+0 3 * * * cd /chemin/vers/compta-ferme && set -a && . .env && set +a && ./scripts/backup.sh >> /var/log/compta-backup.log 2>&1
+```
+
+**Test de restauration à faire dès la mise en place**, sur une base de
+test (jamais directement sur la production) :
+
+```bash
+set -a; source .env; set +a
+./scripts/restore.sh /chemin/vers/db-XXXXX.sql.enc /chemin/vers/files-XXXXX.tar.gz.enc
+```
+
+Documenter la date et le résultat de ce test quelque part (ex. ce fichier,
+ou un simple fichier `RESTORE_LOG.md`) : une sauvegarde jamais restaurée ne
+garantit rien.
+
+### Ce qui reste hors de portée de cette session
+
+- Le nom de domaine et le sous-domaine définitifs.
+- La création effective du compte utilisateur + scan du QR code 2FA (étape
+  volontairement manuelle).
+- Le compte de stockage S3-compatible pour les sauvegardes.
+- L'import et la vérification des workflows n8n sur l'instance réelle.
+- La confirmation de l'accès API Abby (voir docs/ARCHITECTURE.md §8).

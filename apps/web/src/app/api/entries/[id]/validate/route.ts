@@ -4,15 +4,14 @@ import {
   EntryNotFoundError,
   validateEntry,
 } from "@/server/services/entries";
+import { getCurrentUserId } from "@/lib/auth/currentUser";
 
-// L'identifiant utilisateur viendra de la session une fois l'authentification
-// branchée (phase 6). En v1 (compte unique, pas encore d'auth), on journalise
-// sans utilisateur identifié plutôt que d'inventer une valeur.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const userId = await getCurrentUserId();
 
   try {
-    const entry = await validateEntry(id, null);
+    const entry = await validateEntry(id, userId);
     return NextResponse.json({ entry });
   } catch (err) {
     if (err instanceof EntryNotFoundError) {

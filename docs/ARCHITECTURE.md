@@ -196,3 +196,49 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   police Helvetica standard des PDF — elle s'affichait comme un "/"
   (`85/000,00 €` au lieu de `85 000,00 €`). Corrigé par un formateur dédié
   (`src/lib/pdf/format.ts`) utilisé par tous les documents PDF.
+
+## 9. Phase 6 — authentification/2FA, déploiement, sauvegardes
+
+- **Authentification maison, sans dépendance externe** : mot de passe hashé
+  avec `scrypt` (natif Node, pas de bcrypt compilé), session en cookie signé
+  HMAC-SHA256 (`src/lib/auth/session.ts`) plutôt qu'une table `sessions` —
+  suffisant pour un compte unique. Signature/vérification via Web Crypto
+  (`crypto.subtle`), pas `node:crypto`, pour que `proxy.ts` (middleware)
+  reste compatible Edge runtime sans jamais importer Prisma.
+- **2FA TOTP obligatoire dès la création du compte** (`otpauth` + `qrcode`
+  pour le QR code) : `/setup` crée le compte unique v1 et bloque l'accès
+  tant que le code à 6 chiffres n'est pas confirmé. Secret TOTP chiffré en
+  base avec la même clé que les mots de passe IMAP/PA (`src/lib/crypto.ts`).
+- **Bug trouvé en testant le flux complet** : si l'enrôlement 2FA est
+  interrompu entre la création du compte et la confirmation du code (ex.
+  navigateur fermé), la page `/setup` redirigeait systématiquement vers
+  `/login` dès qu'un compte existait — rendant le compte définitivement
+  bloqué (mot de passe correct, mais 2FA jamais activée donc connexion
+  impossible). Corrigé : `/setup` reprend l'enrôlement en cours (même
+  secret, donc le QR code déjà scanné reste valide) tant que `totpEnabled`
+  est resté `false` (`resumeTotpEnrollment` dans `server/services/auth.ts`).
+- **`middleware.ts` renommé en `proxy.ts`** : Next.js 16 a déprécié la
+  convention `middleware` au profit de `proxy` (même mécanique, juste un
+  renommage de fichier/fonction) — découvert via l'avertissement de build,
+  migré avec le transform officiel (`@next/codemod middleware-to-proxy`)
+  appliqué manuellement.
+- **Audit log réellement rattaché à un utilisateur** : les appels à
+  `validateEntry`/`correctEntry` passaient `null` faute d'authentification
+  (phases 3-4) ; ils utilisent maintenant `getCurrentUserId()` — vérifié en
+  base après un test réel (`validatedById` renseigné, plus `null`).
+- **Déploiement Docker** : `apps/web/Dockerfile` en sortie `standalone`
+  (`next.config.mjs`), testé localement (build + `node server.js` +
+  vérification des assets statiques et du client Prisma généré) sans
+  Docker lui-même (non disponible dans cet environnement de développement —
+  seul le build Next.js et son exécution ont pu être vérifiés directement).
+  `docker-compose.yml` complété avec le service `app` (healthcheck sur
+  `db`, volumes pour les documents/logos). `Caddyfile.snippet` pour le
+  sous-domaine, à fusionner manuellement dans le Caddyfile existant du VPS.
+- **Sauvegardes chiffrées** (`scripts/backup.sh`/`restore.sh`) : dump
+  PostgreSQL + archive des documents/logos, chiffrés en AES-256-CBC
+  (`openssl`), envoyés vers un stockage S3-compatible séparé du VPS
+  applicatif. Le mécanisme dump → chiffrement → déchiffrement → réimport a
+  été testé de bout en bout contre la vraie base de développement
+  (restauration dans une base temporaire, données retrouvées intactes) ;
+  seul l'envoi/récupération vers un vrai bucket S3-compatible n'a pas pu
+  être testé (aucun comptes de ce type disponible dans cet environnement).

@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { topLevelNav } from "@/lib/nav";
+import { logout } from "@/app/actions/auth";
+
+const AUTH_PATHS = ["/login", "/setup", "/2fa"];
 
 function isActive(pathname: string, slug: string) {
   return pathname === `/${slug}` || pathname.startsWith(`/${slug}/`);
@@ -18,6 +21,10 @@ const mobileLabels: Record<string, string> = {
 
 export default function TopNav() {
   const pathname = usePathname();
+
+  if (AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return null;
+  }
 
   return (
     <>
@@ -41,16 +48,26 @@ export default function TopNav() {
             </Link>
           ))}
         </nav>
-        <Link
-          href="/reglages"
-          className={`rounded-md px-3 py-2 text-sm font-medium ${
-            isActive(pathname, "reglages")
-              ? "bg-slate-900 text-white"
-              : "text-slate-600 hover:bg-slate-100"
-          }`}
-        >
-          ⚙️ Réglages
-        </Link>
+        <div className="flex items-center gap-1">
+          <Link
+            href="/reglages"
+            className={`rounded-md px-3 py-2 text-sm font-medium ${
+              isActive(pathname, "reglages")
+                ? "bg-slate-900 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            ⚙️ Réglages
+          </Link>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              Déconnexion
+            </button>
+          </form>
+        </div>
       </header>
 
       {/* Mobile top bar (juste le titre + réglages, la nav principale est en bas) */}

@@ -5,6 +5,7 @@ import {
   EntryNotFoundError,
   correctEntry,
 } from "@/server/services/entries";
+import { getCurrentUserId } from "@/lib/auth/currentUser";
 
 const patchSchema = z.object({
   date: z.string().optional(),
@@ -22,8 +23,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
 
+  const userId = await getCurrentUserId();
+
   try {
-    const entry = await correctEntry(id, null, body.data);
+    const entry = await correctEntry(id, userId, body.data);
     return NextResponse.json({ entry });
   } catch (err) {
     if (err instanceof EntryNotFoundError) {
