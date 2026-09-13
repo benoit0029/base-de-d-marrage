@@ -1,0 +1,282 @@
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  createInvoiceAction,
+  dictateInvoiceAction,
+  type CreateInvoiceActionInput,
+} from "@/app/actions/invoices";
+import type { Activity } from "@prisma/client";
+
+interface LineDraft {
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  vatRate: string;
+}
+
+const emptyLine: LineDraft = { description: "", quantity: "1", unitPrice: "", vatRate: "0" };
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export default function InvoiceForm({
+  activity,
+  vatApplicable,
+  accentColorHex,
+}: {
+  activity: Activity;
+  vatApplicable: boolean;
+  accentColorHex: string;
+}) {
+  const router = useRouter();
+  const [type, setType] = useState<"DEVIS" | "FACTURE">("FACTURE");
+  const [clientName, setClientName] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
+  const [issueDate, setIssueDate] = useState(todayIso());
+  const [lines, setLines] = useState<LineDraft[]>([{ ...emptyLine }]);
+  const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  function updateLine(index: number, patch: Partial<LineDraft>) {
+    setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  }
+
+  function addLine() {
+    setLines((prev) => [...prev, { ...emptyLine }]);
+  }
+
+  function removeLine(index: number) {
+    setLines((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  }
+
+  async function startRecording() {
+    setMessage(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        setIsTranscribing(true);
+        const formData = new FormData();
+        formData.append("audio", blob, "dictation.webm");
+        const result = await dictateInvoiceAction(formData);
+        setIsTranscribing(false);
+
+        if (result.status === "error") {
+          setMessage({ kind: "error", text: result.message });
+          return;
+        }
+        if (result.clientName && !clientName) setClientName(result.clientName);
+        if (result.lines?.length) {
+          setLines((prev) => [
+            ...(prev.length === 1 && !prev[0].description ? [] : prev),
+            ...result.lines!.map((l) => ({
+              description: l.description,
+              quantity: String(l.quantity),
+              unitPrice: String(l.unitPrice),
+              vatRate: "0",
+            })),
+          ]);
+        }
+        setMessage({ kind: "success", text: result.message });
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch {
+      setMessage({
+        kind: "error",
+        text: "Micro indisponible ou accès refusé. Vous pouvez saisir les lignes manuellement.",
+      });
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setMessage(null);
+
+    const input: CreateInvoiceActionInput = {
+      activity,
+      type,
+      clientName,
+      clientAddress: clientAddress || undefined,
+      issueDate,
+      lines: lines.map((l) => ({
+        description: l.description,
+        quantity: Number(l.quantity),
+        unitPrice: Number(l.unitPrice),
+        vatRate: vatApplicable ? Number(l.vatRate) : 0,
+      })),
+    };
+
+    startTransition(async () => {
+      const result = await createInvoiceAction(input);
+      if (result.status === "error") {
+        setMessage({ kind: "error", text: result.message });
+        return;
+      }
+      setMessage({ kind: "success", text: result.message });
+      setClientName("");
+      setClientAddress("");
+      setLines([{ ...emptyLine }]);
+      router.refresh();
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2">
+          {(["FACTURE", "DEVIS"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setType(t)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                type === t ? "text-white" : "border border-slate-300 text-slate-600"
+              }`}
+              style={type === t ? { backgroundColor: accentColorHex } : undefined}
+            >
+              {t === "FACTURE" ? "Facture" : "Devis"}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={isRecording ? stopRecording : startRecording}
+          disabled={isTranscribing}
+          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 disabled:opacity-50"
+        >
+          {isTranscribing ? "Transcription…" : isRecording ? "⏹ Arrêter la dictée" : "🎙️ Dicter le contenu"}
+        </button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">
+          <span className="text-slate-600">Client</span>
+          <input
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            required
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="text-slate-600">Adresse du client</span>
+          <input
+            value={clientAddress}
+            onChange={(e) => setClientAddress(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="text-slate-600">Date</span>
+          <input
+            type="date"
+            value={issueDate}
+            onChange={(e) => setIssueDate(e.target.value)}
+            required
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+      </div>
+
+      <div className="space-y-2">
+        <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-500">
+          <span className="col-span-5">Description</span>
+          <span className="col-span-2">Qté</span>
+          <span className="col-span-2">PU HT</span>
+          <span className="col-span-2">{vatApplicable ? "TVA %" : ""}</span>
+        </div>
+        {lines.map((line, i) => (
+          <div key={i} className="grid grid-cols-12 gap-2">
+            <input
+              placeholder="Description"
+              value={line.description}
+              onChange={(e) => updateLine(i, { description: e.target.value })}
+              required
+              className="col-span-5 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Qté"
+              value={line.quantity}
+              onChange={(e) => updateLine(i, { quantity: e.target.value })}
+              required
+              className="col-span-2 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="PU HT"
+              value={line.unitPrice}
+              onChange={(e) => updateLine(i, { unitPrice: e.target.value })}
+              required
+              className="col-span-2 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            {vatApplicable ? (
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                placeholder="TVA %"
+                value={line.vatRate}
+                onChange={(e) => updateLine(i, { vatRate: e.target.value })}
+                className="col-span-2 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              />
+            ) : (
+              <span className="col-span-2 self-center text-xs text-slate-400">TVA non applicable</span>
+            )}
+            <button
+              type="button"
+              onClick={() => removeLine(i)}
+              className="col-span-1 text-sm text-red-500"
+              aria-label="Supprimer la ligne"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button type="button" onClick={addLine} className="text-sm font-medium text-slate-600">
+          + Ajouter une ligne
+        </button>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          style={{ backgroundColor: accentColorHex }}
+        >
+          {isPending ? "Création…" : `Créer ${type === "DEVIS" ? "le devis" : "la facture"}`}
+        </button>
+        {message && (
+          <span className={`text-sm ${message.kind === "success" ? "text-emerald-700" : "text-red-600"}`}>
+            {message.text}
+          </span>
+        )}
+      </div>
+    </form>
+  );
+}

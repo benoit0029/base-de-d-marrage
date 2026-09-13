@@ -30,6 +30,7 @@ model Tenant {
   tvaDeclarations   TvaDeclaration[]
   thresholdSnapshots ThresholdSnapshot[]
   paConnections     PaConnection[]
+  mailboxConnections MailboxConnection[]
   notificationLogs  NotificationLog[]
   auditLogs         AuditLog[]
 }
@@ -73,6 +74,7 @@ model ActivitySettings {
   logoUrl            String?
   accentColorHex     String? // utilisé en bandeau/liseré, jamais en fond plein
   abCertificationCode String? // format FR-BIO-XX, uniquement BA_MARAICHAGE / BIC_FRUITS_LEGUMES
+  abLogoEnabled      Boolean  @default(false) // désactivé par défaut : à activer seulement après vérification du guide INAO "Règles d'usage de la marque AB"
   legalMentions      String?  @db.Text
   invoicingEnabled   Boolean  @default(false) // actif par défaut pour Maraîchage & Photobooth, à confirmer pour Fruits/Légumes
   updatedAt          DateTime @updatedAt
@@ -109,6 +111,10 @@ model Document {
   mimeType       String
   emailFrom      String?
   emailSubject   String?
+  // Boîte mail d'origine quand source = EMAIL (une boîte IMAP dédiée par
+  // activité, voir .env.example) : indice quasi certain de l'activité,
+  // transmis à l'agent de classement en priorité sur l'analyse du contenu.
+  sourceMailboxActivity Activity?
   receivedAt     DateTime       @default(now())
   extractionJson Json? // dernier résultat structuré de l'agent d'extraction
 
@@ -306,6 +312,26 @@ model PaConnection {
   apiKeyEncrypted String
   status         String   @default("DISCONNECTED") // DISCONNECTED / CONNECTED / ERROR
   connectedAt    DateTime?
+}
+
+// Boîte mail de capture dédiée à une activité (une par activité, saisie et
+// testée depuis Réglages — pas fixée en dur au déploiement). Le mot de passe
+// IMAP est chiffré avant stockage (voir src/lib/crypto.ts).
+model MailboxConnection {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  tenant                Tenant    @relation(fields: [tenantId], references: [id])
+  activity              Activity
+  imapHost              String?
+  imapPort              Int       @default(993)
+  imapUser              String?
+  imapPasswordEncrypted String?
+  status                String    @default("NOT_TESTED") // NOT_TESTED / CONNECTED / ERROR
+  lastError             String?
+  lastTestedAt          DateTime?
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([tenantId, activity])
 }
 
 // ---------------------------------------------------------------------------

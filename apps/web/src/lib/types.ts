@@ -1,6 +1,8 @@
-// Types partagés pour le squelette d'interface (phase 2).
-// Reflètent grossièrement prisma/schema.prisma, sans dépendance à Prisma ici :
-// ce module ne fait que typer les données factices affichées en phase 2.
+// Types de présentation (vue) pour les tableaux d'écritures/factures.
+// Les noms "Fake*" datent du squelette d'interface (phase 2, données
+// factices) ; ils servent maintenant de format de sortie pour les
+// sérialiseurs de src/lib/serialize.ts qui convertissent les enregistrements
+// Prisma (enums en majuscules, Decimal, dates) vers ces valeurs d'affichage.
 
 export type Activity = "maraichage" | "fruits-legumes" | "photobooth";
 
@@ -31,10 +33,4 @@ export interface FakeInvoice {
   issueDate: string;
   status: InvoiceStatus;
   totalTtc: number;
-}
-
-export interface ThresholdInfo {
-  label: string;
-  caCumule: number;
-  seuil: number;
 }

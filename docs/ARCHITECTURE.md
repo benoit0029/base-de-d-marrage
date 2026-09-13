@@ -129,3 +129,21 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   upload) n'utilise pas cet endpoint HTTP : elle appelle le pipeline via une
   Server Action Next.js, qui ne nécessite pas d'exposer ce secret au
   navigateur.
+- **3 boîtes mail de capture, une par activité** (et non une boîte unique) :
+  configurées et testées depuis Réglages (modèle `MailboxConnection`), pas
+  fixées en dur dans `.env` au déploiement — au même titre que l'identité et
+  la connexion PA. Le mot de passe IMAP est chiffré avant stockage
+  (`src/lib/crypto.ts`, AES-256-GCM, clé `APP_ENCRYPTION_KEY`) et
+  l'enregistrement déclenche un test de connexion immédiat
+  (`src/lib/mailbox/imapTest.ts`, via `imapflow`). Chaque boîte sera
+  surveillée par son propre workflow n8n en phase 5 ; la boîte d'origine
+  (`mailboxActivity`) est transmise à `/api/agents/ingest` et stockée sur
+  `Document.sourceMailboxActivity` : l'agent de classement l'utilise
+  directement (elle est quasi certaine) au lieu de deviner l'activité depuis
+  le contenu — seul le type d'écriture (recette/achat/immobilisation) reste
+  à déterminer par l'IA dans ce cas (`classifyEntryType` dans
+  `lib/mistral/agents.ts`). L'adresse dédiée mentionnée par ailleurs pour
+  l'envoi des PDF/notifications reste une boîte séparée, utilisée uniquement
+  en émission (configurée en variables d'environnement `SMTP_*`, plus simple
+  car elle ne nécessite pas de test interactif ni de credentials par
+  activité).

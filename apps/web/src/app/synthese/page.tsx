@@ -1,18 +1,11 @@
-import { getEntries } from "@/lib/fixtures/entries";
-import { bicCombinedThreshold, bicPlafondThreshold } from "@/lib/fixtures/thresholds";
 import ThresholdBar from "@/components/ThresholdBar";
+import { computeBaThreshold, computeBicThresholds } from "@/lib/thresholds";
 import { formatEuro } from "@/lib/format";
 
-function caRecettes(activity: "fruits-legumes" | "photobooth") {
-  return getEntries(activity)
-    .filter((e) => e.type === "recette")
-    .reduce((sum, e) => sum + e.amountHt, 0);
-}
+export const dynamic = "force-dynamic";
 
-export default function Page() {
-  const caFruits = caRecettes("fruits-legumes");
-  const caPhotobooth = caRecettes("photobooth");
-  const caTotal = caFruits + caPhotobooth;
+export default async function Page() {
+  const [bic, ba] = await Promise.all([computeBicThresholds(), computeBaThreshold()]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
@@ -23,7 +16,8 @@ export default function Page() {
         <p className="text-sm text-slate-500">
           Revente Fruits/Légumes et Kerbooth 360° forment juridiquement une
           seule micro-entreprise : leurs chiffres d&apos;affaires et leurs
-          seuils sont cumulés.
+          seuils sont cumulés. Les montants ci-dessous ne comptent que les
+          recettes <strong>validées</strong> de {bic.year}.
         </p>
       </div>
 
@@ -31,26 +25,40 @@ export default function Page() {
         <div className="rounded-lg border bg-white p-4">
           <p className="text-xs uppercase text-slate-500">Fruits/Légumes</p>
           <p className="mt-1 text-xl font-semibold text-fruits">
-            {formatEuro(caFruits)}
+            {formatEuro(bic.caFruitsLegumes)}
           </p>
         </div>
         <div className="rounded-lg border bg-white p-4">
           <p className="text-xs uppercase text-slate-500">Kerbooth 360</p>
           <p className="mt-1 text-xl font-semibold text-photobooth">
-            {formatEuro(caPhotobooth)}
+            {formatEuro(bic.caPhotobooth)}
           </p>
         </div>
         <div className="rounded-lg border bg-white p-4">
           <p className="text-xs uppercase text-slate-500">CA cumulé micro-BIC</p>
           <p className="mt-1 text-xl font-semibold text-synthese">
-            {formatEuro(caTotal)}
+            {formatEuro(bic.caTotal)}
           </p>
         </div>
       </div>
 
       <div className="space-y-4">
-        <ThresholdBar threshold={bicCombinedThreshold} />
-        <ThresholdBar threshold={bicPlafondThreshold} />
+        <ThresholdBar threshold={bic.franchiseVente} />
+        <ThresholdBar threshold={bic.franchiseService} />
+        <ThresholdBar threshold={bic.plafondGlobalMixte} />
+      </div>
+
+      <div className="rounded-lg border bg-white p-4">
+        <p className="text-sm font-medium text-slate-700">
+          Micro-BA — Maraîchage (pour information)
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Régime distinct (activité agricole séparée) : le seuil pertinent est
+          la moyenne des recettes HT validées sur {ba.yearsConsidered.length === 1 ? "la dernière année disponible" : `les années ${ba.yearsConsidered.join(", ")}`}.
+        </p>
+        <div className="mt-3">
+          <ThresholdBar threshold={ba.check} />
+        </div>
       </div>
 
       <div className="rounded-lg border bg-white p-4">
@@ -58,11 +66,17 @@ export default function Page() {
           Déclaration 2042 C PRO (globale micro-BIC)
         </p>
         <p className="mt-1 text-sm text-slate-500">
-          La consolidation automatique des deux activités micro-BIC pour la
-          2042 C PRO sera disponible à partir de la phase 4, une fois le
-          calcul des seuils branché sur les vraies écritures.
+          Le pré-remplissage automatique de la 2042 C PRO à partir de ces
+          montants sera ajouté dans une prochaine itération ; les seuils et
+          alertes ci-dessus sont d&apos;ores et déjà calculés en continu sur
+          vos écritures validées.
         </p>
       </div>
+
+      <p className="text-xs text-slate-400">
+        Seuils indicatifs (barème 2024-2025) — à vérifier sur impots.gouv.fr
+        avant toute décision, notamment en fin d&apos;exercice.
+      </p>
     </div>
   );
 }

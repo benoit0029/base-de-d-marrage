@@ -13,6 +13,7 @@ function isAuthorized(req: NextRequest): boolean {
 }
 
 const VALID_SOURCES = new Set(["EMAIL", "PHOTO", "UPLOAD"]);
+const VALID_ACTIVITIES = new Set(["BA_MARAICHAGE", "BIC_FRUITS_LEGUMES", "BIC_PHOTOBOOTH"]);
 
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
@@ -24,6 +25,10 @@ export async function POST(req: NextRequest) {
   const source = form.get("source");
   const emailFrom = form.get("emailFrom");
   const emailSubject = form.get("emailSubject");
+  // Envoyé par le workflow n8n de la boîte mail dédiée à l'activité
+  // correspondante (une boîte IMAP par activité, voir .env.example) : indice
+  // quasi certain, utilisé en priorité par l'agent de classement.
+  const mailboxActivity = form.get("mailboxActivity");
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Champ 'file' manquant ou invalide" }, { status: 400 });
@@ -31,6 +36,12 @@ export async function POST(req: NextRequest) {
   if (typeof source !== "string" || !VALID_SOURCES.has(source)) {
     return NextResponse.json(
       { error: "Champ 'source' invalide (EMAIL, PHOTO ou UPLOAD attendu)" },
+      { status: 400 }
+    );
+  }
+  if (mailboxActivity !== null && (typeof mailboxActivity !== "string" || !VALID_ACTIVITIES.has(mailboxActivity))) {
+    return NextResponse.json(
+      { error: "Champ 'mailboxActivity' invalide (BA_MARAICHAGE, BIC_FRUITS_LEGUMES ou BIC_PHOTOBOOTH attendu)" },
       { status: 400 }
     );
   }
@@ -44,6 +55,9 @@ export async function POST(req: NextRequest) {
     originalName: file.name,
     emailFrom: typeof emailFrom === "string" ? emailFrom : undefined,
     emailSubject: typeof emailSubject === "string" ? emailSubject : undefined,
+    mailboxActivity: typeof mailboxActivity === "string"
+      ? (mailboxActivity as "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "BIC_PHOTOBOOTH")
+      : undefined,
   });
 
   return NextResponse.json({

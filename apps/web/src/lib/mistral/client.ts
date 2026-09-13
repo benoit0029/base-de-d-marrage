@@ -6,6 +6,7 @@
 const API_BASE = "https://api.mistral.ai/v1";
 const OCR_MODEL = process.env.MISTRAL_OCR_MODEL ?? "mistral-ocr-latest";
 const CHAT_MODEL = process.env.MISTRAL_CHAT_MODEL ?? "mistral-small-latest";
+const TRANSCRIPTION_MODEL = process.env.MISTRAL_TRANSCRIPTION_MODEL ?? "voxtral-mini-latest";
 
 export class MistralConfigError extends Error {}
 export class MistralApiError extends Error {
@@ -99,4 +100,36 @@ export async function chatJson(params: {
   }
 
   return JSON.parse(content);
+}
+
+/**
+ * Transcription vocale (modèle Voxtral) pour la saisie dictée des devis/
+ * factures. Référence : https://docs.mistral.ai/capabilities/audio/ — à
+ * revérifier lors du déploiement si l'API a évolué.
+ */
+export async function transcribeAudio(
+  buffer: Buffer,
+  mimeType: string,
+  filename: string
+): Promise<string> {
+  const form = new FormData();
+  form.append("model", TRANSCRIPTION_MODEL);
+  form.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType }), filename);
+
+  const res = await fetch(`${API_BASE}/audio/transcriptions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getApiKey()}` },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new MistralApiError(`Appel Mistral /audio/transcriptions en échec (${res.status})`, res.status, text);
+  }
+
+  const json = await res.json();
+  if (typeof json.text !== "string") {
+    throw new MistralApiError("Réponse de transcription inattendue", 0, JSON.stringify(json));
+  }
+  return json.text;
 }

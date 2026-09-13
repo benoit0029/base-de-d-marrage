@@ -33,3 +33,17 @@ export async function saveDocumentFile(
 
   return { url: `local://${filename}` };
 }
+
+// Logos d'activité : contrairement aux documents (privés, hors de /public),
+// un logo est destiné à être affiché tel quel dans le navigateur et sur les
+// PDF générés — on le range donc directement sous public/uploads/logos pour
+// que Next.js le serve statiquement, sans passer par une route dédiée.
+export async function saveLogoFile(buffer: Buffer, originalName: string): Promise<StoredFile> {
+  const ext = path.extname(originalName) || "";
+  const filename = `${randomUUID()}${ext}`;
+  const dir = path.join(process.cwd(), "public", "uploads", "logos");
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, filename), buffer);
+
+  return { url: `/uploads/logos/${filename}` };
+}

@@ -4,9 +4,11 @@ import { saveDocumentFile } from "@/lib/storage";
 import {
   classifyActivityAndType,
   classifyEmailRelevance,
+  classifyEntryType,
   extractDocumentFields,
 } from "@/lib/mistral/agents";
 import type {
+  Activity,
   AgentStep,
   Document,
   DocumentSource,
@@ -20,6 +22,10 @@ export interface IngestInput {
   originalName: string;
   emailFrom?: string;
   emailSubject?: string;
+  // Boîte mail d'origine (une par activité, voir .env.example) : indice quasi
+  // certain de l'activité, à utiliser en priorité sur l'analyse du contenu.
+  // Pertinent uniquement pour source = EMAIL.
+  mailboxActivity?: Activity;
 }
 
 export interface IngestResult {
@@ -82,6 +88,7 @@ export async function ingestDocument(input: IngestInput): Promise<IngestResult> 
       mimeType: input.mimeType,
       emailFrom: input.emailFrom,
       emailSubject: input.emailSubject,
+      sourceMailboxActivity: input.mailboxActivity,
     },
   });
 
@@ -144,9 +151,19 @@ export async function ingestDocument(input: IngestInput): Promise<IngestResult> 
 
   const { fields, ocrText } = extraction.result;
 
-  const classification = await runStep(document.id, "ACTIVITY_CLASSIFY", () =>
-    classifyActivityAndType({ fields, ocrText })
-  );
+  // Boîte mail dédiée à une activité = indice quasi certain : on ne redemande
+  // pas à l'IA de deviner l'activité, seulement le type d'écriture.
+  const classification = await runStep(document.id, "ACTIVITY_CLASSIFY", async () => {
+    if (input.mailboxActivity) {
+      const { entryType, confidence } = await classifyEntryType({
+        fields,
+        ocrText,
+        activityHint: input.mailboxActivity as "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "BIC_PHOTOBOOTH",
+      });
+      return { activity: input.mailboxActivity as Activity, entryType, confidence };
+    }
+    return classifyActivityAndType({ fields, ocrText });
+  });
 
   if (!classification.ok) {
     const failed = await prisma.document.update({
