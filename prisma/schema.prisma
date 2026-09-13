@@ -1,0 +1,341 @@
+// Schéma de base de données — Phase 1 (proposition à valider)
+// Convention : chaque table métier porte un tenantId pour préparer la v2 multi-client.
+// En v1, une seule ligne existe dans `Tenant`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Multi-tenant / identité
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users             User[]
+  companySettings   CompanySettings?
+  activitySettings  ActivitySettings[]
+  documents         Document[]
+  entries           Entry[]
+  invoices          Invoice[]
+  payrollEmployees  PayrollEmployee[]
+  tvaDeclarations   TvaDeclaration[]
+  thresholdSnapshots ThresholdSnapshot[]
+  paConnections     PaConnection[]
+  notificationLogs  NotificationLog[]
+  auditLogs         AuditLog[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  email        String   @unique
+  passwordHash String
+  totpSecret   String? // rempli à l'activation obligatoire du 2FA
+  totpEnabled  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  auditLogs AuditLog[]
+}
+
+model CompanySettings {
+  id            String   @id @default(cuid())
+  tenantId      String   @unique
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  legalName     String
+  address       String
+  siren         String
+  vatNumber     String? // TVA intracommunautaire
+  contactEmail  String? // adresse dédiée créée sur le sous-domaine
+  updatedAt     DateTime @updatedAt
+}
+
+enum Activity {
+  BA_MARAICHAGE
+  BIC_FRUITS_LEGUMES
+  BIC_PHOTOBOOTH
+}
+
+model ActivitySettings {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  tenant             Tenant   @relation(fields: [tenantId], references: [id])
+  activity           Activity
+  logoUrl            String?
+  accentColorHex     String? // utilisé en bandeau/liseré, jamais en fond plein
+  abCertificationCode String? // format FR-BIO-XX, uniquement BA_MARAICHAGE / BIC_FRUITS_LEGUMES
+  legalMentions      String?  @db.Text
+  invoicingEnabled   Boolean  @default(false) // actif par défaut pour Maraîchage & Photobooth, à confirmer pour Fruits/Légumes
+  updatedAt          DateTime @updatedAt
+
+  @@unique([tenantId, activity])
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline de capture / extraction IA
+// ---------------------------------------------------------------------------
+
+enum DocumentSource {
+  EMAIL
+  PHOTO
+  UPLOAD
+}
+
+enum DocumentStatus {
+  RECEIVED
+  CLASSIFYING
+  IGNORED_NOISE
+  EXTRACTING
+  EXTRACTED
+  FAILED
+}
+
+model Document {
+  id             String         @id @default(cuid())
+  tenantId       String
+  tenant         Tenant         @relation(fields: [tenantId], references: [id])
+  source         DocumentSource
+  status         DocumentStatus @default(RECEIVED)
+  fileUrl        String // chemin du fichier stocké (volume local ou S3-compatible)
+  mimeType       String
+  emailFrom      String?
+  emailSubject   String?
+  receivedAt     DateTime       @default(now())
+  extractionJson Json? // dernier résultat structuré de l'agent d'extraction
+
+  extractionJobs ExtractionJob[]
+  entry          Entry?
+}
+
+enum AgentStep {
+  EMAIL_TRIAGE // agent de veille email : classification bruit/pertinent
+  OCR_EXTRACT // agent d'extraction Mistral OCR
+  ACTIVITY_CLASSIFY // agent de classement/ventilation
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model ExtractionJob {
+  id         String    @id @default(cuid())
+  documentId String
+  document   Document  @relation(fields: [documentId], references: [id])
+  step       AgentStep
+  status     JobStatus @default(PENDING)
+  resultJson Json?
+  error      String?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// Écritures comptables (recettes / achats / immobilisations)
+// ---------------------------------------------------------------------------
+
+enum EntryType {
+  RECETTE
+  ACHAT
+  IMMOBILISATION
+}
+
+enum EntryStatus {
+  PENDING // proposé par l'IA, en attente de validation humaine
+  VALIDATED // verrouillé après validation (traçabilité)
+}
+
+model Entry {
+  id              String      @id @default(cuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  activity        Activity
+  type            EntryType
+  status          EntryStatus @default(PENDING)
+  date            DateTime
+  amountHt        Decimal     @db.Decimal(12, 2)
+  amountVat       Decimal     @db.Decimal(12, 2)
+  amountTtc       Decimal     @db.Decimal(12, 2)
+  counterpartyName String
+  nature          String
+  sourceDocumentId String?    @unique
+  sourceDocument  Document?   @relation(fields: [sourceDocumentId], references: [id])
+  validatedById   String?
+  validatedAt     DateTime?
+  createdAt       DateTime    @default(now())
+
+  @@index([tenantId, activity, status])
+}
+
+// ---------------------------------------------------------------------------
+// Facturation / devis (moteur unique, transverse aux 3 activités)
+// ---------------------------------------------------------------------------
+
+enum InvoiceType {
+  DEVIS
+  FACTURE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  activity       Activity
+  type           InvoiceType
+  number         String        @unique // numérotation automatique par activité
+  clientName     String
+  clientAddress  String?
+  issueDate      DateTime
+  dueDate        DateTime?
+  status         InvoiceStatus @default(DRAFT)
+  vatApplicable  Boolean       @default(false) // false tant que franchise en base s'applique
+  abLabelShown   Boolean       @default(false)
+  totalHt        Decimal       @db.Decimal(12, 2)
+  totalVat       Decimal       @db.Decimal(12, 2)
+  totalTtc       Decimal       @db.Decimal(12, 2)
+  pdfUrl         String?
+  paExternalId   String? // référence côté PA (Abby) une fois transmise
+  createdAt      DateTime      @default(now())
+
+  lines InvoiceLine[]
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+  description String
+  quantity    Decimal @db.Decimal(10, 2)
+  unitPrice   Decimal @db.Decimal(12, 2)
+  vatRate     Decimal @db.Decimal(5, 2) @default(0)
+  lineTotal   Decimal @db.Decimal(12, 2)
+}
+
+// ---------------------------------------------------------------------------
+// Paie (volet salarié, micro-BA)
+// ---------------------------------------------------------------------------
+
+model PayrollEmployee {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  firstName String
+  lastName  String
+  contractInfo Json? // type de contrat, temps de travail, taux horaire, etc.
+  createdAt DateTime @default(now())
+
+  payslips Payslip[]
+}
+
+model Payslip {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    PayrollEmployee @relation(fields: [employeeId], references: [id])
+  period      String // ex. "2026-09"
+  grossAmount Decimal  @db.Decimal(12, 2)
+  netAmount   Decimal  @db.Decimal(12, 2)
+  dsnStatus   String?  // statut de transmission DSN
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// TVA / déclarations
+// ---------------------------------------------------------------------------
+
+model TvaDeclaration {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  period    String // ex. "2026-T3" pour un acompte trimestriel RSA
+  regime    String // "RSA" (régime simplifié agricole), "CA12A", etc.
+  amount    Decimal  @db.Decimal(12, 2)
+  status    String   @default("A_PREPARER") // A_PREPARER / DEPOSEE / PAYEE
+  dueDate   DateTime
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Suivi des seuils (agent de suivi/alerte)
+// ---------------------------------------------------------------------------
+
+enum ThresholdScope {
+  BIC_COMBINED // fruits/légumes + photobooth cumulés (même micro-entreprise)
+  BA_MARAICHAGE
+}
+
+model ThresholdSnapshot {
+  id           String         @id @default(cuid())
+  tenantId     String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  scope        ThresholdScope
+  period       String // ex. "2026"
+  caCumule     Decimal        @db.Decimal(12, 2)
+  thresholdRef Decimal        @db.Decimal(12, 2) // ex. 37500 ou 85000
+  alertLevel   String         @default("OK") // OK / VIGILANCE / DEPASSEMENT
+  computedAt   DateTime       @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Intégration PA (facturation électronique)
+// ---------------------------------------------------------------------------
+
+model PaConnection {
+  id             String   @id @default(cuid())
+  tenantId       String   @unique
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  provider       String   @default("ABBY")
+  apiKeyEncrypted String
+  status         String   @default("DISCONNECTED") // DISCONNECTED / CONNECTED / ERROR
+  connectedAt    DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// Notifications (n8n / email)
+// ---------------------------------------------------------------------------
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  channel   String // "EMAIL" / "N8N"
+  type      String // ex. "ENTRY_PENDING_TOO_LONG", "THRESHOLD_ALERT", "DECLARATION_DUE"
+  payload   Json?
+  sentAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String // ex. "ENTRY_VALIDATED", "INVOICE_CREATED", "SETTINGS_UPDATED"
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+}
