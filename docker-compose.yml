@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-compta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:-compta}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432" # accès local uniquement (ex. Prisma Studio) ; jamais exposé publiquement
+
+# Le service applicatif (Next.js) sera ajouté en phase 6, une fois l'image
+# Docker de apps/web construite et l'authentification en place. D'ici là, ce
+# fichier sert à lancer une base PostgreSQL locale pour le développement :
+#   docker compose up -d
+#   cp .env.example apps/web/.env   # puis ajuster DATABASE_URL avec les identifiants ci-dessus
+
+volumes:
+  db_data:

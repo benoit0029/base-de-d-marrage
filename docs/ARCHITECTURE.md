@@ -13,7 +13,7 @@ Statut : **proposition à valider**, aucune logique métier codée à ce stade.
 
 | Brique | Choix | Pourquoi |
 |---|---|---|
-| Frontend + backend | **Next.js 15 (App Router, TypeScript)** | Un seul codebase pour l'UI, les API routes et les server actions (formulaire de saisie vocale/manuelle unifié). Bon support PWA. Facile à conteneuriser. |
+| Frontend + backend | **Next.js 16 (App Router, TypeScript)** — voir §7 | Un seul codebase pour l'UI, les API routes et les server actions (formulaire de saisie vocale/manuelle unifié). Bon support PWA. Facile à conteneuriser. |
 | Base de données | **PostgreSQL 16** | Robuste, gère bien les montants (types `numeric`), supporte le futur multi-tenant. |
 | ORM | **Prisma** | Schéma typé, migrations versionnées, lisible pour un futur relecteur non-dev. |
 | Authentification | Auth maison (credentials + session cookie signé) + **2FA TOTP** (`otplib`) | Un seul compte en v1, pas besoin d'un provider OAuth ; le TOTP est obligatoire dès la création du compte. |
@@ -108,3 +108,24 @@ Voir `prisma/schema.prisma`. Résumé des entités :
 ---
 
 **Validation attendue avant de passer à la phase 2** (squelette d'interface) : stack, structure de dossiers et schéma de données ci-dessus + dans `prisma/schema.prisma`.
+
+## 7. Ajustements faits en cours de route
+
+- **Next.js 16.3.5** (et non 15) : la 15.1.6 initialement prévue avait une CVE
+  critique (RCE, GHSA-9qr9-h5gf-34mp) ; la 16 stable est la première version
+  saine disponible au moment de coder la phase 2.
+- **Prisma 6.19.3** (et non 7) : Prisma 7 supprime `url = env(...)` dans le
+  schéma au profit d'un système de « driver adapters » configuré dans
+  `prisma.config.ts`, encore très récent. La 6.x reste stable, documentée et
+  suffisante pour ce projet (mono-instance, PostgreSQL uniquement) ; à
+  reconsidérer plus tard si un besoin (ex. edge runtime) le justifie.
+  `prisma/schema.prisma` vit dans `apps/web/prisma/` (et non à la racine du
+  dépôt comme esquissé en phase 1), au même endroit que le reste de l'app.
+- **Endpoint `/api/agents/ingest` protégé par jeton** (`INGEST_API_TOKEN`) :
+  cet endpoint sera appelé par n8n depuis l'extérieur du conteneur applicatif
+  dès la phase 5, avant que l'authentification utilisateur (phase 6) existe.
+  Un jeton partagé simple évite de le laisser ouvert à toute requête externe
+  en attendant. La capture depuis l'application elle-même (formulaire photo/
+  upload) n'utilise pas cet endpoint HTTP : elle appelle le pipeline via une
+  Server Action Next.js, qui ne nécessite pas d'exposer ce secret au
+  navigateur.
