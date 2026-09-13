@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestDocument } from "@/server/services/pipeline";
+import { isAuthorizedN8nRequest } from "@/lib/auth/n8nToken";
 
 // Endpoint appelé par n8n (veille email, phase 5) et par les formulaires de
 // capture de l'application (photo terrain, upload manuel). Protégé par un
 // jeton partagé tant que l'authentification complète (phase 6) n'existe pas :
 // toute requête externe doit envoyer `Authorization: Bearer <INGEST_API_TOKEN>`.
-function isAuthorized(req: NextRequest): boolean {
-  const token = process.env.INGEST_API_TOKEN;
-  if (!token) return false; // pas de secret configuré = endpoint fermé par défaut
-  const header = req.headers.get("authorization");
-  return header === `Bearer ${token}`;
-}
-
 const VALID_SOURCES = new Set(["EMAIL", "PHOTO", "UPLOAD"]);
 const VALID_ACTIVITIES = new Set(["BA_MARAICHAGE", "BIC_FRUITS_LEGUMES", "BIC_PHOTOBOOTH"]);
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isAuthorizedN8nRequest(req)) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 

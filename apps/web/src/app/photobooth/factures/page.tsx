@@ -1,4 +1,5 @@
 import { listInvoices } from "@/server/services/invoices";
+import { getPaConnection } from "@/server/services/pa";
 import { toInvoiceView } from "@/lib/serialize";
 import { isVatApplicable } from "@/lib/invoicing/vatPolicy";
 import InvoicesTable from "@/components/InvoicesTable";
@@ -7,7 +8,10 @@ import InvoiceForm from "@/components/invoicing/InvoiceForm";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const invoices = await listInvoices("BIC_PHOTOBOOTH");
+  const [invoices, paConnection] = await Promise.all([
+    listInvoices("BIC_PHOTOBOOTH"),
+    getPaConnection(),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -17,7 +21,10 @@ export default async function Page() {
         accentColorHex="#7a4fc9"
       />
       <div className="rounded-lg border bg-white">
-        <InvoicesTable invoices={invoices.map(toInvoiceView)} />
+        <InvoicesTable
+          invoices={invoices.map(toInvoiceView)}
+          paConnected={paConnection?.status === "CONNECTED"}
+        />
       </div>
     </div>
   );

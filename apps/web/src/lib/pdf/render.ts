@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InvoiceDocument, type InvoicePdfData } from "@/lib/pdf/InvoiceDocument";
+import { ClosingReportDocument, type ClosingReportData } from "@/lib/pdf/ClosingReportDocument";
 
 const mimeByExt: Record<string, string> = {
   ".png": "image/png",
@@ -30,4 +31,8 @@ export async function renderInvoicePdf(
 ): Promise<Buffer> {
   const logoDataUri = await logoToDataUri(data.logoUrl);
   return renderToBuffer(InvoiceDocument({ ...data, logoDataUri }));
+}
+
+export async function renderClosingReportPdf(data: ClosingReportData): Promise<Buffer> {
+  return renderToBuffer(ClosingReportDocument(data));
 }

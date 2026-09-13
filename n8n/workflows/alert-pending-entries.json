@@ -1,0 +1,145 @@
+{
+  "name": "Alerte — écritures en attente trop longtemps",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "39ae0e5b-bee0-4162-9d82-2e167c850a06",
+      "name": "Chaque matin à 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}/api/agents/alerts/pending-entries?days=3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "013e3496-322b-48e9-aae2-370c3dfcb99b",
+      "name": "Vérifier les écritures en attente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "90fca8e7-ec38-40e1-b1ed-45fb316dd11e",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "886d3389-4819-460a-9f00-f00bb75d766d",
+      "name": "Des écritures à relancer ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
+        "subject": "Compta ferme — écritures en attente de validation",
+        "emailFormat": "text",
+        "text": "={{ $json.count }} écriture(s) sont en attente de validation depuis plus de 3 jours :\n\n{{ $json.entries.map(e => `- ${e.activity} / ${e.type} : ${e.counterpartyName} (${e.amountTtc} €, en attente depuis ${e.pendingSinceDays} j)`).join('\\n') }}\n\nÀ valider dans l'application.",
+        "options": {}
+      },
+      "id": "8ed88b44-25c2-4b8a-80b6-45a547855257",
+      "name": "Envoyer le rappel",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "smtp": {
+          "name": "SMTP — adresse dédiée (émission)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chaque matin à 8h": {
+      "main": [
+        [
+          {
+            "node": "Vérifier les écritures en attente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier les écritures en attente": {
+      "main": [
+        [
+          {
+            "node": "Des écritures à relancer ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Des écritures à relancer ?": {
+      "main": [
+        [
+          {
+            "node": "Envoyer le rappel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "29b1c453-053b-4fe5-a432-2a59623fc487"
+}

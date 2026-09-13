@@ -147,3 +147,52 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   en émission (configurée en variables d'environnement `SMTP_*`, plus simple
   car elle ne nécessite pas de test interactif ni de credentials par
   activité).
+
+## 8. Phase 5 — PA (Abby), workflows n8n, alertes
+
+- **Intégration Abby non finalisable à distance** : `docs.abby.fr`,
+  `abby.fr` et le forum communautaire Abby sont inaccessibles depuis
+  l'environnement où ce code a été écrit (proxy réseau restrictif). Le
+  client (`src/lib/pa/abby.ts`) est donc construit sur une hypothèse
+  raisonnable des endpoints (`POST /invoices`, `GET /me`) et du format de
+  requête, **clairement marquée comme à confirmer** contre la documentation
+  réelle avant le premier envoi effectif. Recherches croisées (comparatifs
+  tiers, pas la doc officielle) : Abby a un plan gratuit à vie (devis/
+  factures illimités, conforme facturation électronique 2026) ; l'accès à
+  l'API générale semble lié à un plan payant (Solo 5,99€/mois ou Pro
+  11,99€/mois, environ 9-15€/mois en engagement annuel) selon certaines
+  sources, gratuit selon d'autres — à vérifier directement. Abby reste le
+  choix le plus adapté parmi les PA orientées auto-entrepreneur comparées :
+  Indy n'a pas d'API publique documentée, Tiime en a une uniquement "sur la
+  roadmap" (pas encore livrée) ; Abby est la seule à avoir une documentation
+  API existante aujourd'hui, pour un coût de toute façon négligeable.
+- **Connexion PA gérée comme les boîtes mail** : clé API saisie et testée
+  depuis Réglages (`PaConnection`, clé chiffrée), pas de variable
+  d'environnement. Bouton "Envoyer via Abby" par facture dans chaque onglet
+  Facturation (visible seulement si une connexion active existe) —
+  transmission volontaire par l'utilisateur, pas automatique à la création.
+- **Workflows n8n livrés comme modèles, pas testés en conditions réelles** :
+  cette session n'a pas accès à l'instance n8n du VPS. Les 7 fichiers dans
+  `n8n/workflows/` (3 captures email + 3 alertes + 1 rapport de clôture)
+  utilisent les types de nœuds n8n stables depuis plusieurs années
+  (`emailReadImap`, `httpRequest`, `scheduleTrigger`, `if`, `emailSend`),
+  mais les noms de champs exacts en sortie du nœud IMAP (pièce jointe,
+  expéditeur) peuvent varier selon la version de n8n installée — voir
+  `n8n/workflows/README.md` pour la checklist de vérification après import.
+  n8n **appelle** l'application (pas l'inverse) : `APP_URL` et
+  `INGEST_API_TOKEN` sont à définir côté n8n, pas de nouvelle variable côté
+  app.
+- **Agent de suivi/alerte** (`src/server/services/alerts.ts`) : 3 endpoints
+  protégés par le même jeton (`/api/agents/alerts/pending-entries`,
+  `/failed-documents`, `/thresholds`), interrogés par les workflows n8n
+  planifiés. Chaque alerte renvoyée est journalisée dans `NotificationLog`
+  et exclue des réponses suivantes pendant 24h, pour qu'un workflow qui
+  tourne plusieurs fois par jour ne spamme pas le même rappel.
+- **PDF de clôture régénéré à la demande** (`/api/reports/closing`), à
+  partir des écritures validées et des seuils calculés (phase 4) — pas de
+  fichier stocké à synchroniser.
+- **Bug trouvé en testant les PDF** : `Intl.NumberFormat("fr-FR")` insère une
+  espace fine insécable (U+202F) comme séparateur de milliers, absente de la
+  police Helvetica standard des PDF — elle s'affichait comme un "/"
+  (`85/000,00 €` au lieu de `85 000,00 €`). Corrigé par un formateur dédié
+  (`src/lib/pdf/format.ts`) utilisé par tous les documents PDF.

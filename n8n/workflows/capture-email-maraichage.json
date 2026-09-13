@@ -1,0 +1,144 @@
+{
+  "name": "Capture email — Maraîchage",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "read",
+        "format": "resolved",
+        "downloadAttachments": true,
+        "options": {}
+      },
+      "id": "14678f35-705d-4b98-aae4-45f1fbdb27d0",
+      "name": "IMAP — nouvel email",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "credentials": {
+        "imap": {
+          "name": "IMAP Maraîchage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "21b78e5c-26b9-4954-a6ee-701b1e3cfb9a",
+              "leftValue": "={{ Object.keys($binary || {}).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9feace1e-70b6-4451-b6c9-b9e7d12b187b",
+      "name": "A une pièce jointe ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/agents/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "attachment_0"
+            },
+            {
+              "parameterType": "formData",
+              "name": "source",
+              "value": "EMAIL"
+            },
+            {
+              "parameterType": "formData",
+              "name": "mailboxActivity",
+              "value": "BA_MARAICHAGE"
+            },
+            {
+              "parameterType": "formData",
+              "name": "emailFrom",
+              "value": "={{ $json.from?.text ?? $json.from }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "emailSubject",
+              "value": "={{ $json.subject }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e23706d7-44c2-47b3-9302-f3c13aa7eaea",
+      "name": "Envoyer à l'agent d'ingestion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "IMAP — nouvel email": {
+      "main": [
+        [
+          {
+            "node": "A une pièce jointe ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A une pièce jointe ?": {
+      "main": [
+        [
+          {
+            "node": "Envoyer à l'agent d'ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "a13a4e32-20aa-4386-a18f-e08357a6e2ce"
+}

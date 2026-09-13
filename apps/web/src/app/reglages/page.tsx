@@ -4,6 +4,8 @@ import { listMailboxConnections } from "@/server/services/mailboxes";
 import CompanySettingsForm from "@/components/settings/CompanySettingsForm";
 import ActivitySettingsForm from "@/components/settings/ActivitySettingsForm";
 import MailboxSettingsForm from "@/components/settings/MailboxSettingsForm";
+import PaConnectionForm from "@/components/settings/PaConnectionForm";
+import { getPaConnection } from "@/server/services/pa";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +18,11 @@ const activityBySlug: Record<string, "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "B
 const abEligible = new Set(["BA_MARAICHAGE", "BIC_FRUITS_LEGUMES"]);
 
 export default async function Page() {
-  const [company, activitySettings, mailboxConnections] = await Promise.all([
+  const [company, activitySettings, mailboxConnections, paConnection] = await Promise.all([
     getCompanySettings(),
     listActivitySettings(),
     listMailboxConnections(),
+    getPaConnection(),
   ]);
   const settingsByActivity = new Map(activitySettings.map((s) => [s.activity, s]));
   const mailboxByActivity = new Map(mailboxConnections.map((m) => [m.activity, m]));
@@ -122,18 +125,7 @@ export default async function Page() {
         <h2 className="text-sm font-semibold text-slate-700">
           Connexion à la Plateforme Agréée (facturation électronique)
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Fournisseur retenu : Abby (plan gratuit). La connexion effective
-          sera disponible en phase 5.
-        </p>
-        <button
-          type="button"
-          disabled
-          title="Disponible en phase 5"
-          className="mt-3 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white opacity-60"
-        >
-          Connecter Abby
-        </button>
+        <PaConnectionForm status={paConnection?.status ?? "DISCONNECTED"} />
       </section>
     </div>
   );

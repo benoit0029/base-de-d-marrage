@@ -1,0 +1,145 @@
+{
+  "name": "Alerte — anomalies du pipeline de capture",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "ba48d0e1-aa98-4907-90dc-e8eb3d19af1b",
+      "name": "Chaque matin à 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}/api/agents/alerts/failed-documents",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7cfe2eee-ee92-40f7-af45-eb31bb24c73e",
+      "name": "Vérifier les documents en échec",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "8f159b4c-31ff-471b-b42a-7faca3da84a8",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2123c7a3-1215-44d8-961f-3f33798bd6c4",
+      "name": "Des anomalies ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
+        "subject": "Compta ferme — anomalie pipeline de capture",
+        "emailFormat": "text",
+        "text": "={{ $json.documents.map(d => `- Document ${d.documentId} (source ${d.source}) : échec à l'étape ${d.failedStep} — ${d.error}`).join('\\n') }}\n\nÀ vérifier manuellement (ex. facture illisible, clé Mistral expirée).",
+        "options": {}
+      },
+      "id": "d4e67d2a-1bba-498c-9c4e-1cc748f212ec",
+      "name": "Envoyer la notification d'anomalie",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "smtp": {
+          "name": "SMTP — adresse dédiée (émission)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chaque matin à 8h": {
+      "main": [
+        [
+          {
+            "node": "Vérifier les documents en échec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier les documents en échec": {
+      "main": [
+        [
+          {
+            "node": "Des anomalies ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Des anomalies ?": {
+      "main": [
+        [
+          {
+            "node": "Envoyer la notification d'anomalie",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "2eea8c4a-63f4-42d6-ac45-898395cdec40"
+}

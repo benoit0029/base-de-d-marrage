@@ -1,0 +1,145 @@
+{
+  "name": "Alerte — seuils micro-BA / micro-BIC",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "3ffe3638-6407-4d53-9896-e71538b5fdc5",
+      "name": "Chaque matin à 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}/api/agents/alerts/thresholds",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "58ca2c50-4c99-4075-a3a7-f189366e5e2b",
+      "name": "Vérifier les seuils",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "90348d0c-3d8d-4281-8567-3747801db1d4",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cf4073b3-7d5e-4aea-abc4-0f27a5134138",
+      "name": "Un seuil en vigilance ou dépassé ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
+        "subject": "Compta ferme — alerte seuil micro-BA/micro-BIC",
+        "emailFormat": "text",
+        "text": "={{ $json.alerts.map(a => `- ${a.label} : ${a.caCumule} € / ${a.seuil} € (${a.level})`).join('\\n') }}\n\nVoir l'onglet Synthèse pour le détail.",
+        "options": {}
+      },
+      "id": "64a340ba-9855-4836-8eb5-b34c329b4e81",
+      "name": "Envoyer l'alerte de seuil",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        900,
+        220
+      ],
+      "credentials": {
+        "smtp": {
+          "name": "SMTP — adresse dédiée (émission)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chaque matin à 8h": {
+      "main": [
+        [
+          {
+            "node": "Vérifier les seuils",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier les seuils": {
+      "main": [
+        [
+          {
+            "node": "Un seuil en vigilance ou dépassé ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Un seuil en vigilance ou dépassé ?": {
+      "main": [
+        [
+          {
+            "node": "Envoyer l'alerte de seuil",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "c45db763-55b7-40df-a7f6-b028998e8867"
+}

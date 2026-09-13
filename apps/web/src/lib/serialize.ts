@@ -54,5 +54,6 @@ export function toInvoiceView(invoice: Invoice): FakeInvoice {
     issueDate: invoice.issueDate.toISOString(),
     status: invoiceStatusMap[invoice.status],
     totalTtc: Number(invoice.totalTtc),
+    paExternalId: invoice.paExternalId,
   };
 }

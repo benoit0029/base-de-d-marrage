@@ -33,4 +33,5 @@ export interface FakeInvoice {
   issueDate: string;
   status: InvoiceStatus;
   totalTtc: number;
+  paExternalId: string | null;
 }

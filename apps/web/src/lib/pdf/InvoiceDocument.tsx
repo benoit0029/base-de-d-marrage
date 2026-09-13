@@ -1,4 +1,5 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { euro } from "@/lib/pdf/format";
 
 // Moteur de template unique pour toutes les activités : seules les données
 // passées en props changent (couleur d'accent, logo, mentions). La couleur
@@ -44,9 +45,6 @@ export interface InvoicePdfData {
   extraLegalMentions?: string;
 }
 
-function euro(n: number): string {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
-}
 
 const styles = StyleSheet.create({
   page: { padding: 36, fontSize: 10, fontFamily: "Helvetica", color: "#1e293b" },

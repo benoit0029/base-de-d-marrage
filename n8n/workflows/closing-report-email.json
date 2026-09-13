@@ -1,0 +1,115 @@
+{
+  "name": "Rapport de clôture périodique par email",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 5,
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "d0e98665-2b02-4c0e-a1cb-d8fdc55c7e9d",
+      "name": "Le 5 de chaque mois à 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}/api/reports/closing",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "368852f4-8f20-4560-ada3-6cd0506de02f",
+      "name": "Générer le rapport de clôture",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
+        "subject": "Compta ferme — rapport de clôture mensuel",
+        "emailFormat": "text",
+        "text": "Rapport de synthèse ci-joint (CA validé par activité, statut des seuils).",
+        "options": {},
+        "attachmentsUi": {
+          "attachmentsBinary": [
+            {
+              "property": "data"
+            }
+          ]
+        }
+      },
+      "id": "cc97c8d3-4011-4dd3-aff2-cadc10247dad",
+      "name": "Envoyer le rapport par email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "name": "SMTP — adresse dédiée (émission)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Le 5 de chaque mois à 8h": {
+      "main": [
+        [
+          {
+            "node": "Générer le rapport de clôture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générer le rapport de clôture": {
+      "main": [
+        [
+          {
+            "node": "Envoyer le rapport par email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "b04a30d5-406a-4c77-8cb8-892c726c109b"
+}

@@ -1,8 +1,15 @@
 import type { FakeInvoice } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
+import SendToPaButton from "@/components/invoicing/SendToPaButton";
 
-export default function InvoicesTable({ invoices }: { invoices: FakeInvoice[] }) {
+export default function InvoicesTable({
+  invoices,
+  paConnected,
+}: {
+  invoices: FakeInvoice[];
+  paConnected: boolean;
+}) {
   if (invoices.length === 0) {
     return (
       <p className="p-4 text-sm text-slate-500">
@@ -22,6 +29,7 @@ export default function InvoicesTable({ invoices }: { invoices: FakeInvoice[] })
             <th className="px-4 py-2.5">Date</th>
             <th className="px-4 py-2.5 text-right">Montant TTC</th>
             <th className="px-4 py-2.5">Statut</th>
+            <th className="px-4 py-2.5" />
             <th className="px-4 py-2.5" />
           </tr>
         </thead>
@@ -45,6 +53,16 @@ export default function InvoicesTable({ invoices }: { invoices: FakeInvoice[] })
                 >
                   PDF
                 </a>
+              </td>
+              <td className="px-4 py-2.5 text-right">
+                {invoice.type === "facture" &&
+                  (invoice.paExternalId ? (
+                    <span className="text-xs text-emerald-700">Envoyé à Abby</span>
+                  ) : paConnected ? (
+                    <SendToPaButton invoiceId={invoice.id} />
+                  ) : (
+                    <span className="text-xs text-slate-400">PA non connectée</span>
+                  ))}
               </td>
             </tr>
           ))}

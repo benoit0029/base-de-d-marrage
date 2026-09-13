@@ -1,5 +1,6 @@
 import { listInvoices } from "@/server/services/invoices";
 import { listActivitySettings } from "@/server/services/settings";
+import { getPaConnection } from "@/server/services/pa";
 import { toInvoiceView } from "@/lib/serialize";
 import { isVatApplicable } from "@/lib/invoicing/vatPolicy";
 import InvoicesTable from "@/components/InvoicesTable";
@@ -8,9 +9,10 @@ import InvoiceForm from "@/components/invoicing/InvoiceForm";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [invoices, activitySettings] = await Promise.all([
+  const [invoices, activitySettings, paConnection] = await Promise.all([
     listInvoices("BIC_FRUITS_LEGUMES"),
     listActivitySettings(),
+    getPaConnection(),
   ]);
   const invoicingEnabled =
     activitySettings.find((s) => s.activity === "BIC_FRUITS_LEGUMES")?.invoicingEnabled ?? false;
@@ -33,7 +35,10 @@ export default async function Page() {
         </div>
       )}
       <div className="rounded-lg border bg-white">
-        <InvoicesTable invoices={invoices.map(toInvoiceView)} />
+        <InvoicesTable
+          invoices={invoices.map(toInvoiceView)}
+          paConnected={paConnection?.status === "CONNECTED"}
+        />
       </div>
     </div>
   );

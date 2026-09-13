@@ -43,6 +43,18 @@ via une Server Action Next.js, réservée à l'utilisateur déjà dans l'app.
 2. Générer une clé API dans la section « API Keys ».
 3. La coller dans `MISTRAL_API_KEY` (jamais dans le code, jamais commitée).
 
+## n8n, PA et alertes (phase 5)
+
+- Workflows n8n : voir `n8n/workflows/README.md` pour l'import et la
+  checklist de vérification (non testés en conditions réelles depuis cette
+  session, voir docs/ARCHITECTURE.md §8).
+- Connexion Abby : à configurer depuis Réglages (clé API), pas en `.env`.
+  Le client (`src/lib/pa/abby.ts`) a des endpoints à confirmer contre
+  `docs.abby.fr` — inaccessible depuis cette session, voir ARCHITECTURE.md.
+- `APP_ENCRYPTION_KEY` (chiffrement des mots de passe IMAP et de la clé PA)
+  doit être générée une fois (`openssl rand -base64 32`) et ne jamais
+  changer ensuite.
+
 ## VPS Hostinger (phase 6)
 
 À rédiger : sous-domaine, bloc Caddy, build de l'image Docker de `apps/web`,
