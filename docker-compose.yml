@@ -31,7 +31,10 @@ services:
       - app_documents:/app/.data/documents
       - app_uploads:/app/public/uploads
     ports:
-      - "127.0.0.1:3000:3000" # Caddy fait reverse-proxy vers ce port ; jamais exposé directement à Internet
+      - "127.0.0.1:3000:3000" # accès local uniquement (debug) ; le trafic public passe par Caddy via le réseau ci-dessous
+    networks:
+      - default
+      - caddy_net
 
 # Utilisation :
 #   cp .env.example .env                 # POSTGRES_* pour ce fichier
@@ -39,6 +42,17 @@ services:
 #   docker compose up -d --build
 # La première migration (prisma migrate deploy) tourne automatiquement au
 # démarrage du conteneur app (voir apps/web/Dockerfile).
+#
+# `caddy_net` doit pointer vers le réseau Docker du Caddy déjà en place sur
+# le VPS (ex. n8n-docker_default — voir `docker network ls` et le
+# docker-compose.yml existant du reverse proxy). Caddy joint alors ce
+# conteneur `app` par son nom de service (voir Caddyfile.snippet), comme il
+# le fait déjà pour n8n.
+
+networks:
+  caddy_net:
+    external: true
+    name: n8n-docker_default
 
 volumes:
   db_data:

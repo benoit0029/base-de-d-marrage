@@ -2,9 +2,15 @@
 # PAS un Caddyfile complet à part. Remplacer compta.example.fr par le
 # sous-domaine réel, puis recharger Caddy (`caddy reload` ou équivalent
 # selon l'installation — ex. `systemctl reload caddy`).
+#
+# IMPORTANT : Caddy proxifie ici vers "app:3000" (nom du service Docker),
+# pas vers 127.0.0.1 — exactement comme il le fait déjà vers "n8n:5678"
+# juste au-dessus dans ce même fichier. Ça ne fonctionne que si le
+# conteneur `app` a bien rejoint le même réseau Docker que ce Caddy (voir
+# `networks:` dans docker-compose.yml du dépôt compta-ferme).
 
 compta.example.fr {
-	reverse_proxy 127.0.0.1:3000
+	reverse_proxy app:3000
 
 	# Caddy gère automatiquement le certificat TLS (Let's Encrypt) pour ce
 	# sous-domaine — rien à faire de plus ici. HTTPS forcé par défaut
