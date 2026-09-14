@@ -10,11 +10,6 @@ export const tvaInstallmentsFixture = [
   { id: "acompte-2", periode: "2026-T4", echeance: "2026-12-15", montant: 340, statut: "a_venir" as const },
 ];
 
-export const payslipsFixture = [
-  { id: "bulletin-1", periode: "2026-08", salarie: "L. Morvan", brut: 1850, net: 1440, dsnStatut: "transmise" as const },
-  { id: "bulletin-2", periode: "2026-09", salarie: "L. Morvan", brut: 1850, net: 1440, dsnStatut: "a_transmettre" as const },
-];
-
 export const annualDeclarationFixture = {
   annee: 2025,
   statut: "a_preparer" as const,

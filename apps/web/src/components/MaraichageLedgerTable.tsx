@@ -32,6 +32,7 @@ export default function MaraichageLedgerTable({ lignes }: { lignes: LivreRecette
             <th className="px-4 py-2.5">Origine</th>
             <th className="px-4 py-2.5 text-right">Montant TTC</th>
             <th className="px-4 py-2.5">Statut</th>
+            <th className="px-4 py-2.5">Relevé bancaire</th>
             <th className="px-4 py-2.5" />
           </tr>
         </thead>
@@ -51,6 +52,13 @@ export default function MaraichageLedgerTable({ lignes }: { lignes: LivreRecette
                   <td className="px-4 py-2.5 text-right font-medium">{formatEuro(inv.totalTtc)}</td>
                   <td className="px-4 py-2.5">
                     <StatusBadge status={inv.status} />
+                  </td>
+                  <td className="px-4 py-2.5 text-xs">
+                    {inv.reconciled ? (
+                      <span className="text-emerald-700">✓ Pointé</span>
+                    ) : (
+                      <span className="text-slate-400">Non pointé</span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <a
@@ -80,6 +88,13 @@ export default function MaraichageLedgerTable({ lignes }: { lignes: LivreRecette
                   <td className="px-4 py-2.5">
                     <StatusBadge status={cash.status} />
                   </td>
+                  <td className="px-4 py-2.5 text-xs">
+                    {cash.reconciled ? (
+                      <span className="text-emerald-700">✓ Pointé</span>
+                    ) : (
+                      <span className="text-slate-400">Non pointé</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
@@ -95,7 +110,7 @@ export default function MaraichageLedgerTable({ lignes }: { lignes: LivreRecette
                 </tr>
                 {expanded === rowKey && (
                   <tr>
-                    <td colSpan={5} className="p-0">
+                    <td colSpan={6} className="p-0">
                       <CashJournalDetail entry={cash} />
                     </td>
                   </tr>

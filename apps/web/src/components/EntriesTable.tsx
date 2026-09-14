@@ -76,6 +76,7 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
             <th className="px-4 py-2.5 text-right">TVA</th>
             <th className="px-4 py-2.5 text-right">Montant TTC</th>
             <th className="px-4 py-2.5">Statut</th>
+            <th className="px-4 py-2.5">Relevé bancaire</th>
             <th className="px-4 py-2.5" />
           </tr>
         </thead>
@@ -86,7 +87,17 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
                 {formatDate(entry.date)}
               </td>
               <td className="px-4 py-2.5">{typeLabel[entry.type]}</td>
-              <td className="px-4 py-2.5">{entry.counterpartyName}</td>
+              <td className="px-4 py-2.5">
+                {entry.counterpartyName}
+                {entry.possibleDuplicate && (
+                  <span
+                    title="Un document identique a probablement déjà été reçu par un autre canal (email/photo)."
+                    className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800"
+                  >
+                    ⚠ Doublon probable
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-2.5 text-slate-600">{entry.nature}</td>
               <td className="px-4 py-2.5">{sourceLabel[entry.source]}</td>
               <td className="px-4 py-2.5 text-right">
@@ -100,6 +111,13 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
               </td>
               <td className="px-4 py-2.5">
                 <StatusBadge status={entry.status} />
+              </td>
+              <td className="px-4 py-2.5 text-xs">
+                {entry.reconciled ? (
+                  <span className="text-emerald-700">✓ Pointé</span>
+                ) : (
+                  <span className="text-slate-400">Non pointé</span>
+                )}
               </td>
               <td className="px-4 py-2.5 text-right">
                 {entry.status === "pending" ? <ValidateButton entryId={entry.id} /> : null}

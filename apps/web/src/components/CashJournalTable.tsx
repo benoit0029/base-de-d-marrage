@@ -4,6 +4,7 @@ import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { FakeCashJournalEntry } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
+import { toDocumentHref } from "@/lib/storage/url";
 import StatusBadge from "@/components/StatusBadge";
 
 const paymentMethodLabel: Record<string, string> = {
@@ -55,12 +56,22 @@ export function CashJournalDetail({ entry }: { entry: FakeCashJournalEntry }) {
       </div>
       <div className="space-y-1">
         {entry.depositSlipUrl && (
-          <a href={entry.depositSlipUrl} target="_blank" rel="noreferrer" className="block underline">
+          <a
+            href={toDocumentHref(entry.depositSlipUrl)}
+            target="_blank"
+            rel="noreferrer"
+            className="block underline"
+          >
             Bordereau de dépôt
           </a>
         )}
         {entry.cardStatementUrl && (
-          <a href={entry.cardStatementUrl} target="_blank" rel="noreferrer" className="block underline">
+          <a
+            href={toDocumentHref(entry.cardStatementUrl)}
+            target="_blank"
+            rel="noreferrer"
+            className="block underline"
+          >
             Capture Up2Pay (CB)
           </a>
         )}
@@ -101,6 +112,7 @@ export default function CashJournalTable({ entries }: { entries: FakeCashJournal
             <th className="px-4 py-2.5">Date</th>
             <th className="px-4 py-2.5 text-right">Montant TTC</th>
             <th className="px-4 py-2.5">Statut</th>
+            <th className="px-4 py-2.5">Relevé bancaire</th>
             <th className="px-4 py-2.5" />
             <th className="px-4 py-2.5" />
           </tr>
@@ -113,6 +125,13 @@ export default function CashJournalTable({ entries }: { entries: FakeCashJournal
                 <td className="px-4 py-2.5 text-right font-medium">{formatEuro(entry.totalTtc)}</td>
                 <td className="px-4 py-2.5">
                   <StatusBadge status={entry.status} />
+                </td>
+                <td className="px-4 py-2.5 text-xs">
+                  {entry.reconciled ? (
+                    <span className="text-emerald-700">✓ Pointé</span>
+                  ) : (
+                    <span className="text-slate-400">Non pointé</span>
+                  )}
                 </td>
                 <td className="px-4 py-2.5">
                   <button
@@ -129,7 +148,7 @@ export default function CashJournalTable({ entries }: { entries: FakeCashJournal
               </tr>
               {expanded === entry.id && (
                 <tr>
-                  <td colSpan={5} className="p-0">
+                  <td colSpan={6} className="p-0">
                     <CashJournalDetail entry={entry} />
                   </td>
                 </tr>

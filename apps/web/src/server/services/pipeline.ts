@@ -1,6 +1,7 @@
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { saveDocumentFile } from "@/lib/storage";
+import { hashFileBuffer } from "@/lib/dedup";
 import {
   classifyActivityAndType,
   classifyEmailRelevance,
@@ -79,6 +80,17 @@ export async function ingestDocument(input: IngestInput): Promise<IngestResult> 
   const tenantId = await getDefaultTenantId();
   const { url } = await saveDocumentFile(input.fileBuffer, input.originalName);
 
+  // Détection de doublon (point transversal, voir lib/dedup.ts) : un même
+  // document peut arriver par email ET par capture manuelle. Non bloquant
+  // ici (contrairement aux imports simples) — la capture email n'a personne
+  // pour confirmer en direct : on signale juste le doublon probable sur
+  // l'écriture PENDING générée, visible avant validation.
+  const fileHash = hashFileBuffer(input.fileBuffer);
+  const existingDuplicate = await prisma.document.findFirst({
+    where: { tenantId, fileHash },
+    orderBy: { receivedAt: "asc" },
+  });
+
   const document = await prisma.document.create({
     data: {
       tenantId,
@@ -89,6 +101,8 @@ export async function ingestDocument(input: IngestInput): Promise<IngestResult> 
       emailFrom: input.emailFrom,
       emailSubject: input.emailSubject,
       sourceMailboxActivity: input.mailboxActivity,
+      fileHash,
+      possibleDuplicateOfId: existingDuplicate?.id,
     },
   });
 

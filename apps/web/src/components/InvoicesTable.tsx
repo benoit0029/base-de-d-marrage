@@ -29,6 +29,7 @@ export default function InvoicesTable({
             <th className="px-4 py-2.5">Date</th>
             <th className="px-4 py-2.5 text-right">Montant TTC</th>
             <th className="px-4 py-2.5">Statut</th>
+            <th className="px-4 py-2.5">Relevé bancaire</th>
             <th className="px-4 py-2.5" />
             <th className="px-4 py-2.5" />
           </tr>
@@ -43,6 +44,13 @@ export default function InvoicesTable({
               <td className="px-4 py-2.5 text-right font-medium">{formatEuro(invoice.totalTtc)}</td>
               <td className="px-4 py-2.5">
                 <StatusBadge status={invoice.status} />
+              </td>
+              <td className="px-4 py-2.5 text-xs">
+                {invoice.reconciled ? (
+                  <span className="text-emerald-700">✓ Pointé</span>
+                ) : (
+                  <span className="text-slate-400">Non pointé</span>
+                )}
               </td>
               <td className="px-4 py-2.5 text-right">
                 <a

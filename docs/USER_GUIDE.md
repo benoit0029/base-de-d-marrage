@@ -112,13 +112,46 @@ pas une démo isolée, qui dit si le pipeline est fiable pour toi.
       expert-comptable ou sur impots.gouv.fr — l'app le rappelle déjà à
       l'écran, mais ça vaut la peine de le répéter ici.
 
-## 4. Paie, TVA, déclarations (Maraîchage)
+## 4. TVA, déclarations (Maraîchage) — encore en démonstration
 
-Ces sous-onglets (Registre TVA, Acomptes, Paie, Déclaration 2042, CA12A)
+Ces sous-onglets (Registre TVA, Acomptes, Déclaration 2042, CA12A)
 affichent encore des données de démonstration à ce stade — ils n'ont pas
-été branchés sur tes écritures réelles pendant les 6 premières phases.
-**Ne t'y fie pas encore** ; à traiter dans une itération ultérieure si tu
-veux les rendre opérationnels.
+été branchés sur tes écritures réelles. **Ne t'y fie pas encore** ; à
+traiter dans une itération ultérieure si tu veux les rendre opérationnels.
+
+**Tesa+** (ex-« Paie ») n'est plus concerné : c'est maintenant un vrai
+import de documents (voir section 4 bis), pas une donnée de démonstration.
+
+## 4 bis. Tesa+, Cotisations non salarié, Dépenses, Relevé bancaire
+
+- [ ] Sur **Tesa+** (Maraîchage) : j'importe un vrai document lié au
+      salarié (contrat, bulletin de paie, cotisations salariales, certificat
+      de travail, attestation Pôle Emploi ou solde de tout compte). Je
+      vérifie qu'il apparaît dans la liste avec le bon type et la bonne
+      période — pas de calcul automatique attendu ici, seulement l'archivage.
+- [ ] Sur **Cotisations non salarié** (Maraîchage) : j'importe un vrai appel
+      de cotisation MSA me concernant, avec son montant. Je vérifie qu'une
+      ligne apparaît automatiquement dans **Dépenses**, en attente de
+      validation.
+- [ ] Sur **Dépenses** (ex-« Achats / immobilisations », les 3 activités) :
+      je vérifie que le renommage n'a rien cassé — mes écritures existantes
+      sont toujours là.
+- [ ] Sur **Relevé bancaire** (les 3 activités, un compte par activité) :
+      j'exporte un vrai relevé CSV depuis mon espace bancaire en ligne et je
+      l'importe. Je vérifie que les lignes apparaissent dans le bon ordre
+      chronologique, avec le bon sens (débit/crédit). **Le format CSV varie
+      selon les banques** — si l'import échoue ou lit mal les colonnes, dis-le
+      moi avec un extrait du fichier (sans les données sensibles), le
+      parseur devra sans doute être ajusté à ton relevé réel.
+- [ ] Je **rapproche** une ligne de débit avec une Dépense existante, et une
+      ligne de crédit avec une facture ou une saisie de caisse existante.
+      Je vérifie que le statut passe à « ✓ Pointé » des deux côtés (sur la
+      ligne de relevé ET sur la Dépense/Recette elle-même).
+- [ ] Je vérifie que je peux **annuler** un rapprochement fait par erreur.
+- [ ] Je teste la détection de doublon : j'importe deux fois le même
+      fichier (Tesa+, cotisation, ou relevé bancaire) sans cocher la case de
+      confirmation, et je vérifie que rien n'est enregistré deux fois tant
+      que je ne confirme pas explicitement.
 
 ## 5. Alertes automatiques (n8n)
 

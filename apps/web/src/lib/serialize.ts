@@ -1,5 +1,12 @@
-import type { Document, Entry, Invoice, CashJournalEntry } from "@prisma/client";
-import type { FakeEntry, FakeInvoice, FakeCashJournalEntry, FakeExceptionalSale } from "@/lib/types";
+import type { Document, Entry, Invoice, CashJournalEntry, SimpleImport, BankTransaction } from "@prisma/client";
+import type {
+  FakeEntry,
+  FakeInvoice,
+  FakeCashJournalEntry,
+  FakeExceptionalSale,
+  FakeSimpleImport,
+  FakeBankTransaction,
+} from "@/lib/types";
 
 const typeMap: Record<Entry["type"], FakeEntry["type"]> = {
   RECETTE: "recette",
@@ -30,6 +37,8 @@ export function toEntryView(entry: Entry & { sourceDocument: Document | null }):
     amountVat: Number(entry.amountVat),
     amountTtc: Number(entry.amountTtc),
     source: entry.sourceDocument ? sourceMap[entry.sourceDocument.source] : "manuel",
+    reconciled: entry.bankTransactionId !== null,
+    possibleDuplicate: entry.sourceDocument?.possibleDuplicateOfId != null,
   };
 }
 
@@ -55,6 +64,7 @@ export function toInvoiceView(invoice: Invoice): FakeInvoice {
     status: invoiceStatusMap[invoice.status],
     totalTtc: Number(invoice.totalTtc),
     paExternalId: invoice.paExternalId,
+    reconciled: invoice.bankTransactionId !== null,
   };
 }
 
@@ -72,6 +82,44 @@ function parseExceptionalSales(json: unknown): FakeExceptionalSale[] {
       paymentMethod: typeof s.paymentMethod === "string" ? s.paymentMethod : "especes",
       description: typeof s.description === "string" ? s.description : undefined,
     }));
+}
+
+export function toSimpleImportView(item: SimpleImport): FakeSimpleImport {
+  return {
+    id: item.id,
+    category: item.category,
+    period: item.period,
+    date: item.date.toISOString(),
+    fileUrl: item.fileUrl,
+    amountTtc: item.amountTtc ? Number(item.amountTtc) : null,
+    linkedEntryId: item.linkedEntryId,
+  };
+}
+
+type BankTransactionWithMatches = BankTransaction & {
+  entry: { counterpartyName: string } | null;
+  invoice: { number: string } | null;
+  cashJournalEntry: { id: string } | null;
+};
+
+export function toBankTransactionView(tx: BankTransactionWithMatches): FakeBankTransaction {
+  const reconciledWith = tx.entry
+    ? `Dépense — ${tx.entry.counterpartyName}`
+    : tx.invoice
+      ? `Facture ${tx.invoice.number}`
+      : tx.cashJournalEntry
+        ? "Vente directe (caisse)"
+        : null;
+
+  return {
+    id: tx.id,
+    date: tx.date.toISOString(),
+    label: tx.label,
+    amount: Number(tx.amount),
+    direction: tx.direction,
+    reconciled: reconciledWith !== null,
+    reconciledWith,
+  };
 }
 
 export function toCashJournalView(entry: CashJournalEntry): FakeCashJournalEntry {
@@ -93,5 +141,6 @@ export function toCashJournalView(entry: CashJournalEntry): FakeCashJournalEntry
     cardStatementUrl: entry.cardStatementUrl,
     exceptionalSales,
     status: cashJournalStatusMap[entry.status],
+    reconciled: entry.bankTransactionId !== null,
   };
 }

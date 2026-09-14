@@ -20,6 +20,8 @@ export interface FakeEntry {
   amountVat: number;
   amountTtc: number;
   source: "email" | "photo" | "manuel";
+  reconciled: boolean; // rapproché avec une ligne du relevé bancaire (Dépenses)
+  possibleDuplicate: boolean; // même document probablement déjà reçu par un autre canal
 }
 
 export type InvoiceType = "devis" | "facture";
@@ -34,6 +36,7 @@ export interface FakeInvoice {
   status: InvoiceStatus;
   totalTtc: number;
   paExternalId: string | null;
+  reconciled: boolean; // rapproché avec une ligne du relevé bancaire (Recettes)
 }
 
 // Journal de caisse (vente directe) — voir CashJournalEntry dans le schéma.
@@ -56,6 +59,7 @@ export interface FakeCashJournalEntry {
   cardStatementUrl: string | null;
   exceptionalSales: FakeExceptionalSale[];
   status: EntryStatus;
+  reconciled: boolean; // rapproché avec une ligne du relevé bancaire (Recettes)
 }
 
 // Ligne unifiée du livre des recettes (Maraîchage) : une ligne par facture
@@ -64,3 +68,26 @@ export interface FakeCashJournalEntry {
 export type LivreRecettesLigne =
   | { kind: "invoice"; date: string; data: FakeInvoice }
   | { kind: "cash_journal"; date: string; data: FakeCashJournalEntry };
+
+// Import simple (Tesa+, Cotisations non salarié) : upload + date, sans
+// calculateur — voir SimpleImport dans le schéma.
+export interface FakeSimpleImport {
+  id: string;
+  category: string;
+  period: string | null;
+  date: string;
+  fileUrl: string;
+  amountTtc: number | null;
+  linkedEntryId: string | null;
+}
+
+// Ligne de relevé bancaire importée, avec son éventuel rapprochement.
+export interface FakeBankTransaction {
+  id: string;
+  date: string;
+  label: string;
+  amount: number;
+  direction: "DEBIT" | "CREDIT";
+  reconciled: boolean;
+  reconciledWith: string | null; // libellé de la pièce rapprochée, pour affichage
+}

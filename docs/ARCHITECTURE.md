@@ -299,3 +299,69 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   l'exploitant — aucun changement de code nécessaire, comportement déjà
   garanti par la nature read-only de la connexion IMAP du pipeline de
   capture.
+
+## 11. Tesa+, Cotisations non salarié, Dépenses, Relevé bancaire et rapprochement
+
+- **Tesa+ (ex-« Paie »)** : l'ancien calculateur (fixture `payslipsFixture`,
+  jamais branché sur de vraies données) est remplacé par un import simple
+  (`SimpleImport`, catégories `TESA_*`) — upload + date + période de contrat,
+  tous les types de documents (contrat, bulletin de paie, cotisations
+  salariales, certificat de travail, attestation Pôle Emploi, solde de tout
+  compte) traités de façon identique, sans aucun calcul. Les anciens modèles
+  Prisma `PayrollEmployee`/`Payslip` restent en base (non supprimés, pour ne
+  prendre aucun risque sur d'éventuelles données déjà présentes) mais ne sont
+  plus utilisés par aucune page.
+- **Cotisations non salarié (Maraîchage)**, même mécanisme `SimpleImport`
+  (catégorie `COTISATION_NON_SALARIE`), séparé de Tesa+ : chaque import crée
+  en plus, dans la même transaction, une écriture `Entry` (type `ACHAT`,
+  statut `PENDING`) — la cotisation MSA de l'exploitant apparaît donc
+  directement dans le registre des Dépenses, comme demandé.
+- **Achats/Immobilisations renommé en "Dépenses"** dans les 3 activités
+  (`lib/nav.ts`) — changement de libellé uniquement, ni le modèle `Entry`
+  ni les routes (`/achats`) n'ont changé, pour ne pas casser de liens
+  existants.
+- **Relevé bancaire, un compte par activité** (confirmé : 3 comptes
+  distincts, y compris Kerbooth 360) : nouveau modèle `BankTransaction`
+  (import CSV uniquement en v1 — **pas de connexion DSP2**, jugée
+  disproportionnée pour ce volume et plus gratuite nulle part). Le parseur
+  CSV (`lib/bankStatement/parseCsv.ts`) est volontairement simple (détection
+  de colonnes Date/Libellé/Débit-Crédit ou Montant par alias, délimiteur `;`
+  ou `,`) : comme l'emplacement du logo AB ou l'API Abby, **le format réel
+  de chaque banque n'a pas pu être testé dans cet environnement** et devra
+  être ajusté au premier vrai relevé importé. Le PDF est accepté en
+  principe par la spec utilisateur mais volontairement pas implémenté pour
+  l'extraction ligne par ligne (parsing de mise en page PDF bancaire trop
+  spécifique à chaque banque pour être fiable sans exemple réel) : seul le
+  CSV est auto-découpé en opérations pour l'instant.
+- **Rapprochement bidirectionnel** : plutôt qu'un modèle de jonction
+  polymorphe, un simple FK nullable unique `bankTransactionId` a été ajouté
+  directement sur `Entry`, `Invoice` et `CashJournalEntry` (cohérent avec le
+  style déjà utilisé pour `Entry.sourceDocumentId`). L'initiation du
+  rapprochement se fait depuis la page Relevé bancaire (sélection d'un
+  candidat proposé dans une fenêtre de ±15 jours), mais le statut « ✓ Pointé »
+  s'affiche aussi côté Dépenses/Recettes — l'information reste consultable
+  dans les deux sens même si la saisie ne l'est que d'un seul côté, choix
+  pragmatique pour limiter la complexité de l'interface.
+- **Détection de doublon transversale** (règle demandée pour Tesa+,
+  Cotisations non salarié, Dépenses, Relevé bancaire) : `lib/dedup.ts`
+  fournit un hash SHA-256 de fichier et une comparaison (même fichier, ou
+  même date + montant). Pour les imports simples et le relevé bancaire
+  (actions utilisateur synchrones), un doublon probable **bloque
+  l'enregistrement** et demande une confirmation explicite (case à cocher)
+  avant de l'écrire quand même. Pour le pipeline de capture IA (email/photo,
+  `ingestDocument`), qui n'a personne en ligne pour confirmer au moment de
+  l'ingestion (surtout pour les emails, traités par n8n de façon
+  asynchrone), le même hash est calculé mais le doublon n'est que **signalé**
+  (`Document.possibleDuplicateOfId`, badge « ⚠ Doublon probable » visible
+  avant validation) — cohérent avec le principe déjà en place de tout
+  laisser passer en PENDING pour revue humaine plutôt que de bloquer un
+  pipeline automatisé.
+- **Documents servis via une route protégée** : en écrivant les liens vers
+  les justificatifs (bordereaux de caisse, imports Tesa+, relevés), une
+  lacune préexistante a été comblée au passage — aucun fichier stocké en
+  local (`local://...`) n'était auparavant consultable depuis l'interface
+  (aucune route ne le servait). Ajout de `/api/documents/[filename]`
+  (protégée par la session comme le reste de l'app, comme tout le reste,
+  voir `proxy.ts`) et d'un petit utilitaire `lib/storage/url.ts` (sans
+  dépendance à `node:fs`, donc utilisable depuis des composants clients)
+  pour convertir une URL stockée en lien cliquable.

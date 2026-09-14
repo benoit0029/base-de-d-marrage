@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Stockage local par défaut (volume Docker en production). STORAGE_DRIVER=s3
@@ -32,6 +32,19 @@ export async function saveDocumentFile(
   await writeFile(path.join(/* turbopackIgnore: true */ dir, filename), buffer);
 
   return { url: `local://${filename}` };
+}
+
+// Un document stocké en local (contrairement aux logos) n'est jamais servi
+// statiquement : il transite par /api/documents/[filename] (voir cette
+// route), protégée par la session comme le reste de l'app. Seul le nom de
+// fichier généré par saveDocumentFile (jamais un chemin arbitraire) est
+// accepté, pour éviter toute traversée de répertoire.
+export async function readDocumentFile(filename: string): Promise<Buffer> {
+  if (!/^[a-zA-Z0-9-]+\.[a-zA-Z0-9]+$/.test(filename)) {
+    throw new Error("Nom de fichier invalide.");
+  }
+  const dir = path.join(/* turbopackIgnore: true */ process.cwd(), LOCAL_DIR);
+  return readFile(path.join(/* turbopackIgnore: true */ dir, filename));
 }
 
 // Logos d'activité : contrairement aux documents (privés, hors de /public),

@@ -34,6 +34,8 @@ model Tenant {
   notificationLogs  NotificationLog[]
   auditLogs         AuditLog[]
   cashJournalEntries CashJournalEntry[]
+  simpleImports      SimpleImport[]
+  bankTransactions   BankTransaction[]
 }
 
 model User {
@@ -120,6 +122,16 @@ model Document {
   receivedAt     DateTime       @default(now())
   extractionJson Json? // dernier résultat structuré de l'agent d'extraction
 
+  // Détection de doublon (un même document peut arriver par email ET par
+  // capture manuelle) : hash du fichier calculé à l'ingestion, comparé aux
+  // documents déjà connus du tenant. Non bloquant ici (contrairement aux
+  // imports simples) : l'écriture PENDING générée porte juste un signalement
+  // que l'utilisateur voit avant de valider — voir lib/dedup.ts.
+  fileHash              String?
+  possibleDuplicateOfId String?
+  possibleDuplicateOf   Document?  @relation("DocumentDuplicate", fields: [possibleDuplicateOfId], references: [id])
+  duplicateCandidates   Document[] @relation("DocumentDuplicate")
+
   extractionJobs ExtractionJob[]
   entry          Entry?
 }
@@ -183,6 +195,13 @@ model Entry {
   validatedAt     DateTime?
   createdAt       DateTime    @default(now())
 
+  // Rapprochement bancaire (une Dépense ↔ un débit du relevé importé).
+  bankTransactionId String?          @unique
+  bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
+  // Écriture générée automatiquement par un import "Cotisations non salarié"
+  // (voir SimpleImport.linkedEntryId) — présent seulement dans ce cas.
+  simpleImport      SimpleImport?
+
   @@index([tenantId, activity, status])
 }
 
@@ -225,6 +244,11 @@ model CashJournalEntry {
   validatedAt      DateTime?
   createdAt        DateTime    @default(now())
 
+  // Rapprochement bancaire (une saisie de caisse ↔ un crédit du relevé
+  // importé — typiquement le dépôt en banque des espèces/chèques du jour).
+  bankTransactionId String?          @unique
+  bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
+
   @@unique([tenantId, activity, date])
   @@index([tenantId, activity, status])
 }
@@ -265,6 +289,10 @@ model Invoice {
   pdfUrl         String?
   paExternalId   String? // référence côté PA (Abby) une fois transmise
   createdAt      DateTime      @default(now())
+
+  // Rapprochement bancaire (une facture ↔ un crédit du relevé importé).
+  bankTransactionId String?          @unique
+  bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
 
   lines InvoiceLine[]
 }
@@ -391,6 +419,90 @@ model NotificationLog {
   type      String // ex. "ENTRY_PENDING_TOO_LONG", "THRESHOLD_ALERT", "DECLARATION_DUE"
   payload   Json?
   sentAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Imports simples (Tesa+, Cotisations non salarié) — upload + date, sans
+// calculateur : tous les types de documents d'une même catégorie sont
+// traités de façon identique. Voir docs/ARCHITECTURE.md.
+// ---------------------------------------------------------------------------
+
+enum SimpleImportCategory {
+  TESA_CONTRAT
+  TESA_BULLETIN_PAIE
+  TESA_COTISATIONS_SALARIALES
+  TESA_CERTIFICAT_TRAVAIL
+  TESA_ATTESTATION_POLE_EMPLOI
+  TESA_SOLDE_TOUT_COMPTE
+  COTISATION_NON_SALARIE // appel de cotisation MSA de l'exploitant (Maraîchage)
+}
+
+model SimpleImport {
+  id       String               @id @default(cuid())
+  tenantId String
+  tenant   Tenant               @relation(fields: [tenantId], references: [id])
+  activity Activity // BA_MARAICHAGE pour toutes les catégories actuelles (Tesa+ et cotisation non salarié)
+  category SimpleImportCategory
+  period   String? // ex. "2026-09" (période de contrat ou d'appel de cotisation)
+  date     DateTime
+  fileUrl  String
+  fileHash String // détection de doublon — voir lib/dedup.ts
+
+  // Montant optionnel (obligatoire en pratique pour COTISATION_NON_SALARIE,
+  // qui génère une ligne de Dépense — voir linkedEntry).
+  amountTtc Decimal? @db.Decimal(12, 2)
+
+  linkedEntryId String? @unique
+  linkedEntry   Entry?  @relation(fields: [linkedEntryId], references: [id])
+
+  possibleDuplicateOfId String?
+  possibleDuplicateOf   SimpleImport?  @relation("SimpleImportDuplicate", fields: [possibleDuplicateOfId], references: [id])
+  duplicateCandidates   SimpleImport[] @relation("SimpleImportDuplicate")
+  duplicateConfirmed    Boolean        @default(false) // saisie malgré l'alerte de doublon probable
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, activity, category])
+}
+
+// ---------------------------------------------------------------------------
+// Relevé bancaire et rapprochement — un compte réel par activité (Maraîchage,
+// Fruits/Légumes, Kerbooth 360 : 3 comptes distincts). Import simple
+// (PDF/CSV téléchargé depuis la banque en ligne), pas de connexion DSP2 en
+// v1. Chaque ligne peut être rapprochée d'une Dépense (Entry), d'une facture
+// ou d'une saisie de caisse — jamais les deux sens à la fois, un seul FK par
+// cible, posé côté cible (voir Entry/Invoice/CashJournalEntry.bankTransactionId).
+// ---------------------------------------------------------------------------
+
+enum BankTransactionDirection {
+  DEBIT
+  CREDIT
+}
+
+model BankTransaction {
+  id             String                   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant                   @relation(fields: [tenantId], references: [id])
+  activity       Activity
+  date           DateTime
+  label          String // libellé tel qu'il apparaît sur le relevé
+  amount         Decimal                  @db.Decimal(12, 2) // toujours positif ; le sens est donné par `direction`
+  direction      BankTransactionDirection
+  sourceFileUrl  String? // relevé d'origine (CSV/PDF) dont la ligne est issue
+  sourceFileHash String? // détection de doublon d'import (même relevé importé deux fois)
+
+  possibleDuplicateOfId String?
+  possibleDuplicateOf   BankTransaction?  @relation("BankTransactionDuplicate", fields: [possibleDuplicateOfId], references: [id])
+  duplicateCandidates   BankTransaction[] @relation("BankTransactionDuplicate")
+  duplicateConfirmed    Boolean           @default(false)
+
+  createdAt DateTime @default(now())
+
+  entry            Entry?
+  invoice          Invoice?
+  cashJournalEntry CashJournalEntry?
+
+  @@index([tenantId, activity, direction, date])
 }
 
 // ---------------------------------------------------------------------------
