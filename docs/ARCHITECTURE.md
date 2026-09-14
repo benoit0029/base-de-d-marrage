@@ -338,7 +338,10 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   directement sur `Entry`, `Invoice` et `CashJournalEntry` (cohérent avec le
   style déjà utilisé pour `Entry.sourceDocumentId`). L'initiation du
   rapprochement se fait depuis la page Relevé bancaire (sélection d'un
-  candidat proposé dans une fenêtre de ±15 jours), mais le statut « ✓ Pointé »
+  candidat proposé dans une fenêtre large et asymétrique — jusqu'à 100 jours
+  avant l'opération bancaire, 7 jours après, pour couvrir les délais de
+  paiement à 30/60 jours et non un simple ±15 jours symétrique, corrigé après
+  retour terrain), mais le statut « ✓ Pointé »
   s'affiche aussi côté Dépenses/Recettes — l'information reste consultable
   dans les deux sens même si la saisie ne l'est que d'un seul côté, choix
   pragmatique pour limiter la complexité de l'interface.

@@ -106,7 +106,9 @@ function ReconcilePicker({ transaction }: { transaction: FakeBankTransaction }) 
       {loading ? (
         <span className="text-xs text-slate-400">Chargement…</span>
       ) : options.length === 0 ? (
-        <span className="text-xs text-slate-400">Aucun candidat proche (±15 jours).</span>
+        <span className="text-xs text-slate-400">
+          Aucun candidat trouvé (jusqu&apos;à 100 jours avant, 7 jours après).
+        </span>
       ) : (
         <div className="flex items-center gap-1.5">
           <select

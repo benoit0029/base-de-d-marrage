@@ -130,21 +130,28 @@ export async function unreconcileBankTransaction(bankTransactionId: string) {
   ]);
 }
 
-const RECONCILE_WINDOW_DAYS = 15;
+// Fenêtre volontairement asymétrique : la pièce (facture, dépense, saisie de
+// caisse) précède quasi toujours l'opération bancaire, parfois de loin — une
+// facture à 60 jours d'échéance, un fournisseur payé à 2 mois. On cherche
+// donc largement AVANT la date de l'opération, et à peine après (paiement
+// immédiat ou anticipé, dépôt de caisse le jour même).
+const DAYS_BEFORE = 100;
+const DAYS_AFTER = 7;
 
-function dateWindow(date: Date) {
-  const start = new Date(date);
-  start.setDate(start.getDate() - RECONCILE_WINDOW_DAYS);
-  const end = new Date(date);
-  end.setDate(end.getDate() + RECONCILE_WINDOW_DAYS);
+function dateWindow(transactionDate: Date) {
+  const start = new Date(transactionDate);
+  start.setDate(start.getDate() - DAYS_BEFORE);
+  const end = new Date(transactionDate);
+  end.setDate(end.getDate() + DAYS_AFTER);
   return { gte: start, lte: end };
 }
 
 /**
  * Candidats de rapprochement pour une ligne de relevé donnée : des Dépenses
  * non pointées pour un débit, des factures/saisies de caisse non pointées
- * pour un crédit — fenêtre de ±15 jours autour de la date de l'opération,
- * simple aide à la sélection (le choix final reste manuel).
+ * pour un crédit — fenêtre large (jusqu'à 100 jours avant l'opération, pour
+ * couvrir les délais de paiement à 30/60 jours) mais réduite après (7 jours),
+ * simple aide à la sélection : le choix final reste manuel.
  */
 export async function listReconciliationCandidates(
   activity: Activity,
