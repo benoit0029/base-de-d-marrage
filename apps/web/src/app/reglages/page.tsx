@@ -74,11 +74,13 @@ export default async function Page() {
                 <ActivitySettingsForm
                   activity={dbActivity}
                   abEligible={abEligible.has(dbActivity)}
+                  companyContactEmail={company?.contactEmail ?? ""}
                   initial={{
                     logoUrl: s?.logoUrl ?? null,
                     abCertificationCode: s?.abCertificationCode ?? null,
                     abLogoEnabled: s?.abLogoEnabled ?? false,
                     invoicingEnabled: s?.invoicingEnabled ?? false,
+                    contactEmail: s?.contactEmail ?? "",
                   }}
                 />
               </div>

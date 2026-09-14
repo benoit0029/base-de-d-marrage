@@ -1,5 +1,5 @@
-import type { Document, Entry, Invoice } from "@prisma/client";
-import type { FakeEntry, FakeInvoice } from "@/lib/types";
+import type { Document, Entry, Invoice, CashJournalEntry } from "@prisma/client";
+import type { FakeEntry, FakeInvoice, FakeCashJournalEntry, FakeExceptionalSale } from "@/lib/types";
 
 const typeMap: Record<Entry["type"], FakeEntry["type"]> = {
   RECETTE: "recette",
@@ -55,5 +55,43 @@ export function toInvoiceView(invoice: Invoice): FakeInvoice {
     status: invoiceStatusMap[invoice.status],
     totalTtc: Number(invoice.totalTtc),
     paExternalId: invoice.paExternalId,
+  };
+}
+
+const cashJournalStatusMap: Record<CashJournalEntry["status"], FakeEntry["status"]> = {
+  PENDING: "pending",
+  VALIDATED: "validated",
+};
+
+function parseExceptionalSales(json: unknown): FakeExceptionalSale[] {
+  if (!Array.isArray(json)) return [];
+  return json
+    .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === "object")
+    .map((s) => ({
+      amountTtc: Number(s.amountTtc) || 0,
+      paymentMethod: typeof s.paymentMethod === "string" ? s.paymentMethod : "especes",
+      description: typeof s.description === "string" ? s.description : undefined,
+    }));
+}
+
+export function toCashJournalView(entry: CashJournalEntry): FakeCashJournalEntry {
+  const exceptionalSales = parseExceptionalSales(entry.exceptionalSales);
+  const cashAmount = Number(entry.cashAmount);
+  const checkAmount = Number(entry.checkAmount);
+  const cardAmount = Number(entry.cardAmount);
+  const totalTtc =
+    cashAmount + checkAmount + cardAmount + exceptionalSales.reduce((s, e) => s + e.amountTtc, 0);
+
+  return {
+    id: entry.id,
+    date: entry.date.toISOString(),
+    cashAmount,
+    checkAmount,
+    cardAmount,
+    totalTtc,
+    depositSlipUrl: entry.depositSlipUrl,
+    cardStatementUrl: entry.cardStatementUrl,
+    exceptionalSales,
+    status: cashJournalStatusMap[entry.status],
   };
 }

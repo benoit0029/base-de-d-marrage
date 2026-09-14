@@ -26,7 +26,10 @@ manquante...) — c'est justement ce que ce test doit révéler.
       clé API). Si ça échoue, ce n'est pas bloquant pour la suite — la
       facturation locale (PDF) fonctionne sans elle.
 
-## 1. Capture et validation — à refaire sur chaque activité
+## 1. Capture et validation des achats — à refaire sur chaque activité
+
+Le pipeline de capture IA (email/photo) ne concerne que l'onglet **Achats**
+des 3 activités : les recettes ne passent plus par là (voir section 1 bis).
 
 Pour chacune des 3 activités (Maraîchage, Fruits/Légumes, Kerbooth 360) :
 
@@ -34,8 +37,7 @@ Pour chacune des 3 activités (Maraîchage, Fruits/Légumes, Kerbooth 360) :
       dédiée à cette activité. Je vérifie qu'elle apparaît dans l'onglet
       Achats en quelques minutes, avec le bon statut « en attente ».
 - [ ] Je **prends une vraie photo** d'un ticket/reçu papier via le bouton
-      « Ajouter une facture ou un reçu » de l'onglet Recettes ou Achats.
-      Même vérification.
+      « Ajouter une facture ou un reçu » de l'onglet Achats. Même vérification.
 - [ ] Je compare les champs extraits (date, montant HT/TTC, TVA, tiers,
       nature) à la vraie pièce. **Une extraction imparfaite est normale** —
       c'est prévu : je corrige à la main avant de valider.
@@ -49,6 +51,27 @@ Pour chacune des 3 activités (Maraîchage, Fruits/Légumes, Kerbooth 360) :
 **But du test** : sur au moins 15-20 pièces réelles par activité, mesurer
 le taux d'extractions correctes sans aucune correction. C'est ce chiffre,
 pas une démo isolée, qui dit si le pipeline est fiable pour toi.
+
+## 1 bis. Journal de caisse et livre des recettes
+
+- [ ] Sur **Fruits/Légumes** (Recettes) : je saisis une vraie journée de
+      vente directe (montant espèces réel) avec la photo du bordereau de
+      dépôt. Je vérifie qu'elle apparaît en attente, puis je la valide.
+- [ ] Sur **Maraîchage** (Recettes) : je saisis une vraie journée de vente
+      directe avec la répartition espèces/chèques/CB réelle, la photo du
+      bordereau ET la capture d'écran Up2Pay pour la part CB.
+- [ ] Si une vente réelle dépasse 76 € à l'unité, je vérifie que je ne l'ai
+      **pas** mise dans les totaux agrégés, mais bien dans le champ « vente
+      exceptionnelle » du formulaire — c'est une obligation légale
+      (BOI-BIC-DECLA-30-30), pas un détail.
+- [ ] Sur **Maraîchage**, je crée aussi une vraie facture le même jour qu'une
+      saisie de caisse, et je vérifie dans l'onglet Recettes que les deux
+      apparaissent comme **deux lignes distinctes** (badge « Facture » vs
+      « Vente directe »), jamais comme un seul total additionné.
+- [ ] Sur **Kerbooth 360** (Recettes) : je vérifie que cette page n'affiche
+      que des factures (lecture seule) — c'est le registre légal de
+      l'activité, pas un espace de saisie ; la création de facture reste
+      dans l'onglet Facturation.
 
 ## 2. Facturation
 
@@ -65,16 +88,19 @@ pas une démo isolée, qui dit si le pipeline est fiable pour toi.
       valider (je corrige si besoin, comme pour la capture).
 - [ ] Si Abby est connectée : j'envoie une facture via le bouton « Envoyer
       via Abby » et je vérifie côté Abby qu'elle est bien arrivée.
-- [ ] Sur Fruits/Légumes : je décide si je veux facturer chaque vente ou
-      garder un simple ticket agrégé dans le livre des recettes, puis
-      j'active/désactive « Facturation active » dans Réglages en
-      conséquence.
+- [ ] Fruits/Légumes reste confirmé 100% vente directe (facturation
+      désactivée) : le livre des recettes de cette activité se tient
+      uniquement via le journal de caisse (section 1 bis), pas ici.
 
 ## 3. Seuils et synthèse — le test le plus important
 
 - [ ] J'ouvre l'onglet **Synthèse micro-BIC**. Je compare le CA cumulé
       affiché à ce que je sais déjà par ailleurs (mes propres relevés, ou
-      ce que ton expert-comptable t'a donné pour l'année en cours).
+      ce que ton expert-comptable t'a donné pour l'année en cours). Ce CA
+      vient maintenant de la bonne source par activité (factures pour
+      Kerbooth 360, journal de caisse pour Fruits/Légumes, les deux pour
+      Maraîchage) — un écart par rapport à un ancien test vaut la peine
+      d'être signalé.
 - [ ] Je vérifie que la distinction vente (Fruits/Légumes) / service
       (Kerbooth 360) correspond à ce que tu attends — ce sont deux seuils
       de franchise TVA différents (85 000 € vs 37 500 €), pas un seuil

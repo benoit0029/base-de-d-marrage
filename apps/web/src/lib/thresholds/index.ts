@@ -25,6 +25,15 @@ export const LEGAL_THRESHOLDS = {
   BA_MOYENNE_TRIENNALE: 91_900,
 };
 
+/**
+ * Seuil légal de la saisie globale journalière au livre des recettes
+ * (BOI-BIC-DECLA-30-30) : autorisée uniquement pour des ventes unitaires
+ * inférieures ou égales à ce montant. Au-delà, la vente doit être saisie à
+ * part (voir CashJournalEntry.exceptionalSales), jamais agrégée dans le
+ * total du jour.
+ */
+export const CASH_JOURNAL_DAILY_THRESHOLD = 76;
+
 export type AlertLevel = "ok" | "vigilance" | "depassement";
 
 export interface ThresholdCheck {
@@ -41,23 +50,74 @@ function levelFor(ca: number, seuil: number, tolerance?: number): AlertLevel {
   return "ok";
 }
 
-async function sumValidatedRecettesHt(
+/**
+ * CA facturé (validé) d'une activité sur une période — source Invoice, jamais
+ * Entry : le moteur de facturation ne crée aucune écriture Entry, donc pour
+ * une activité 100% facturée (Kerbooth 360), c'est la SEULE source de CA.
+ * Les devis (DEVIS) et factures annulées (CANCELLED) ne comptent pas.
+ */
+async function sumInvoicedTotal(
   activity: "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "BIC_PHOTOBOOTH",
   yearStart: Date,
   yearEnd: Date
 ): Promise<number> {
   const tenantId = await getDefaultTenantId();
-  const result = await prisma.entry.aggregate({
+  const result = await prisma.invoice.aggregate({
     where: {
       tenantId,
       activity,
-      type: "RECETTE",
+      type: "FACTURE",
+      status: { in: ["SENT", "PAID"] },
+      issueDate: { gte: yearStart, lte: yearEnd },
+    },
+    _sum: { totalHt: true },
+  });
+  return Number(result._sum.totalHt ?? 0);
+}
+
+/**
+ * CA de vente directe (validé) d'une activité sur une période — source
+ * CashJournalEntry (journal de caisse), jamais Entry : pour Fruits/Légumes
+ * (100% vente directe), c'est la SEULE source de CA. Les ventes
+ * exceptionnelles (> seuil légal, voir CASH_JOURNAL_DAILY_THRESHOLD),
+ * saisies à part dans exceptionalSales, sont réintégrées ici au CA — seule
+ * leur saisie doit rester distincte de l'agrégat journalier, pas leur
+ * comptage dans le chiffre d'affaires.
+ *
+ * Pas de distinction HT/TTC ici (à confirmer avec l'expert-comptable) : les
+ * montants du journal de caisse sont utilisés tels quels, comme le sont déjà
+ * les montants TTC de facture pour les deux activités micro-BIC sous
+ * franchise en base (HT = TTC en l'absence de TVA).
+ */
+async function sumCashJournalTotal(
+  activity: "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES",
+  yearStart: Date,
+  yearEnd: Date
+): Promise<number> {
+  const tenantId = await getDefaultTenantId();
+  const entries = await prisma.cashJournalEntry.findMany({
+    where: {
+      tenantId,
+      activity,
       status: "VALIDATED",
       date: { gte: yearStart, lte: yearEnd },
     },
-    _sum: { amountHt: true },
+    select: { cashAmount: true, checkAmount: true, cardAmount: true, exceptionalSales: true },
   });
-  return Number(result._sum.amountHt ?? 0);
+
+  return entries.reduce((sum, e) => {
+    const aggregated = Number(e.cashAmount) + Number(e.checkAmount) + Number(e.cardAmount);
+    const exceptional = Array.isArray(e.exceptionalSales)
+      ? e.exceptionalSales.reduce((s: number, sale) => {
+          const amount =
+            sale && typeof sale === "object" && "amountTtc" in sale
+              ? Number((sale as { amountTtc: unknown }).amountTtc)
+              : 0;
+          return s + (Number.isFinite(amount) ? amount : 0);
+        }, 0)
+      : 0;
+    return sum + aggregated + exceptional;
+  }, 0);
 }
 
 function currentYearRange(year: number): { start: Date; end: Date } {
@@ -77,8 +137,11 @@ export interface BicThresholdsResult {
 export async function computeBicThresholds(year = new Date().getFullYear()): Promise<BicThresholdsResult> {
   const { start, end } = currentYearRange(year);
   const [caFruitsLegumes, caPhotobooth] = await Promise.all([
-    sumValidatedRecettesHt("BIC_FRUITS_LEGUMES", start, end),
-    sumValidatedRecettesHt("BIC_PHOTOBOOTH", start, end),
+    // Fruits/Légumes est confirmé 100% vente directe : le journal de caisse
+    // est la seule source de CA (facturation désactivée pour cette activité).
+    sumCashJournalTotal("BIC_FRUITS_LEGUMES", start, end),
+    // Kerbooth 360 est 100% facturé : la facturation est la seule source de CA.
+    sumInvoicedTotal("BIC_PHOTOBOOTH", start, end),
   ]);
   const caTotal = caFruitsLegumes + caPhotobooth;
 
@@ -126,12 +189,21 @@ export interface BaThresholdResult {
 }
 
 export async function computeBaThreshold(referenceYear = new Date().getFullYear()): Promise<BaThresholdResult> {
+  // Fenêtre dynamique (année en cours + 2 précédentes) : jamais codée en dur,
+  // recalculée à chaque appel à partir de `referenceYear`.
   const years = [referenceYear - 2, referenceYear - 1, referenceYear];
   const recettesParAnnee: Record<number, number> = {};
 
   for (const year of years) {
     const { start, end } = currentYearRange(year);
-    recettesParAnnee[year] = await sumValidatedRecettesHt("BA_MARAICHAGE", start, end);
+    // Maraîchage combine facturation ET vente directe : les deux comptent
+    // dans le CA du seuil, même si elles restent deux lignes distinctes dans
+    // le livre des recettes affiché (jamais fusionnées à l'affichage).
+    const [invoiced, cashJournal] = await Promise.all([
+      sumInvoicedTotal("BA_MARAICHAGE", start, end),
+      sumCashJournalTotal("BA_MARAICHAGE", start, end),
+    ]);
+    recettesParAnnee[year] = invoiced + cashJournal;
   }
 
   // Moyenne sur les seules années où l'activité a généré des recettes

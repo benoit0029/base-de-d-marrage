@@ -49,6 +49,8 @@ const abCodeSchema = z
   .optional()
   .or(z.literal(""));
 
+const activityContactEmailSchema = z.string().email().optional().or(z.literal(""));
+
 export async function submitActivitySettings(
   activity: Activity,
   _prev: SettingsFormState,
@@ -57,6 +59,11 @@ export async function submitActivitySettings(
   const abCode = abCodeSchema.safeParse(formData.get("abCertificationCode") || "");
   if (!abCode.success) {
     return { status: "error", message: abCode.error.issues[0]?.message ?? "Code AB invalide" };
+  }
+
+  const contactEmail = activityContactEmailSchema.safeParse(formData.get("contactEmail") || "");
+  if (!contactEmail.success) {
+    return { status: "error", message: "Email de contact invalide." };
   }
 
   const logoFile = formData.get("logo");
@@ -72,6 +79,7 @@ export async function submitActivitySettings(
     abCertificationCode: abCode.data || null,
     abLogoEnabled: formData.get("abLogoEnabled") === "on",
     invoicingEnabled: formData.get("invoicingEnabled") === "on",
+    contactEmail: contactEmail.data || null,
   });
 
   revalidatePath("/reglages");

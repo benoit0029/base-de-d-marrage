@@ -47,7 +47,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       address: company?.address ?? "",
       siren: company?.siren ?? "",
       vatNumber: company?.vatNumber ?? undefined,
-      contactEmail: company?.contactEmail ?? undefined,
+      // Email par activité en priorité (voir Réglages) ; à défaut, l'email
+      // de contact général de la micro-entreprise.
+      contactEmail: activitySettings?.contactEmail ?? company?.contactEmail ?? undefined,
     },
     client: { name: invoice.clientName, address: invoice.clientAddress ?? undefined },
     lines: invoice.lines.map((l) => ({

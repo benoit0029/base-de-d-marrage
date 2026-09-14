@@ -27,11 +27,11 @@ export default async function Page() {
         />
       ) : (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Le moteur de facturation est disponible mais désactivé par défaut sur
-          cette activité (facture par vente vs simple ticket agrégé dans le
-          livre des recettes, à confirmer). Activez « Facturation active »
-          pour Revente Fruits/Légumes dans Réglages pour créer des devis et
-          factures ici.
+          Revente Fruits/Légumes est confirmée en 100% vente directe : la
+          facturation est désactivée pour cette activité. Le livre des
+          recettes se tient depuis le journal de caisse (onglet Recettes).
+          Le moteur de facturation reste disponible si besoin : activez
+          « Facturation active » pour cette activité dans Réglages.
         </div>
       )}
       <div className="rounded-lg border bg-white">

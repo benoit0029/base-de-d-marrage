@@ -35,3 +35,32 @@ export interface FakeInvoice {
   totalTtc: number;
   paExternalId: string | null;
 }
+
+// Journal de caisse (vente directe) — voir CashJournalEntry dans le schéma.
+// Distinct du livre des recettes lui-même : une des sources qui l'alimente
+// (avec les factures), jamais fusionnée avec elles à l'affichage.
+export interface FakeExceptionalSale {
+  amountTtc: number;
+  paymentMethod: string;
+  description?: string;
+}
+
+export interface FakeCashJournalEntry {
+  id: string;
+  date: string;
+  cashAmount: number;
+  checkAmount: number;
+  cardAmount: number;
+  totalTtc: number;
+  depositSlipUrl: string | null;
+  cardStatementUrl: string | null;
+  exceptionalSales: FakeExceptionalSale[];
+  status: EntryStatus;
+}
+
+// Ligne unifiée du livre des recettes (Maraîchage) : une ligne par facture
+// ET une ligne par jour de vente directe, jamais additionnées même à date
+// identique — voir docs/ARCHITECTURE.md.
+export type LivreRecettesLigne =
+  | { kind: "invoice"; date: string; data: FakeInvoice }
+  | { kind: "cash_journal"; date: string; data: FakeCashJournalEntry };

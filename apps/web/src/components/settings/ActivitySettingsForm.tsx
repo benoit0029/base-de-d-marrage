@@ -9,15 +9,18 @@ const initialState: SettingsFormState = { status: "idle", message: "" };
 export default function ActivitySettingsForm({
   activity,
   abEligible,
+  companyContactEmail,
   initial,
 }: {
   activity: Activity;
   abEligible: boolean;
+  companyContactEmail: string;
   initial: {
     logoUrl: string | null;
     abCertificationCode: string | null;
     abLogoEnabled: boolean;
     invoicingEnabled: boolean;
+    contactEmail: string;
   };
 }) {
   const boundAction = submitActivitySettings.bind(null, activity);
@@ -78,6 +81,24 @@ export default function ActivitySettingsForm({
           defaultChecked={initial.invoicingEnabled}
         />
         Facturation active pour cette activité
+      </label>
+
+      <label className="text-sm sm:col-span-2">
+        <span className="text-slate-600">
+          Email de contact affiché sur les factures de cette activité
+        </span>
+        <input
+          name="contactEmail"
+          type="email"
+          defaultValue={initial.contactEmail}
+          placeholder={companyContactEmail || "contact@exploitation.fr"}
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+        />
+        <span className="mt-1 block text-xs text-slate-400">
+          Laissez vide pour reprendre l&apos;email de contact général
+          {companyContactEmail ? ` (${companyContactEmail})` : ""}. Utile
+          uniquement si la facturation est active pour cette activité.
+        </span>
       </label>
 
       <div className="sm:col-span-2 flex items-center gap-3">

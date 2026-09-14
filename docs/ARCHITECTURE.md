@@ -242,3 +242,60 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   (restauration dans une base temporaire, données retrouvées intactes) ;
   seul l'envoi/récupération vers un vrai bucket S3-compatible n'a pas pu
   être testé (aucun comptes de ce type disponible dans cet environnement).
+
+## 10. Corrections post-déploiement (retour terrain de l'exploitant)
+
+- **Revente Fruits/Légumes confirmée 100% vente directe** : la facturation
+  reste disponible (toggle `invoicingEnabled` dans Réglages) mais désactivée
+  par défaut, décision non ambiguë désormais (le message affiché sur
+  `/fruits-legumes/factures` ne dit plus "à confirmer"). Le logo AB ne peut
+  donc apparaître que sur les factures Maraîchage, faute de facture émise
+  pour Fruits/Légumes.
+- **Nouveau modèle `CashJournalEntry` (journal de caisse)**, distinct du
+  livre des recettes lui-même : une saisie agrégée par jour et par activité
+  de vente directe (Maraîchage, Fruits/Légumes — jamais Kerbooth 360, 100%
+  facturé). Deux comptes bancaires étanches : Fruits/Légumes n'encaisse qu'en
+  espèces (`checkAmount`/`cardAmount` forcés à 0, justificatif = photo du
+  bordereau de dépôt) ; Maraîchage agrège espèces/chèques/CB (justificatifs =
+  bordereau + capture d'écran Up2Pay pour la part CB). Formulaire dédié
+  (`CashJournalForm`), jamais mêlé au pipeline de capture IA des achats.
+- **Seuil légal de la saisie globale journalière (BOI-BIC-DECLA-30-30)** :
+  autorisée uniquement pour des ventes unitaires ≤ 76 €
+  (`CASH_JOURNAL_DAILY_THRESHOLD` dans `lib/thresholds`). Le formulaire de
+  saisie propose un champ optionnel « vente exceptionnelle » pour toute vente
+  dépassant ce seuil, stockée à part (`exceptionalSales`, JSON) et jamais
+  agrégée dans les totaux espèces/chèques/CB du jour — tout en étant réintégrée
+  au calcul du CA pour les seuils de franchise/plafond.
+- **Livre des recettes vs journal de caisse — distinction clarifiée dans le
+  code, pas seulement dans la documentation** : le journal de caisse n'est
+  qu'une des sources qui alimentent le livre des recettes. Avant cette
+  correction, `computeBicThresholds`/`computeBaThreshold` ne sommaient que la
+  table `Entry` (issue de la capture IA) — or le moteur de facturation
+  (`createInvoice`) n'a jamais créé de ligne `Entry` : le CA de Kerbooth 360
+  (100% facturé) était donc invisible des seuils. Corrigé : le CA de chaque
+  activité vient maintenant de la bonne source (`sumInvoicedTotal` pour les
+  factures, `sumCashJournalTotal` pour le journal de caisse) — Fruits/Légumes
+  = journal de caisse seul, Kerbooth 360 = factures seules, Maraîchage = les
+  deux additionnés pour le seuil, mais jamais fusionnés à l'affichage.
+  Concrètement : `/maraichage/recettes` affiche désormais une ligne par
+  facture ET une ligne par jour de vente directe (badge distinct), y compris
+  à date identique — jamais un total unique ; `/photobooth/recettes` n'est
+  plus qu'un rappel en lecture seule des factures (la création reste sur
+  l'onglet Facturation) ; `/fruits-legumes/recettes` est désormais le
+  formulaire + tableau du journal de caisse (plus de capture IA sur cet
+  onglet, qui n'a plus lieu d'être pour une activité 100% vente directe).
+- **Moyenne triennale micro-BA vérifiée dynamique** : `computeBaThreshold`
+  calculait déjà `[année - 2, année - 1, année]` à partir de
+  `new Date().getFullYear()` par défaut — confirmé non codé en dur, aucun
+  changement nécessaire sur ce point.
+- **Email de contact des factures, configurable par activité facturante** :
+  `ActivitySettings.contactEmail` (Maraîchage, Kerbooth 360), vide par défaut
+  pour reprendre `CompanySettings.contactEmail` (valeur pré-remplie affichée
+  en placeholder dans Réglages). La génération PDF (`/api/invoices/[id]/pdf`)
+  utilise l'email de l'activité en priorité, celui de la société en repli.
+- **Boîtes mail de capture confirmées bidirectionnelles** : l'agent de veille
+  n8n s'y connecte en lecture seule (IMAP), ce qui ne restreint en rien
+  l'usage normal (réponse aux correspondants) de ces mêmes boîtes par
+  l'exploitant — aucun changement de code nécessaire, comportement déjà
+  garanti par la nature read-only de la connexion IMAP du pipeline de
+  capture.

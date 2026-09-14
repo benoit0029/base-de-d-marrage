@@ -33,6 +33,7 @@ model Tenant {
   mailboxConnections MailboxConnection[]
   notificationLogs  NotificationLog[]
   auditLogs         AuditLog[]
+  cashJournalEntries CashJournalEntry[]
 }
 
 model User {
@@ -56,7 +57,7 @@ model CompanySettings {
   address       String
   siren         String
   vatNumber     String? // TVA intracommunautaire
-  contactEmail  String? // adresse dédiée créée sur le sous-domaine
+  contactEmail  String? // valeur par défaut, reprise par activité si non précisée (voir ActivitySettings.contactEmail)
   updatedAt     DateTime @updatedAt
 }
 
@@ -76,7 +77,8 @@ model ActivitySettings {
   abCertificationCode String? // format FR-BIO-XX, uniquement BA_MARAICHAGE / BIC_FRUITS_LEGUMES
   abLogoEnabled      Boolean  @default(false) // désactivé par défaut : à activer seulement après vérification du guide INAO "Règles d'usage de la marque AB"
   legalMentions      String?  @db.Text
-  invoicingEnabled   Boolean  @default(false) // actif par défaut pour Maraîchage & Photobooth, à confirmer pour Fruits/Légumes
+  invoicingEnabled   Boolean  @default(false) // actif par défaut pour Maraîchage & Photobooth ; Fruits/Légumes reste 100% vente directe, jamais facturé
+  contactEmail       String?  // email affiché sur les factures de cette activité ; vide = reprend CompanySettings.contactEmail
   updatedAt          DateTime @updatedAt
 
   @@unique([tenantId, activity])
@@ -181,6 +183,49 @@ model Entry {
   validatedAt     DateTime?
   createdAt       DateTime    @default(now())
 
+  @@index([tenantId, activity, status])
+}
+
+// ---------------------------------------------------------------------------
+// Journal de caisse (vente directe) — Maraîchage et Fruits/Légumes uniquement
+// ---------------------------------------------------------------------------
+
+// Saisie journalière agrégée des ventes directes (une ligne par jour et par
+// activité), DISTINCTE du livre des recettes : elle n'en est qu'une des
+// sources. Pour Fruits/Légumes (100% vente directe), le livre des recettes ne
+// contient que ces lignes. Pour Maraîchage, elles coexistent avec les lignes
+// de facture (une ligne par facture ET une ligne par jour de vente directe),
+// sans jamais être fusionnées même à date identique — voir docs/ARCHITECTURE.md.
+//
+// Comptes bancaires distincts : Fruits/Légumes n'encaisse qu'en espèces
+// (checkAmount/cardAmount toujours à 0, justificatif = photo du bordereau de
+// dépôt). Maraîchage agrège espèces/chèques/CB (justificatifs = bordereau +
+// capture d'écran Up2Pay pour la part CB).
+//
+// La saisie agrégée journalière n'est légale que pour des ventes unitaires
+// ≤ 76 € (BOI-BIC-DECLA-30-30, voir CASH_JOURNAL_DAILY_THRESHOLD dans
+// lib/thresholds) : toute vente dépassant ce seuil doit être saisie à part
+// dans exceptionalSales plutôt qu'agrégée dans cashAmount/checkAmount/cardAmount.
+model CashJournalEntry {
+  id               String      @id @default(cuid())
+  tenantId         String
+  tenant           Tenant      @relation(fields: [tenantId], references: [id])
+  activity         Activity
+  date             DateTime
+  cashAmount       Decimal     @db.Decimal(12, 2) @default(0)
+  checkAmount      Decimal     @db.Decimal(12, 2) @default(0) // Maraîchage uniquement
+  cardAmount       Decimal     @db.Decimal(12, 2) @default(0) // Maraîchage uniquement
+  depositSlipUrl   String? // photo du bordereau de dépôt (espèces/chèques)
+  cardStatementUrl String? // capture d'écran app bancaire Up2Pay (Maraîchage, part CB)
+  // Ventes unitaires > 76 € saisies à part, jamais agrégées ci-dessus.
+  // Tableau JSON de { amountTtc: number, paymentMethod: string, description?: string }.
+  exceptionalSales Json?
+  status           EntryStatus @default(PENDING)
+  validatedById    String?
+  validatedAt      DateTime?
+  createdAt        DateTime    @default(now())
+
+  @@unique([tenantId, activity, date])
   @@index([tenantId, activity, status])
 }
 
