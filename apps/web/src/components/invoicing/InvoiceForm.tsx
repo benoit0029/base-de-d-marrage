@@ -7,6 +7,7 @@ import {
   dictateInvoiceAction,
   type CreateInvoiceActionInput,
 } from "@/app/actions/invoices";
+import type { FakeClient, FakeProduct } from "@/lib/types";
 import type { Activity } from "@prisma/client";
 
 interface LineDraft {
@@ -26,10 +27,14 @@ export default function InvoiceForm({
   activity,
   vatApplicable,
   accentColorHex,
+  clients,
+  products,
 }: {
   activity: Activity;
   vatApplicable: boolean;
   accentColorHex: string;
+  clients: FakeClient[];
+  products: FakeProduct[];
 }) {
   const router = useRouter();
   const [type, setType] = useState<"DEVIS" | "FACTURE">("FACTURE");
@@ -168,6 +173,29 @@ export default function InvoiceForm({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
+        {clients.length > 0 && (
+          <label className="text-sm sm:col-span-2">
+            <span className="text-slate-600">Client existant (répertoire)</span>
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                const client = clients.find((c) => c.id === e.target.value);
+                if (client) {
+                  setClientName(client.name);
+                  setClientAddress(client.address ?? "");
+                }
+              }}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            >
+              <option value="">— Nouveau client (ou saisie libre ci-dessous) —</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="text-sm">
           <span className="text-slate-600">Client</span>
           <input
@@ -205,7 +233,31 @@ export default function InvoiceForm({
           <span className="col-span-2">{vatApplicable ? "TVA %" : ""}</span>
         </div>
         {lines.map((line, i) => (
-          <div key={i} className="grid grid-cols-12 gap-2">
+          <div key={i} className="space-y-1">
+            {products.length > 0 && (
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  const product = products.find((p) => p.id === e.target.value);
+                  if (product) {
+                    updateLine(i, {
+                      description: product.label,
+                      unitPrice: String(product.defaultUnitPrice),
+                      vatRate: String(product.vatRate),
+                    });
+                  }
+                }}
+                className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500"
+              >
+                <option value="">— Choisir un produit du catalogue —</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="grid grid-cols-12 gap-2">
             <input
               placeholder="Description"
               value={line.description}
@@ -255,6 +307,7 @@ export default function InvoiceForm({
             >
               ✕
             </button>
+            </div>
           </div>
         ))}
         <button type="button" onClick={addLine} className="text-sm font-medium text-slate-600">

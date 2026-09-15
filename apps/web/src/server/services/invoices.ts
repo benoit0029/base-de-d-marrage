@@ -3,6 +3,8 @@ import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { generateInvoiceNumber } from "@/lib/invoicing/numbering";
 import { isVatApplicable } from "@/lib/invoicing/vatPolicy";
+import { upsertClient } from "@/server/services/clients";
+import { ensureProduct } from "@/server/services/products";
 import type { Activity, InvoiceType } from "@prisma/client";
 
 export async function listInvoices(activity: Activity) {
@@ -98,6 +100,20 @@ export async function createInvoice(input: CreateInvoiceInput) {
   const totalHt = round2(lines.reduce((sum, l) => sum + l.lineTotal, 0));
   const totalVat = round2(lines.reduce((sum, l) => sum + l.lineVat, 0));
   const totalTtc = round2(totalHt + totalVat);
+
+  // Répertoire Clients / Catalogue Produits : alimentés automatiquement,
+  // jamais un pré-requis bloquant — un échec ici ne doit jamais empêcher la
+  // création de la facture elle-même.
+  try {
+    await upsertClient(input.activity, { name: input.clientName, address: input.clientAddress });
+    await Promise.all(
+      lines.map((l) =>
+        ensureProduct(input.activity, { label: l.description, defaultUnitPrice: l.unitPrice, vatRate: l.vatRate })
+      )
+    );
+  } catch {
+    // Non bloquant, voir commentaire ci-dessus.
+  }
 
   // Une collision de numéro (créations concurrentes) est extrêmement
   // improbable en v1 (utilisateur unique) ; on retente une fois par sécurité.

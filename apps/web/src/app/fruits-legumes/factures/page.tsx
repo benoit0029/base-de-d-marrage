@@ -1,18 +1,24 @@
 import { listInvoices } from "@/server/services/invoices";
 import { listActivitySettings } from "@/server/services/settings";
 import { getPaConnection } from "@/server/services/pa";
-import { toInvoiceView } from "@/lib/serialize";
+import { listClients } from "@/server/services/clients";
+import { listProducts } from "@/server/services/products";
+import { toInvoiceView, toClientView, toProductView } from "@/lib/serialize";
 import { isVatApplicable } from "@/lib/invoicing/vatPolicy";
 import InvoicesTable from "@/components/InvoicesTable";
 import InvoiceForm from "@/components/invoicing/InvoiceForm";
+import ClientRepository from "@/components/invoicing/ClientRepository";
+import ProductCatalog from "@/components/invoicing/ProductCatalog";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [invoices, activitySettings, paConnection] = await Promise.all([
+  const [invoices, activitySettings, paConnection, clients, products] = await Promise.all([
     listInvoices("BIC_FRUITS_LEGUMES"),
     listActivitySettings(),
     getPaConnection(),
+    listClients("BIC_FRUITS_LEGUMES"),
+    listProducts("BIC_FRUITS_LEGUMES"),
   ]);
   const invoicingEnabled =
     activitySettings.find((s) => s.activity === "BIC_FRUITS_LEGUMES")?.invoicingEnabled ?? false;
@@ -20,11 +26,21 @@ export default async function Page() {
   return (
     <div className="space-y-3">
       {invoicingEnabled ? (
-        <InvoiceForm
-          activity="BIC_FRUITS_LEGUMES"
-          vatApplicable={isVatApplicable("BIC_FRUITS_LEGUMES")}
-          accentColorHex="#c9762c"
-        />
+        <>
+          <InvoiceForm
+            activity="BIC_FRUITS_LEGUMES"
+            vatApplicable={isVatApplicable("BIC_FRUITS_LEGUMES")}
+            accentColorHex="#c9762c"
+            clients={clients.map(toClientView)}
+            products={products.map(toProductView)}
+          />
+          <ClientRepository activity="BIC_FRUITS_LEGUMES" clients={clients.map(toClientView)} />
+          <ProductCatalog
+            activity="BIC_FRUITS_LEGUMES"
+            products={products.map(toProductView)}
+            vatApplicable={isVatApplicable("BIC_FRUITS_LEGUMES")}
+          />
+        </>
       ) : (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           Revente Fruits/Légumes est confirmée en 100% vente directe : la

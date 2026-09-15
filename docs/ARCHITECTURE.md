@@ -458,11 +458,49 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   passe au statut "Encaissée" dès sa validation, sa date de saisie faisant
   à la fois office de date de vente et de date d'encaissement — aucune
   notion de créance possible sur cette activité 100% comptant.
-- **Reste à faire** (voir aussi §14) : renommage CA12A → 3517-AGR-SD partout
-  dans l'UI/les docs (actuellement encore "CA12A"), option de
-  configuration pour activer/désactiver les acomptes trimestriels RSA
-  (dispense légale sous 1 000 € de TVA due l'année précédente), vue par
-  exercice avec sélecteur d'année et verrouillage des exercices clôturés,
-  Module Clôture d'exercice (ZIP, blocage si lignes en attente), Répertoire
-  Clients + Catalogue Produits pour la facturation, migration du stockage
-  fichiers vers Scaleway Object Storage.
+- **Reste à faire** : renommage CA12A → 3517-AGR-SD partout dans l'UI/les
+  docs (actuellement encore "CA12A"), option de configuration pour
+  activer/désactiver les acomptes trimestriels RSA (dispense légale sous
+  1 000 € de TVA due l'année précédente), vue par exercice avec sélecteur
+  d'année et verrouillage des exercices clôturés, Module Clôture d'exercice
+  (ZIP, blocage si lignes en attente), migration du stockage fichiers vers
+  Scaleway Object Storage.
+
+## 14. Répertoire Clients et Catalogue Produits/Prestations
+
+- **Deux nouveaux modèles, `Client` et `Product`**, scopés par activité
+  (Maraîchage/Kerbooth 360, les deux seules activités facturantes), avec une
+  contrainte unique `(tenantId, activity, name|label)` qui sert à la fois
+  de clé d'upsert et de garde-fou anti-doublon. **Volontairement pas de FK
+  depuis `Invoice`** : `clientName`/`clientAddress` y restent de simples
+  chaînes, indépendantes d'une fiche client modifiable plus tard — cohérent
+  avec le principe déjà en place qu'une facture, une fois émise, ne change
+  jamais rétroactivement (voir `EntryStatus`/verrouillage après validation).
+  Le répertoire n'est qu'un pense-bête réutilisable, pas la source de
+  vérité d'une facture déjà créée.
+- **Alimentation automatique, jamais un pré-requis** : `createInvoice`
+  appelle `upsertClient`/`ensureProduct` après (pas avant) la création de la
+  facture, dans un bloc `try/catch` qui avale toute erreur — un souci sur le
+  répertoire ne doit jamais empêcher l'émission d'une facture, qui reste la
+  vraie priorité métier.
+- **Asymétrie volontaire Client vs Product à la mise à jour automatique** :
+  `upsertClient` fusionne les nouveaux champs non vides sur une fiche
+  existante (une adresse qui change au fil du temps est un cas normal,
+  bénin à mettre à jour tout seul) ; `ensureProduct`, à l'inverse, **ne
+  touche jamais** un produit déjà connu — sans quoi une remise ponctuelle
+  tapée sur une seule facture corromprait silencieusement le prix par
+  défaut de tout le catalogue. Modifier délibérément un prix passe par
+  `createOrUpdateProductByLabel`/`updateProduct`, appelées uniquement depuis
+  le petit formulaire de gestion (`ProductCatalog`), jamais depuis le flux
+  de facturation.
+- **UI** : un sélecteur au-dessus du champ client (et un par ligne de
+  facture pour les produits) pré-remplit le formulaire depuis le
+  répertoire/catalogue existant, sans empêcher la saisie libre — la
+  sélection est un raccourci, jamais une contrainte. `ClientRepository`/
+  `ProductCatalog` (des `<details>` repliés par défaut, sous le formulaire
+  de facture) permettent de corriger une fiche à tout moment (SIRET, TVA
+  intracommunautaire, prix), conformément à la demande explicite du prompt
+  de construction ("modifiable/complétable à tout moment").
+- **Dictée vocale** : déjà implémentée depuis une phase précédente
+  (`dictateInvoiceAction`/Voxtral) et alimente le même formulaire que la
+  saisie manuelle — rien à ajouter sur ce point du prompt de construction.

@@ -6,6 +6,8 @@ import type {
   SimpleImport,
   BankTransaction,
   TvaInstallment,
+  Client,
+  Product,
 } from "@prisma/client";
 import type {
   FakeEntry,
@@ -15,6 +17,8 @@ import type {
   FakeSimpleImport,
   FakeBankTransaction,
   FakeTvaInstallment,
+  FakeClient,
+  FakeProduct,
   EntryStatus,
 } from "@/lib/types";
 
@@ -106,6 +110,25 @@ export function toSimpleImportView(item: SimpleImport): FakeSimpleImport {
     amountTtc: item.amountTtc ? Number(item.amountTtc) : null,
     linkedEntryId: item.linkedEntryId,
     status: genericStatusMap[item.status],
+  };
+}
+
+export function toClientView(client: Client): FakeClient {
+  return {
+    id: client.id,
+    name: client.name,
+    address: client.address,
+    siret: client.siret,
+    vatNumber: client.vatNumber,
+  };
+}
+
+export function toProductView(product: Product): FakeProduct {
+  return {
+    id: product.id,
+    label: product.label,
+    defaultUnitPrice: Number(product.defaultUnitPrice),
+    vatRate: Number(product.vatRate),
   };
 }
 

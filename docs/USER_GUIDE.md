@@ -91,6 +91,22 @@ pas une démo isolée, qui dit si le pipeline est fiable pour toi.
 - [ ] Fruits/Légumes reste confirmé 100% vente directe (facturation
       désactivée) : le livre des recettes de cette activité se tient
       uniquement via le journal de caisse (section 1 bis), pas ici.
+- [ ] Je crée une facture pour un **nouveau** client : je vérifie qu'il
+      apparaît automatiquement dans **« Répertoire clients »** (déplié en
+      bas de la page) sans que j'aie eu à le saisir là-bas.
+- [ ] Je crée une deuxième facture pour ce **même** client : je le
+      sélectionne dans le menu déroulant en haut du formulaire et je
+      vérifie que son nom/adresse se remplissent automatiquement.
+- [ ] Même test avec un produit/une prestation dans **« Catalogue
+      produits/prestations »** : nouvelle désignation → apparaît seule
+      automatiquement ; désignation déjà connue → sélectionnable pour
+      pré-remplir prix et TVA sur une ligne.
+- [ ] Je corrige le SIRET d'un client existant depuis le Répertoire, puis
+      je vérifie que ça n'a pas changé le nom/l'adresse déjà enregistrés
+      pour rien.
+- [ ] Je modifie le prix d'un produit depuis le Catalogue : je vérifie que
+      ça ne change **pas** les factures déjà émises avec l'ancien prix
+      (une facture, une fois créée, ne bouge plus).
 
 ## 3. Seuils et synthèse — le test le plus important
 

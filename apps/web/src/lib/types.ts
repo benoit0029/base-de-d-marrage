@@ -109,3 +109,20 @@ export interface FakeTvaInstallment {
   justificatifUrl: string | null;
   status: EntryStatus;
 }
+
+// Répertoire Clients / Catalogue Produits (module Facturation) — voir
+// Client/Product dans le schéma.
+export interface FakeClient {
+  id: string;
+  name: string;
+  address: string | null;
+  siret: string | null;
+  vatNumber: string | null;
+}
+
+export interface FakeProduct {
+  id: string;
+  label: string;
+  defaultUnitPrice: number;
+  vatRate: number;
+}
