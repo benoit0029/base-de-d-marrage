@@ -5,6 +5,8 @@ import { hashFileBuffer, findProbableDuplicate } from "@/lib/dedup";
 import type { Activity, SimpleImportCategory } from "@prisma/client";
 
 export class SimpleImportError extends Error {}
+export class SimpleImportNotFoundError extends Error {}
+export class SimpleImportLockedError extends Error {}
 
 export interface CreateSimpleImportInput {
   activity: Activity;
@@ -100,4 +102,33 @@ export async function createSimpleImport(
   });
 
   return { status: "created", id: created.id };
+}
+
+/**
+ * Supprime un import simple fait par erreur (fichier ou date/montant
+ * incorrect). Refusée si une écriture de Dépense liée (cotisation non
+ * salarié) a déjà été validée — même règle de verrouillage que partout
+ * ailleurs dans l'app une fois une écriture validée (traçabilité). Le
+ * fichier reste sur le disque (pas de nettoyage physique en v1), seul
+ * l'enregistrement en base disparaît.
+ */
+export async function deleteSimpleImport(id: string): Promise<void> {
+  const item = await prisma.simpleImport.findUnique({
+    where: { id },
+    include: { linkedEntry: true },
+  });
+  if (!item) throw new SimpleImportNotFoundError(id);
+
+  if (item.linkedEntry && item.linkedEntry.status === "VALIDATED") {
+    throw new SimpleImportLockedError(
+      "La dépense générée par cet import a déjà été validée : suppression impossible."
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.simpleImport.delete({ where: { id } });
+    if (item.linkedEntryId) {
+      await tx.entry.delete({ where: { id: item.linkedEntryId } });
+    }
+  });
 }
