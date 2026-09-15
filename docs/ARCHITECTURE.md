@@ -459,10 +459,8 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   passe au statut "Encaissée" dès sa validation, sa date de saisie faisant
   à la fois office de date de vente et de date d'encaissement — aucune
   notion de créance possible sur cette activité 100% comptant.
-- **Reste à faire** : migration du stockage fichiers vers Scaleway Object
-  Storage. Le renommage CA12A → 3517-AGR-SD (§15 bis), le Module Clôture
-  d'exercice (§15), l'option acomptes trimestriels (§15 ter) et la vue par
-  exercice (§15 quater) sont faits.
+- **Reste à faire** : rien de ce périmètre — voir §16 pour la migration du
+  stockage fichiers vers Scaleway Object Storage, désormais faite.
 
 ## 15 bis. Renommage CA12A → Cerfa n°10968 / 3517-AGR-SD
 
@@ -539,6 +537,46 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   Dépense liée, non exposée dans `FakeSimpleImport`) et seulement pour les
   catégories qui génèrent une Dépense (cotisations) — purement indicatif,
   jamais la garde réelle.
+
+## 16. Migration du stockage documentaire vers Scaleway Object Storage
+
+- **Driver `s3` implémenté dans `lib/storage/index.ts`** (`@aws-sdk/client-s3`,
+  compatible Scaleway Object Storage sans code spécifique — même API S3 que
+  AWS), en plus du driver `local` déjà existant. Sélectionné par
+  `STORAGE_DRIVER` (`local` ou `s3`) : aucun appelant (services, routes) n'a
+  besoin de savoir lequel est actif, `saveDocumentFile`/`readDocumentFile`
+  exposent la même signature dans les deux cas.
+- **`/api/documents/[filename]` reste inchangée** : elle continue de
+  streamer le fichier depuis l'app (jamais une redirection vers une URL
+  Scaleway signée), donc toujours protégée par la session comme avant —
+  changer de driver ne change rien à la confidentialité déjà en place.
+  `toDocumentHref` route `local://` et `s3://` vers exactement la même URL
+  applicative (`/api/documents/<filename>`).
+- **Logos volontairement exclus** (`saveLogoFile` reste toujours local,
+  quel que soit `STORAGE_DRIVER`) : ce sont des images de marque publiques,
+  jamais soumises à une obligation de conservation légale — inutile de les
+  faire transiter par un bucket privé.
+- **Migration des fichiers déjà stockés en local** :
+  `apps/web/scripts/migrate-storage-to-s3.ts` (`npm run
+  storage:migrate-to-s3`), à lancer une seule fois, AVANT de basculer
+  `STORAGE_DRIVER` sur `s3` (sinon l'app chercherait déjà les fichiers sur
+  le bucket alors qu'ils n'y sont pas encore). Parcourt les 6 colonnes
+  `local://...` connues (`Document.fileUrl`,
+  `CashJournalEntry.depositSlipUrl`/`cardStatementUrl`,
+  `SimpleImport.fileUrl`, `BankTransaction.sourceFileUrl`,
+  `TvaInstallment.justificatifUrl`, `FiscalYearClosure.zipFileUrl`), envoie
+  chaque fichier au bucket sous le même nom, et réécrit l'URL en base.
+  Idempotent par construction (ne retraite que les URLs encore préfixées
+  `local://`) : peut être relancé sans risque de doublon si interrompu.
+- **Pas de vérification de bout en bout possible depuis le bac à sable de
+  développement** : le proxy réseau sortant de cet environnement bloque les
+  hôtes S3 arbitraires (`Host not in allowlist`), donc la connexion réelle
+  au bucket Scaleway n'a pu être testée que jusqu'à ce point (la requête
+  n'atteint jamais Scaleway). Le code suit fidèlement l'API S3 standard
+  (identique au driver de sauvegarde `scripts/backup.sh`, qui utilise déjà
+  le même type d'endpoint Scaleway avec succès), mais la première
+  validation réelle se fera au déploiement sur le VPS (voir
+  `docs/DEPLOYMENT.md` §9) — accès réseau non restreint là-bas.
 
 ## 14. Répertoire Clients et Catalogue Produits/Prestations
 

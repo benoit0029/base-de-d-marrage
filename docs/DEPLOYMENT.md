@@ -167,6 +167,48 @@ Documenter la date et le résultat de ce test quelque part (ex. ce fichier,
 ou un simple fichier `RESTORE_LOG.md`) : une sauvegarde jamais restaurée ne
 garantit rien.
 
+### 9. Stockage documentaire sur Scaleway Object Storage (conservation légale)
+
+Contrairement aux sauvegardes (§8, un compte S3 séparé), ceci concerne le
+stockage **courant** des documents (justificatifs de caisse, imports Tesa+/
+cotisations, relevés bancaires, dossiers ZIP de clôture) — voir
+`docs/ARCHITECTURE.md` §16. Compte Scaleway déjà créé, bucket Object Storage
+et clé API déjà générés (région Paris, bucket privé).
+
+1. Renseigner dans `apps/web/.env` (jamais commité, voir `.env.example`) :
+   ```
+   STORAGE_S3_ENDPOINT=https://s3.fr-par.scw.cloud
+   STORAGE_S3_REGION=fr-par
+   STORAGE_S3_BUCKET=<nom du bucket>
+   STORAGE_S3_ACCESS_KEY=<access key>
+   STORAGE_S3_SECRET_KEY=<secret key>
+   ```
+   **Laisser `STORAGE_DRIVER=local` pour l'instant** — ne pas basculer avant
+   l'étape 3.
+2. Redéployer (`docker compose up -d --build`) pour que les nouvelles
+   variables et le driver S3 (nouvellement codé) soient chargés.
+3. Migrer les documents déjà stockés en local vers le bucket :
+   ```bash
+   docker compose exec app npm run storage:migrate-to-s3
+   ```
+   Ce script parcourt toutes les tables portant un fichier (`Document`,
+   `CashJournalEntry`, `SimpleImport`, `BankTransaction`, `TvaInstallment`,
+   `FiscalYearClosure`), envoie chaque fichier au bucket, et met à jour son
+   URL en base (`local://...` → `s3://...`). Rien à migrer manuellement.
+4. Une fois le script terminé sans erreur, passer `STORAGE_DRIVER=s3` dans
+   `.env` et redéployer une dernière fois :
+   ```bash
+   docker compose up -d --build
+   ```
+5. Vérifier qu'un document déjà existant s'ouvre toujours normalement
+   depuis l'application (un justificatif de caisse, une facture Tesa+...),
+   puis qu'un nouvel upload fonctionne (import d'un relevé bancaire par
+   exemple).
+
+Les logos d'activité restent stockés localement dans le volume Docker
+(`public/uploads/logos`), quel que soit `STORAGE_DRIVER` — ce ne sont pas
+des documents soumis à la conservation légale.
+
 ### Ce qui reste hors de portée de cette session
 
 - Le nom de domaine et le sous-domaine définitifs.

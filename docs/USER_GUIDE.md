@@ -284,6 +284,20 @@ section 4 bis), pas une donnée de démonstration.
 - [ ] Je force une anomalie (ex. j'envoie un fichier illisible en photo) et
       je vérifie l'email de notification correspondant.
 
+## 5 bis. Stockage documentaire sur Scaleway Object Storage
+
+- [ ] Après avoir suivi `docs/DEPLOYMENT.md` §9 (renseigner `STORAGE_S3_*`,
+      lancer `npm run storage:migrate-to-s3`, puis passer
+      `STORAGE_DRIVER=s3`), j'ouvre un justificatif **déjà existant avant la
+      migration** (ex. une photo de bordereau de caisse ancienne) et je
+      vérifie qu'il s'affiche toujours normalement.
+- [ ] J'importe un **nouveau** document (relevé bancaire, photo de
+      justificatif) après le passage à `s3` et je vérifie qu'il s'ouvre
+      bien aussi — confirme que les nouveaux fichiers partent bien sur le
+      bucket, pas seulement les anciens déjà migrés.
+- [ ] Je vérifie dans la console Scaleway que le bucket contient bien des
+      fichiers après ces deux tests.
+
 ## 6. Sauvegarde
 
 - [ ] Je vérifie qu'une sauvegarde s'exécute (manuellement d'abord :
