@@ -85,6 +85,13 @@ model ActivitySettings {
   legalMentions      String?  @db.Text
   invoicingEnabled   Boolean  @default(false) // actif par défaut pour Maraîchage & Photobooth ; Fruits/Légumes reste 100% vente directe, jamais facturé
   contactEmail       String?  // email affiché sur les factures de cette activité ; vide = reprend CompanySettings.contactEmail
+  // Acomptes trimestriels de TVA (régime simplifié agricole, BA_MARAICHAGE
+  // uniquement) : dispensés de plein droit si la TVA due l'année précédente
+  // était inférieure à 1 000 € (à vérifier chaque année par l'exploitant,
+  // ce champ n'automatise pas cette vérification). Vrai par défaut (cas le
+  // plus courant), jamais un comportement forcé — voir lib/tva et
+  // app/maraichage/acomptes.
+  tvaInstallmentsEnabled Boolean @default(true)
   updatedAt          DateTime @updatedAt
 
   @@unique([tenantId, activity])
@@ -414,7 +421,7 @@ model TvaDeclaration {
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   period    String // ex. "2026-T3" pour un acompte trimestriel RSA
-  regime    String // "RSA" (régime simplifié agricole), "CA12A", etc.
+  regime    String // "RSA" (régime simplifié agricole), "3517-AGR-SD" (Cerfa n°10968), etc.
   amount    Decimal  @db.Decimal(12, 2)
   status    String   @default("A_PREPARER") // A_PREPARER / DEPOSEE / PAYEE
   dueDate   DateTime

@@ -87,6 +87,7 @@ export default async function Page() {
                     abLogoEnabled: s?.abLogoEnabled ?? false,
                     invoicingEnabled: s?.invoicingEnabled ?? false,
                     contactEmail: s?.contactEmail ?? "",
+                    tvaInstallmentsEnabled: s?.tvaInstallmentsEnabled ?? true,
                   }}
                 />
               </div>

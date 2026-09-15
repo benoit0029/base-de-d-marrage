@@ -24,7 +24,7 @@ export const activities: ActivityNav[] = [
       { slug: "tesa-plus", label: "Tesa+" },
       { slug: "cotisations-non-salarie", label: "Cotisations non salarié" },
       { slug: "declaration-annuelle", label: "Déclaration 2042" },
-      { slug: "ca12a", label: "CA12A" },
+      { slug: "ca12a", label: "TVA — 3517-AGR-SD" },
       { slug: "facturation", label: "Facturation" },
     ],
   },

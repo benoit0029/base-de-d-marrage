@@ -1,6 +1,7 @@
 import type { FakeEntry } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
 import { entryCashLabel } from "@/lib/cashStatus";
+import { yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import RegisterActions from "@/components/RegisterActions";
 import MarkPaidButton from "@/components/MarkPaidButton";
 
@@ -16,7 +17,13 @@ const typeLabel: Record<FakeEntry["type"], string> = {
   immobilisation: "Immobilisation",
 };
 
-export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
+export default function EntriesTable({
+  entries,
+  closedYears = [],
+}: {
+  entries: FakeEntry[];
+  closedYears?: number[];
+}) {
   if (entries.length === 0) {
     return (
       <p className="p-6 text-sm text-slate-500">
@@ -47,7 +54,10 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {entries.map((entry) => (
+          {entries.map((entry) => {
+          const entryYear = yearOfIsoDate(entry.paidAt);
+          const locked = entryYear !== null && closedYears.includes(entryYear);
+          return (
             <tr key={entry.id} className="hover:bg-slate-50">
               <td className="px-4 py-2.5 whitespace-nowrap">
                 {formatDate(entry.date)}
@@ -120,10 +130,12 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
                       ? "Supprimer cette écriture en attente ?"
                       : "Supprimer définitivement cette ligne validée de l'affichage ? Elle restera conservée en base en cas de contrôle fiscal."
                   }
+                  locked={locked}
                 />
               </td>
             </tr>
-          ))}
+          );
+          })}
         </tbody>
       </table>
     </div>

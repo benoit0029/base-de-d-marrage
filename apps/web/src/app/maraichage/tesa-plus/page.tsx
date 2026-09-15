@@ -1,8 +1,11 @@
 import { listSimpleImports } from "@/server/services/simpleImports";
+import { listClosedYears } from "@/server/services/fiscalYearClosure";
 import { toSimpleImportView } from "@/lib/serialize";
+import { filterByYear, yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import { TESA_CATEGORIES, SIMPLE_IMPORT_CATEGORY_LABELS } from "@/lib/simpleImportLabels";
 import SimpleImportForm from "@/components/SimpleImportForm";
 import SimpleImportTable from "@/components/SimpleImportTable";
+import YearFilter from "@/components/YearFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +14,22 @@ export const dynamic = "force-dynamic";
 // travail, attestation Pôle Emploi, solde de tout compte), traités de façon
 // identique — upload + date, rattachés à la période de contrat, sans
 // calculateur.
-export default async function Page() {
-  const items = (await listSimpleImports("BA_MARAICHAGE")).filter((i) =>
-    (TESA_CATEGORIES as string[]).includes(i.category)
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const { year: yearParam } = await searchParams;
+  const year = yearParam ? Number(yearParam) : null;
+
+  const [allItems, closedYears] = await Promise.all([
+    listSimpleImports("BA_MARAICHAGE"),
+    listClosedYears(),
+  ]);
+  const items = filterByYear(
+    allItems.filter((i) => (TESA_CATEGORIES as string[]).includes(i.category)).map(toSimpleImportView),
+    (i) => yearOfIsoDate(i.date),
+    Number.isInteger(year) ? year : null
   );
 
   return (
@@ -30,8 +46,11 @@ export default async function Page() {
         title="Importer un document Tesa+"
         description="Contrat, bulletin de paie, cotisations salariales, certificat de travail, attestation Pôle Emploi, solde de tout compte : tous traités de façon identique, sans calcul automatique."
       />
+      <div className="flex justify-end">
+        <YearFilter closedYears={closedYears} />
+      </div>
       <div className="rounded-lg border bg-white">
-        <SimpleImportTable items={items.map(toSimpleImportView)} />
+        <SimpleImportTable items={items} closedYears={closedYears} />
       </div>
     </div>
   );

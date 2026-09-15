@@ -1,10 +1,17 @@
 import type { FakeTvaInstallment } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
 import { toDocumentHref } from "@/lib/storage/url";
+import { yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import StatusBadge from "@/components/StatusBadge";
 import RegisterActions from "@/components/RegisterActions";
 
-export default function TvaInstallmentTable({ items }: { items: FakeTvaInstallment[] }) {
+export default function TvaInstallmentTable({
+  items,
+  closedYears = [],
+}: {
+  items: FakeTvaInstallment[];
+  closedYears?: number[];
+}) {
   if (items.length === 0) {
     return <p className="p-6 text-sm text-slate-500">Aucun paiement d&apos;acompte enregistré pour le moment.</p>;
   }
@@ -25,6 +32,8 @@ export default function TvaInstallmentTable({ items }: { items: FakeTvaInstallme
         <tbody className="divide-y divide-slate-100">
           {items.map((item) => {
             const pending = item.status === "pending";
+            const itemYear = yearOfIsoDate(item.paidAt);
+            const locked = !pending && itemYear !== null && closedYears.includes(itemYear);
             return (
               <tr key={item.id} className="hover:bg-slate-50">
                 <td className="px-4 py-2.5 font-medium">{item.dueLabel}</td>
@@ -63,6 +72,7 @@ export default function TvaInstallmentTable({ items }: { items: FakeTvaInstallme
                         ? "Supprimer ce paiement en attente ?"
                         : "Supprimer définitivement cette ligne validée de l'affichage ? Elle restera conservée en base en cas de contrôle fiscal."
                     }
+                    locked={locked}
                   />
                 </td>
               </tr>

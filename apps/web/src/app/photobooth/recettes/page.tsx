@@ -1,8 +1,11 @@
 import { listInvoices } from "@/server/services/invoices";
+import { listClosedYears } from "@/server/services/fiscalYearClosure";
 import { toInvoiceView } from "@/lib/serialize";
+import { filterByYear, yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import { formatDate, formatEuro } from "@/lib/format";
 import { invoiceCashLabel } from "@/lib/cashStatus";
 import MarkPaidButton from "@/components/MarkPaidButton";
+import YearFilter from "@/components/YearFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -12,16 +15,32 @@ export const dynamic = "force-dynamic";
 // dans l'onglet Facturation ; seul l'encaissement (comptabilité de caisse,
 // voir lib/cashStatus) se renseigne depuis cette vue ou automatiquement via
 // le rapprochement bancaire.
-export default async function Page() {
-  const invoices = (await listInvoices("BIC_PHOTOBOOTH"))
-    .filter((i) => i.type === "FACTURE" && i.status !== "CANCELLED")
-    .map(toInvoiceView);
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const { year: yearParam } = await searchParams;
+  const year = yearParam ? Number(yearParam) : null;
+
+  const [allInvoices, closedYears] = await Promise.all([
+    listInvoices("BIC_PHOTOBOOTH"),
+    listClosedYears(),
+  ]);
+  const invoices = filterByYear(
+    allInvoices.filter((i) => i.type === "FACTURE" && i.status !== "CANCELLED").map(toInvoiceView),
+    (i) => yearOfIsoDate(i.paidAt),
+    Number.isInteger(year) ? year : null
+  );
 
   return (
     <div className="rounded-lg border bg-white">
-      <div className="border-b bg-slate-50 p-3 text-xs text-slate-500">
-        Livre des recettes. Pour créer ou envoyer une facture, utilisez
-        l&apos;onglet Facturation.
+      <div className="flex items-center justify-between gap-3 border-b bg-slate-50 p-3 text-xs text-slate-500">
+        <span>
+          Livre des recettes. Pour créer ou envoyer une facture, utilisez
+          l&apos;onglet Facturation.
+        </span>
+        <YearFilter closedYears={closedYears} />
       </div>
       {invoices.length === 0 ? (
         <p className="p-6 text-sm text-slate-500">Aucune facture pour le moment.</p>

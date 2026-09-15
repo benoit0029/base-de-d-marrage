@@ -4,6 +4,7 @@ import {
   SimpleImportNotValidatedError,
   softDeleteSimpleImport,
 } from "@/server/services/simpleImports";
+import { FiscalYearClosedError } from "@/server/services/fiscalYearClosure";
 import { getCurrentUserId } from "@/lib/auth/currentUser";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (err instanceof SimpleImportNotFoundError) {
       return NextResponse.json({ error: "Document introuvable" }, { status: 404 });
     }
-    if (err instanceof SimpleImportNotValidatedError) {
+    if (err instanceof SimpleImportNotValidatedError || err instanceof FiscalYearClosedError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
     }
     throw err;

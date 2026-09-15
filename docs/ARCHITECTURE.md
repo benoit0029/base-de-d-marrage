@@ -34,7 +34,7 @@ base-de-d-marrage/
 │       │   ├── app/
 │       │   │   ├── (auth)/                 # connexion + 2FA
 │       │   │   ├── (dashboard)/
-│       │   │   │   ├── maraichage/         # BA : recettes, achats, TVA, paie, 2042, CA12A, factures
+│       │   │   │   ├── maraichage/         # BA : recettes, achats, TVA, paie, 2042, 3517-AGR-SD, factures
 │       │   │   │   ├── fruits-legumes/     # BIC : recettes, achats, factures, seuils
 │       │   │   │   ├── photobooth/         # BIC : recettes, achats, factures, seuils
 │       │   │   │   ├── synthese/           # CA cumulé BIC, alertes seuils, 2042 C PRO
@@ -92,7 +92,7 @@ Voir `prisma/schema.prisma`. Résumé des entités :
 - **entries** — écritures (recette / achat / immobilisation) par activité, statut `pending` → `validated` (verrouillée après validation).
 - **invoices** / **invoice_lines** — factures et devis, moteur unique, activable par activité.
 - **payroll_employees** / **payslips** — volet paie du salarié (micro-BA).
-- **tva_declarations** — échéancier acomptes TVA / CA12A.
+- **tva_declarations** — échéancier acomptes TVA / 3517-AGR-SD.
 - **threshold_snapshots** — suivi périodique des seuils (BIC combiné, plafonds).
 - **pa_connections** — connexion à la PA (Abby), clé API chiffrée.
 - **notification_log** — traçabilité des rappels/alertes envoyés via n8n/email.
@@ -409,7 +409,8 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   import simple — enregistré après paiement, justificatif optionnel,
   détection de doublon, cycle Valider/Supprimer identique. Distinct de
   `TvaDeclaration` (préexistant, jamais branché, gardé pour un usage futur
-  éventuel autour de la déclaration annuelle/CA12A plutôt que des acomptes).
+  éventuel autour de la déclaration annuelle/3517-AGR-SD plutôt que des
+  acomptes).
 - **`PayrollEmployee`/`Payslip` restent orphelins** (déjà signalé phase
   précédente) : aucune donnée réelle n'y a jamais transité, aucune migration
   de suppression n'a été faite par prudence — à retirer un jour si confirmé
@@ -458,13 +459,86 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   passe au statut "Encaissée" dès sa validation, sa date de saisie faisant
   à la fois office de date de vente et de date d'encaissement — aucune
   notion de créance possible sur cette activité 100% comptant.
-- **Reste à faire** : renommage CA12A → 3517-AGR-SD partout dans l'UI/les
-  docs (actuellement encore "CA12A"), option de configuration pour
-  activer/désactiver les acomptes trimestriels RSA (dispense légale sous
-  1 000 € de TVA due l'année précédente), vue par exercice avec sélecteur
-  d'année et verrouillage des exercices clôturés, Module Clôture d'exercice
-  (ZIP, blocage si lignes en attente), migration du stockage fichiers vers
-  Scaleway Object Storage.
+- **Reste à faire** : migration du stockage fichiers vers Scaleway Object
+  Storage. Le renommage CA12A → 3517-AGR-SD (§15 bis), le Module Clôture
+  d'exercice (§15), l'option acomptes trimestriels (§15 ter) et la vue par
+  exercice (§15 quater) sont faits.
+
+## 15 bis. Renommage CA12A → Cerfa n°10968 / 3517-AGR-SD
+
+- **"CA12A" était une appellation informelle/obsolète** : le vrai nom du
+  formulaire de déclaration de TVA du régime simplifié agricole est le
+  Cerfa n°10968, dit formulaire 3517-AGR-SD. Renommé partout où il
+  apparaissait : libellé du sous-onglet (`lib/nav.ts`), page de démo
+  (`app/maraichage/ca12a/page.tsx`, fixture renommée
+  `tvaAnnualDeclarationFixture`), commentaires du schéma Prisma
+  (`TvaDeclaration.regime`) et de `docs/ARCHITECTURE.md`.
+- **Slug d'URL `ca12a` volontairement conservé** (`/maraichage/ca12a`) :
+  ce n'est qu'un identifiant technique interne, jamais affiché — le
+  renommer n'apporterait rien et casserait un éventuel favori/lien
+  existant sans aucun bénéfice.
+- Cette page reste une **démonstration** (fixture statique, comme
+  `declaration-annuelle`) : aucun calcul réel n'y est branché, seul le
+  Registre TVA (§ ci-dessus, `lib/tva`) est déjà réellement calculé.
+
+## 15 ter. Acomptes trimestriels de TVA activables/désactivables
+
+- **Nouveau champ `ActivitySettings.tvaInstallmentsEnabled`** (défaut
+  `true`), pertinent uniquement pour `BA_MARAICHAGE` (seule activité au
+  régime simplifié agricole) — case à cocher affichée uniquement pour
+  cette activité dans `ActivitySettingsForm`, jamais envoyée/écrasée pour
+  les deux autres (voir `submitActivitySettings`, qui n'inclut ce champ
+  dans la mise à jour que si `activity === "BA_MARAICHAGE"`, pour ne
+  jamais réinitialiser silencieusement une case absente du formulaire des
+  autres activités).
+- **Ne change rien au calcul de la TVA nette due** (`computeTvaRegister`
+  continue de la calculer normalement, à titre informatif) : seul le
+  **statut affiché par trimestre** change, passant de "à traiter"/"réglé"
+  à "dispensé" quand l'option est désactivée — pas de faux rappel à payer
+  un acompte qui n'est légalement pas dû.
+- **Formulaire d'ajout masqué** sur `/maraichage/acomptes` quand
+  désactivé (bandeau explicatif à la place), mais **l'historique déjà
+  enregistré reste visible** — cohérent avec le principe déjà appliqué à
+  la facturation désactivée de Fruits/Légumes.
+- **Dispense légale réelle** (BOI-TVA-DECLA-20-20) : sous 1 000 € de TVA
+  due l'année précédente. Ce champ ne calcule/vérifie **jamais**
+  automatiquement cette condition — à l'exploitant de la confirmer chaque
+  année avant de décocher la case.
+
+## 15 quater. Vue par exercice (sélecteur d'année + verrouillage visuel)
+
+- **`YearFilter`** (`components/YearFilter.tsx`) : sélecteur générique
+  piloté par le paramètre d'URL `?year=`, ajouté sur chaque sous-onglet
+  registre (Recettes, Dépenses, Relevé bancaire, Acompte TVA, Tesa+,
+  Cotisations non salarié — pas Registre TVA, déjà une vue glissante par
+  trimestre, ni Facturation, dont les factures ne portent pas d'action de
+  suppression). Filtrage fait côté page (`filterByYear`,
+  `lib/fiscalYear/rowYear.ts`), pas dans les services : évite de complexifier
+  les signatures `list*` pour un usage purement d'affichage.
+- **Une ligne sans exercice connu reste toujours visible**, quel que soit le
+  filtre choisi (`filterByYear` ne retire jamais une ligne dont la date de
+  règlement est vide) — cohérent avec le principe déjà établi que les
+  créances/dettes en cours ne sont rattachées à aucun exercice tant qu'elles
+  ne sont pas réglées.
+- **Verrouillage visuel** : chaque table registre reçoit maintenant
+  `closedYears: number[]` (voir `listClosedYears`) et calcule un `locked`
+  par ligne à partir de sa vraie date de rattachement fiscal (`paidAt` pour
+  Entry/TvaInstallment, `date` pour CashJournalEntry/BankTransaction).
+  `RegisterActions` affiche alors « 🔒 Exercice clôturé » à la place du
+  bouton de suppression — un affichage anticipé seulement, le serveur
+  (`assertDateNotInClosedYear`) reste la seule source de vérité en cas
+  d'incohérence.
+- **Bug de clôture corrigé au passage** : `softDeleteSimpleImport`
+  supprimait la Dépense liée à un import Tesa+/cotisation sans jamais
+  vérifier si l'exercice de son `paidAt` était clôturé — la garde de
+  fermeture d'exercice (§15) ne couvrait par erreur que les 4 services
+  qu'elle protégeait explicitement. Corrigé en y ajoutant le même appel à
+  `assertDateNotInClosedYear`.
+- **Cas `SimpleImportTable` approximatif, assumé** : le verrouillage visuel
+  de cette table se base sur `item.date` (pas la vraie `paidAt` de la
+  Dépense liée, non exposée dans `FakeSimpleImport`) et seulement pour les
+  catégories qui génèrent une Dépense (cotisations) — purement indicatif,
+  jamais la garde réelle.
 
 ## 14. Répertoire Clients et Catalogue Produits/Prestations
 

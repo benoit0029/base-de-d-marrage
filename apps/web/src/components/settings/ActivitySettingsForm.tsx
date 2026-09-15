@@ -21,6 +21,7 @@ export default function ActivitySettingsForm({
     abLogoEnabled: boolean;
     invoicingEnabled: boolean;
     contactEmail: string;
+    tvaInstallmentsEnabled: boolean;
   };
 }) {
   const boundAction = submitActivitySettings.bind(null, activity);
@@ -82,6 +83,23 @@ export default function ActivitySettingsForm({
         />
         Facturation active pour cette activité
       </label>
+
+      {activity === "BA_MARAICHAGE" && (
+        <label className="flex items-start gap-2 text-sm text-slate-700 sm:col-span-2">
+          <input
+            type="checkbox"
+            name="tvaInstallmentsEnabled"
+            defaultChecked={initial.tvaInstallmentsEnabled}
+            className="mt-0.5"
+          />
+          <span>
+            Acomptes trimestriels de TVA actifs (régime simplifié agricole).
+            À décocher uniquement si vous êtes dispensé (TVA due l&apos;année
+            précédente inférieure à 1 000 €, à vérifier vous-même chaque
+            année) — le Registre TVA reste calculé dans tous les cas.
+          </span>
+        </label>
+      )}
 
       <label className="text-sm sm:col-span-2">
         <span className="text-slate-600">

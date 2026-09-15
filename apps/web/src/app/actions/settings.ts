@@ -80,6 +80,11 @@ export async function submitActivitySettings(
     abLogoEnabled: formData.get("abLogoEnabled") === "on",
     invoicingEnabled: formData.get("invoicingEnabled") === "on",
     contactEmail: contactEmail.data || null,
+    // Case rendue seulement pour BA_MARAICHAGE (voir ActivitySettingsForm) :
+    // absente du formulaire des autres activités, jamais écrasée pour elles.
+    ...(activity === "BA_MARAICHAGE"
+      ? { tvaInstallmentsEnabled: formData.get("tvaInstallmentsEnabled") === "on" }
+      : {}),
   });
 
   revalidatePath("/reglages");

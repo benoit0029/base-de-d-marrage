@@ -45,6 +45,7 @@ export async function listActivitySettings() {
         legalMentions: null,
         invoicingEnabled: false,
         contactEmail: null,
+        tvaInstallmentsEnabled: true,
         updatedAt: new Date(),
       }
   );
@@ -57,6 +58,7 @@ export interface ActivitySettingsInput {
   invoicingEnabled?: boolean;
   legalMentions?: string | null;
   contactEmail?: string | null;
+  tvaInstallmentsEnabled?: boolean;
 }
 
 export async function saveActivitySettings(activity: Activity, input: ActivitySettingsInput) {

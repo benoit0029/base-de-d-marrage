@@ -6,7 +6,10 @@ export interface TvaRegisterRow {
   collected: number;
   deductible: number;
   net: number;
-  status: "réglé" | "à traiter";
+  // "dispensé" : acomptes trimestriels désactivés dans Réglages (voir
+  // ActivitySettings.tvaInstallmentsEnabled) — la TVA nette reste calculée
+  // à titre informatif, mais aucun acompte n'est attendu pour ce trimestre.
+  status: "réglé" | "à traiter" | "dispensé";
 }
 
 function quarterRange(year: number, quarter: 1 | 2 | 3 | 4): { start: Date; end: Date } {
@@ -62,6 +65,12 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
   const tenantId = await getDefaultTenantId();
   const quarters = recentQuarters(QUARTERS_SHOWN);
 
+  const activitySettings = await prisma.activitySettings.findUnique({
+    where: { tenantId_activity: { tenantId, activity: "BA_MARAICHAGE" } },
+    select: { tvaInstallmentsEnabled: true },
+  });
+  const installmentsEnabled = activitySettings?.tvaInstallmentsEnabled ?? true;
+
   const rows: TvaRegisterRow[] = [];
   for (const { year, quarter } of quarters) {
     const { start, end } = quarterRange(year, quarter);
@@ -103,7 +112,7 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
       collected,
       deductible,
       net: collected - deductible,
-      status: settledInstallment ? "réglé" : "à traiter",
+      status: !installmentsEnabled ? "dispensé" : settledInstallment ? "réglé" : "à traiter",
     });
   }
 

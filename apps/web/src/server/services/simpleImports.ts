@@ -3,6 +3,7 @@ import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { saveDocumentFile } from "@/lib/storage";
 import { hashFileBuffer, findProbableDuplicate } from "@/lib/dedup";
+import { assertDateNotInClosedYear } from "@/server/services/fiscalYearClosure";
 import type { Activity, SimpleImportCategory, SimpleImport } from "@prisma/client";
 
 export class SimpleImportError extends Error {}
@@ -183,6 +184,10 @@ export async function softDeleteSimpleImport(id: string, userId: string | null):
     throw new SimpleImportNotValidatedError(
       "Document pas encore validé : utilisez « Supprimer » plutôt que « Supprimer la ligne »."
     );
+  }
+  if (item.linkedEntryId) {
+    const linkedEntry = await prisma.entry.findUnique({ where: { id: item.linkedEntryId } });
+    await assertDateNotInClosedYear(linkedEntry?.paidAt, "cette dépense payée");
   }
 
   await prisma.$transaction(async (tx) => {

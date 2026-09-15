@@ -38,10 +38,12 @@ export default async function Page() {
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     row.status === "réglé"
                       ? "bg-emerald-100 text-emerald-800"
-                      : "bg-amber-100 text-amber-800"
+                      : row.status === "dispensé"
+                        ? "bg-slate-100 text-slate-600"
+                        : "bg-amber-100 text-amber-800"
                   }`}
                 >
-                  {row.status === "réglé" ? "Réglé" : "À traiter"}
+                  {row.status === "réglé" ? "Réglé" : row.status === "dispensé" ? "Dispensé" : "À traiter"}
                 </span>
               </td>
             </tr>

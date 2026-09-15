@@ -162,7 +162,7 @@ une clause d'exigibilité "sur facture" a été retenue pour tes ventes
 facturation plutôt qu'à l'encaissement — l'outil applique uniquement la
 règle par défaut (exigibilité à l'encaissement) pour l'instant.
 
-## 4. Déclaration 2042, CA12A (Maraîchage) — encore en démonstration
+## 4. Déclaration 2042, TVA 3517-AGR-SD (Maraîchage) — encore en démonstration
 
 Ces deux sous-onglets affichent encore des données de démonstration à ce
 stade. **Ne t'y fie pas encore** ; à traiter dans une itération ultérieure
@@ -224,6 +224,26 @@ section 4 bis), pas une donnée de démonstration.
       propres calculs pour au moins un trimestre déjà clos — **ce calcul
       n'a pas encore été validé en conditions réelles**, un écart vaut la
       peine d'être signalé avant de s'y fier pour de vrai.
+- [ ] Dans **Réglages → Maraîchage**, je décoche « Acomptes trimestriels
+      de TVA actifs » (uniquement si je sais être dispensé — moins de
+      1 000 € de TVA due l'année précédente) : je vérifie que le
+      formulaire d'ajout disparaît sur **Acompte TVA** et que le Registre
+      TVA affiche « Dispensé » au lieu de « À traiter » sur les
+      trimestres suivants, sans changer le montant de TVA nette calculé.
+
+## 4 ter bis. Vue par exercice (sélecteur d'année)
+
+- [ ] Sur chaque sous-onglet registre (Recettes, Dépenses, Relevé
+      bancaire, Acompte TVA, Tesa+, Cotisations non salarié), je vérifie
+      que le sélecteur **« Exercice »** en haut à droite filtre bien les
+      lignes affichées, et que « Toutes les années » remet tout.
+- [ ] Je vérifie qu'une créance (facture non encaissée) ou une dette
+      (dépense non payée) reste visible **quel que soit** l'exercice
+      sélectionné — normal, elle n'est rattachée à aucune année tant
+      qu'elle n'est pas réglée.
+- [ ] Sur un exercice déjà clôturé, je vérifie que les lignes réglées
+      affichent **🔒 Exercice clôturé** à la place du bouton « Supprimer la
+      ligne ».
 
 ## 4 quater. Clôture d'exercice (Réglages)
 

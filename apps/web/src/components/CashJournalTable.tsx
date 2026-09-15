@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import type { FakeCashJournalEntry } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
 import { toDocumentHref } from "@/lib/storage/url";
+import { yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import StatusBadge from "@/components/StatusBadge";
 import RegisterActions from "@/components/RegisterActions";
 
@@ -13,8 +14,16 @@ const paymentMethodLabel: Record<string, string> = {
   cb: "CB",
 };
 
-export function CashJournalActions({ entry }: { entry: FakeCashJournalEntry }) {
+export function CashJournalActions({
+  entry,
+  closedYears = [],
+}: {
+  entry: FakeCashJournalEntry;
+  closedYears?: number[];
+}) {
   const pending = entry.status === "pending";
+  const entryYear = yearOfIsoDate(entry.date);
+  const locked = !pending && entryYear !== null && closedYears.includes(entryYear);
   return (
     <RegisterActions
       pending={pending}
@@ -27,6 +36,7 @@ export function CashJournalActions({ entry }: { entry: FakeCashJournalEntry }) {
           ? "Supprimer cette saisie en attente ?"
           : "Supprimer définitivement cette ligne validée de l'affichage ? Elle restera conservée en base en cas de contrôle fiscal."
       }
+      locked={locked}
     />
   );
 }
@@ -78,7 +88,13 @@ export function CashJournalDetail({ entry }: { entry: FakeCashJournalEntry }) {
   );
 }
 
-export default function CashJournalTable({ entries }: { entries: FakeCashJournalEntry[] }) {
+export default function CashJournalTable({
+  entries,
+  closedYears = [],
+}: {
+  entries: FakeCashJournalEntry[];
+  closedYears?: number[];
+}) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   if (entries.length === 0) {
@@ -128,7 +144,7 @@ export default function CashJournalTable({ entries }: { entries: FakeCashJournal
                   </button>
                 </td>
                 <td className="px-4 py-2.5 text-right">
-                  <CashJournalActions entry={entry} />
+                  <CashJournalActions entry={entry} closedYears={closedYears} />
                 </td>
               </tr>
               {expanded === entry.id && (

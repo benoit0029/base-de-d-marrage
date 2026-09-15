@@ -15,6 +15,7 @@ export default function RegisterActions({
   deleteMethod,
   deleteLabel,
   confirmMessage,
+  locked,
 }: {
   pending: boolean;
   validateUrl?: string;
@@ -22,6 +23,10 @@ export default function RegisterActions({
   deleteMethod: "DELETE" | "POST";
   deleteLabel: string;
   confirmMessage: string;
+  // Ligne déjà réglée (payée/encaissée) sur un exercice clôturé (voir
+  // Module Clôture d'exercice) : le serveur refuse déjà la suppression,
+  // ce booléen n'est qu'un affichage anticipé pour éviter l'aller-retour.
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
@@ -68,14 +73,23 @@ export default function RegisterActions({
             {busy ? "…" : "Valider"}
           </button>
         )}
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={busy}
-          className="text-xs font-medium text-red-600 underline disabled:opacity-50"
-        >
-          {busy ? "…" : deleteLabel}
-        </button>
+        {locked ? (
+          <span
+            title="Exercice clôturé : cette ligne réglée n'est plus modifiable."
+            className="text-xs font-medium text-slate-400"
+          >
+            🔒 Exercice clôturé
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={busy}
+            className="text-xs font-medium text-red-600 underline disabled:opacity-50"
+          >
+            {busy ? "…" : deleteLabel}
+          </button>
+        )}
       </div>
       {error && <span className="text-xs text-red-600">{error}</span>}
     </div>

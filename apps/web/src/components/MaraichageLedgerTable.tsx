@@ -16,7 +16,13 @@ import MarkPaidButton from "@/components/MarkPaidButton";
 // paidAt reste une créance en cours, hors CA/seuils/TVA — voir
 // lib/cashStatus. Une ligne "vente directe" est toujours encaissée le jour
 // même (sa propre date de saisie), jamais une créance.
-export default function MaraichageLedgerTable({ lignes }: { lignes: LivreRecettesLigne[] }) {
+export default function MaraichageLedgerTable({
+  lignes,
+  closedYears = [],
+}: {
+  lignes: LivreRecettesLigne[];
+  closedYears?: number[];
+}) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const sorted = [...lignes].sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -135,7 +141,7 @@ export default function MaraichageLedgerTable({ lignes }: { lignes: LivreRecette
                       >
                         {expanded === rowKey ? "Masquer" : "Détail"}
                       </button>
-                      <CashJournalActions entry={cash} />
+                      <CashJournalActions entry={cash} closedYears={closedYears} />
                     </div>
                   </td>
                 </tr>

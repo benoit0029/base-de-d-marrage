@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { FakeBankTransaction, FakeEntry, FakeInvoice, FakeCashJournalEntry } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
+import { yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import StatusBadge from "@/components/StatusBadge";
 import RegisterActions from "@/components/RegisterActions";
 
@@ -142,8 +143,10 @@ function ReconcilePicker({ transaction }: { transaction: FakeBankTransaction }) 
 
 export default function BankTransactionsTable({
   transactions,
+  closedYears = [],
 }: {
   transactions: FakeBankTransaction[];
+  closedYears?: number[];
 }) {
   if (transactions.length === 0) {
     return <p className="p-6 text-sm text-slate-500">Aucune opération importée pour le moment.</p>;
@@ -164,7 +167,10 @@ export default function BankTransactionsTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {transactions.map((tx) => (
+          {transactions.map((tx) => {
+          const txYear = yearOfIsoDate(tx.date);
+          const locked = tx.status === "validated" && txYear !== null && closedYears.includes(txYear);
+          return (
             <tr key={tx.id} className="hover:bg-slate-50">
               <td className="px-4 py-2.5 whitespace-nowrap">{formatDate(tx.date)}</td>
               <td className="px-4 py-2.5 text-slate-600">{tx.label}</td>
@@ -182,7 +188,13 @@ export default function BankTransactionsTable({
                 {tx.reconciled ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-emerald-700">✓ {tx.reconciledWith}</span>
-                    <UnreconcileButton transactionId={tx.id} />
+                    {locked ? (
+                      <span title="Exercice clôturé" className="text-xs text-slate-400">
+                        🔒
+                      </span>
+                    ) : (
+                      <UnreconcileButton transactionId={tx.id} />
+                    )}
                   </div>
                 ) : (
                   <ReconcilePicker transaction={tx} />
@@ -207,10 +219,12 @@ export default function BankTransactionsTable({
                       ? "Supprimer cette ligne importée en attente ?"
                       : "Supprimer définitivement cette ligne validée de l'affichage ? Elle restera conservée en base en cas de contrôle fiscal."
                   }
+                  locked={locked}
                 />
               </td>
             </tr>
-          ))}
+          );
+          })}
         </tbody>
       </table>
     </div>
