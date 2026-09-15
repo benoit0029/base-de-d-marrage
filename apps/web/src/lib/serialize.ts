@@ -54,6 +54,7 @@ export function toEntryView(entry: Entry & { sourceDocument: Document | null }):
     source: entry.sourceDocument ? sourceMap[entry.sourceDocument.source] : "manuel",
     reconciled: entry.bankTransactionId !== null,
     possibleDuplicate: entry.sourceDocument?.possibleDuplicateOfId != null,
+    paidAt: entry.paidAt ? entry.paidAt.toISOString() : null,
   };
 }
 
@@ -80,6 +81,7 @@ export function toInvoiceView(invoice: Invoice): FakeInvoice {
     totalTtc: Number(invoice.totalTtc),
     paExternalId: invoice.paExternalId,
     reconciled: invoice.bankTransactionId !== null,
+    paidAt: invoice.paidAt ? invoice.paidAt.toISOString() : null,
   };
 }
 

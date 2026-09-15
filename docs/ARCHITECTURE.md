@@ -414,3 +414,55 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   précédente) : aucune donnée réelle n'y a jamais transité, aucune migration
   de suppression n'a été faite par prudence — à retirer un jour si confirmé
   définitivement inutile.
+
+## 13. Comptabilité de caisse (correction majeure — reçue après coup, corrige des chiffres déjà en production)
+
+- **Le principe** (BOFiP [BOI-BA-BASE-20-10](https://bofip.impots.gouv.fr/bofip/10605-PGP.html),
+  même logique en micro-BIC) : en régime micro, c'est la date
+  d'**encaissement/paiement effectif**, jamais la date de facture, qui
+  détermine l'exercice fiscal d'une recette ou d'une dépense. Une facture
+  émise en décembre mais payée en janvier appartient à l'exercice de
+  janvier. **Avant cette correction, le Registre TVA et les seuils de CA
+  étaient calculés sur `issueDate` (date de facture)** — donc faux dès
+  qu'un paiement franchit une frontière d'exercice ou de trimestre.
+- **`paidAt` ajouté sur `Invoice` et `Entry`** (nullable, distinct de
+  `issueDate`/`date`) : une facture `SENT` sans `paidAt` est une **créance
+  en cours**, une Dépense `VALIDATED` sans `paidAt` est une **dette en
+  cours** — ni l'une ni l'autre n'entre dans un calcul de CA/seuil/TVA tant
+  que cette date est vide. Statut affiché calculé par `lib/cashStatus.ts`
+  ("Facturée — créance en cours"/"Encaissée", "Facture reçue — dette en
+  cours"/"Payée") plutôt qu'un nouvel enum — combinaison du statut
+  PENDING/VALIDATED (ou DRAFT/SENT/PAID/CANCELLED côté facture) et de la
+  présence de `paidAt`. `CashJournalEntry` (vente directe) n'a pas ce
+  champ : une vente au comptant est encaissée le jour même, sa propre
+  `date` suffit.
+- **`paidAt` se pose de deux façons** : automatiquement lors du
+  rapprochement bancaire (`reconcileBankTransaction` pose `paidAt` = date
+  de l'opération pointée — c'est le cas normal, le virement/chèque du
+  client apparaît sur le relevé), ou manuellement via `MarkPaidButton`
+  (`markEntryPaid`/`markInvoicePaid`, une date au choix) pour le cas où le
+  paiement est connu avant tout import de relevé. Annuler un rapprochement
+  (`unreconcileBankTransaction`) efface aussi le `paidAt` posé par ce
+  rapprochement — cas non géré : une date saisie manuellement puis
+  recouverte par un rapprochement se perd si ce rapprochement est annulé.
+- **`lib/tva` et `lib/thresholds` recalculés sur `paidAt`**, plus
+  `issueDate`/`date` : `sumInvoicedTotal` (seuils) et `computeTvaRegister`
+  (TVA collectée/déductible) filtrent désormais sur la fenêtre de date
+  appliquée à `paidAt`, jamais à la date de facture.
+  ⚠️ **Non implémenté, à confirmer par Benoît auprès de la MSA/Cerfrance** :
+  l'exception BOI-TVA-SECT-80-30-30 selon laquelle la TVA peut devenir
+  exigible dès la facturation (et non à l'encaissement) si la facture est
+  émise avant l'encaissement, hors facture d'acompte — le calcul actuel
+  applique uniformément la règle par défaut (exigibilité à l'encaissement).
+- **`CashJournalEntry` déjà conforme** sans changement : une vente directe
+  passe au statut "Encaissée" dès sa validation, sa date de saisie faisant
+  à la fois office de date de vente et de date d'encaissement — aucune
+  notion de créance possible sur cette activité 100% comptant.
+- **Reste à faire** (voir aussi §14) : renommage CA12A → 3517-AGR-SD partout
+  dans l'UI/les docs (actuellement encore "CA12A"), option de
+  configuration pour activer/désactiver les acomptes trimestriels RSA
+  (dispense légale sous 1 000 € de TVA due l'année précédente), vue par
+  exercice avec sélecteur d'année et verrouillage des exercices clôturés,
+  Module Clôture d'exercice (ZIP, blocage si lignes en attente), Répertoire
+  Clients + Catalogue Produits pour la facturation, migration du stockage
+  fichiers vers Scaleway Object Storage.

@@ -1,7 +1,8 @@
 import type { FakeEntry } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
-import StatusBadge from "@/components/StatusBadge";
+import { entryCashLabel } from "@/lib/cashStatus";
 import RegisterActions from "@/components/RegisterActions";
+import MarkPaidButton from "@/components/MarkPaidButton";
 
 const sourceLabel: Record<FakeEntry["source"], string> = {
   email: "📧 Email",
@@ -31,7 +32,7 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
           <tr>
-            <th className="px-4 py-2.5">Date</th>
+            <th className="px-4 py-2.5">Date de facture</th>
             <th className="px-4 py-2.5">Type</th>
             <th className="px-4 py-2.5">Tiers</th>
             <th className="px-4 py-2.5">Nature</th>
@@ -40,6 +41,7 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
             <th className="px-4 py-2.5 text-right">TVA</th>
             <th className="px-4 py-2.5 text-right">Montant TTC</th>
             <th className="px-4 py-2.5">Statut</th>
+            <th className="px-4 py-2.5">Date de paiement</th>
             <th className="px-4 py-2.5">Relevé bancaire</th>
             <th className="px-4 py-2.5" />
           </tr>
@@ -73,8 +75,27 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
               <td className="px-4 py-2.5 text-right font-medium">
                 {formatEuro(entry.amountTtc)}
               </td>
-              <td className="px-4 py-2.5">
-                <StatusBadge status={entry.status} />
+              <td className="px-4 py-2.5 text-xs">
+                <span
+                  className={
+                    entry.status === "validated" && !entry.paidAt
+                      ? "font-medium text-amber-700"
+                      : entry.paidAt
+                        ? "font-medium text-emerald-700"
+                        : "text-slate-500"
+                  }
+                >
+                  {entryCashLabel(entry)}
+                </span>
+              </td>
+              <td className="px-4 py-2.5 whitespace-nowrap text-xs">
+                {entry.paidAt ? (
+                  formatDate(entry.paidAt)
+                ) : entry.status === "validated" ? (
+                  <MarkPaidButton url={`/api/entries/${entry.id}/mark-paid`} label="Marquer payée" />
+                ) : (
+                  "—"
+                )}
               </td>
               <td className="px-4 py-2.5 text-xs">
                 {entry.reconciled ? (

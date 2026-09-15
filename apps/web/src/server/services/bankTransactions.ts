@@ -172,6 +172,12 @@ export type ReconcileTargetType = "entry" | "invoice" | "cashJournal";
  * Rapproche une ligne de relevé avec une Dépense, une facture, ou une saisie
  * de caisse — dans les deux sens (la ligne de relevé pointe vers la pièce,
  * et vice versa). Refuse d'écraser un rapprochement déjà posé sur la cible.
+ *
+ * Pose aussi automatiquement la date d'encaissement/paiement (paidAt) sur
+ * la Dépense/facture, avec la date de l'opération bancaire pointée — c'est
+ * cette date, pas la date de facture, qui compte en comptabilité de caisse
+ * (voir BOI-BA-BASE-20-10). Pour une saisie de caisse (vente directe),
+ * rien à faire : elle est déjà encaissée le jour même de sa validation.
  */
 export async function reconcileBankTransaction(
   bankTransactionId: string,
@@ -181,18 +187,34 @@ export async function reconcileBankTransaction(
   if (!transaction) throw new BankTransactionNotFoundError(bankTransactionId);
 
   if (target.type === "entry") {
-    await prisma.entry.update({ where: { id: target.id }, data: { bankTransactionId } });
+    await prisma.entry.update({
+      where: { id: target.id },
+      data: { bankTransactionId, paidAt: transaction.date },
+    });
   } else if (target.type === "invoice") {
-    await prisma.invoice.update({ where: { id: target.id }, data: { bankTransactionId } });
+    await prisma.invoice.update({
+      where: { id: target.id },
+      data: { bankTransactionId, paidAt: transaction.date, status: "PAID" },
+    });
   } else {
     await prisma.cashJournalEntry.update({ where: { id: target.id }, data: { bankTransactionId } });
   }
 }
 
+// Annule un rapprochement, y compris la date de paiement/encaissement posée
+// automatiquement lors du rapprochement — pour la ressaisir proprement si
+// besoin. Cas rare non géré : une paidAt saisie manuellement avant un
+// rapprochement se retrouve aussi effacée ici.
 export async function unreconcileBankTransaction(bankTransactionId: string) {
   await prisma.$transaction([
-    prisma.entry.updateMany({ where: { bankTransactionId }, data: { bankTransactionId: null } }),
-    prisma.invoice.updateMany({ where: { bankTransactionId }, data: { bankTransactionId: null } }),
+    prisma.entry.updateMany({
+      where: { bankTransactionId },
+      data: { bankTransactionId: null, paidAt: null },
+    }),
+    prisma.invoice.updateMany({
+      where: { bankTransactionId },
+      data: { bankTransactionId: null, paidAt: null },
+    }),
     prisma.cashJournalEntry.updateMany({
       where: { bankTransactionId },
       data: { bankTransactionId: null },
@@ -237,6 +259,7 @@ export async function listReconciliationCandidates(
         activity,
         type: { in: ["ACHAT", "IMMOBILISATION"] },
         bankTransactionId: null,
+        paidAt: null,
         deletedAt: null,
         date: dateWindow(date),
       },
@@ -253,6 +276,7 @@ export async function listReconciliationCandidates(
         type: "FACTURE",
         status: { in: ["SENT", "PAID"] },
         bankTransactionId: null,
+        paidAt: null,
         issueDate: dateWindow(date),
       },
       orderBy: { issueDate: "desc" },

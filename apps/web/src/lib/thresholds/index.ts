@@ -51,10 +51,17 @@ function levelFor(ca: number, seuil: number, tolerance?: number): AlertLevel {
 }
 
 /**
- * CA facturé (validé) d'une activité sur une période — source Invoice, jamais
- * Entry : le moteur de facturation ne crée aucune écriture Entry, donc pour
- * une activité 100% facturée (Kerbooth 360), c'est la SEULE source de CA.
- * Les devis (DEVIS) et factures annulées (CANCELLED) ne comptent pas.
+ * CA encaissé (validé ET payé) d'une activité sur une période — source
+ * Invoice, jamais Entry : le moteur de facturation ne crée aucune écriture
+ * Entry, donc pour une activité 100% facturée (Kerbooth 360), c'est la
+ * SEULE source de CA. Les devis (DEVIS) et factures annulées (CANCELLED) ne
+ * comptent pas.
+ *
+ * Comptabilité de caisse (BOI-BA-BASE-20-10) : rattachement sur la date
+ * d'ENCAISSEMENT (`paidAt`), pas la date de facture — une facture émise
+ * mais non encore payée est une créance en cours, hors seuil tant qu'elle
+ * n'est pas encaissée (elle rejoindra alors automatiquement l'année de son
+ * encaissement réel, pas celle de sa facturation).
  */
 async function sumInvoicedTotal(
   activity: "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "BIC_PHOTOBOOTH",
@@ -68,7 +75,7 @@ async function sumInvoicedTotal(
       activity,
       type: "FACTURE",
       status: { in: ["SENT", "PAID"] },
-      issueDate: { gte: yearStart, lte: yearEnd },
+      paidAt: { gte: yearStart, lte: yearEnd },
     },
     _sum: { totalHt: true },
   });

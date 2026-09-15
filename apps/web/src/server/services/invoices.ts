@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { generateInvoiceNumber } from "@/lib/invoicing/numbering";
@@ -14,6 +15,39 @@ export async function listInvoices(activity: Activity) {
 
 export async function getInvoiceWithLines(id: string) {
   return prisma.invoice.findUnique({ where: { id }, include: { lines: true } });
+}
+
+export class InvoiceNotFoundError extends Error {}
+export class InvoiceAlreadyPaidError extends Error {}
+
+/**
+ * Renseigne manuellement la date d'encaissement d'une facture (comptabilité
+ * de caisse — voir BOI-BA-BASE-20-10) : tant que cette date n'est pas
+ * connue, la facture n'est qu'une créance en cours, hors CA/TVA/seuils.
+ * Se pose aussi automatiquement au rapprochement bancaire, voir
+ * reconcileBankTransaction — cette fonction sert au cas où le paiement est
+ * connu avant tout import de relevé.
+ */
+export async function markInvoicePaid(id: string, paidAt: Date, userId: string | null) {
+  const invoice = await prisma.invoice.findUnique({ where: { id } });
+  if (!invoice) throw new InvoiceNotFoundError(id);
+  if (invoice.paidAt) throw new InvoiceAlreadyPaidError(id);
+
+  const [updated] = await prisma.$transaction([
+    prisma.invoice.update({ where: { id }, data: { paidAt, status: "PAID" } }),
+    prisma.auditLog.create({
+      data: {
+        tenantId: invoice.tenantId,
+        userId,
+        action: "INVOICE_MARKED_PAID",
+        entityType: "Invoice",
+        entityId: id,
+        before: JSON.parse(JSON.stringify(invoice)),
+        after: Prisma.JsonNull,
+      },
+    }),
+  ]);
+  return updated;
 }
 
 export interface InvoiceLineInput {

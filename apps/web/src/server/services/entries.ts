@@ -15,6 +15,42 @@ export async function listEntries(activity: Activity) {
 export class EntryAlreadyValidatedError extends Error {}
 export class EntryNotFoundError extends Error {}
 export class EntryNotValidatedError extends Error {}
+export class EntryAlreadyPaidError extends Error {}
+export class EntryNotYetValidatedForPaymentError extends Error {}
+
+/**
+ * Renseigne manuellement la date de paiement d'une Dépense (comptabilité de
+ * caisse — voir BOI-BA-BASE-20-10) : tant que cette date n'est pas connue,
+ * la dépense validée reste une dette en cours ("Facture reçue — dette en
+ * cours"), hors TVA déductible. Réservé aux écritures déjà validées — une
+ * dépense encore en attente n'a pas sa place dans ce calcul.
+ */
+export async function markEntryPaid(
+  entryId: string,
+  paidAt: Date,
+  userId: string | null
+): Promise<Entry> {
+  const entry = await prisma.entry.findUnique({ where: { id: entryId } });
+  if (!entry) throw new EntryNotFoundError(entryId);
+  if (entry.status !== "VALIDATED") throw new EntryNotYetValidatedForPaymentError(entryId);
+  if (entry.paidAt) throw new EntryAlreadyPaidError(entryId);
+
+  const [updated] = await prisma.$transaction([
+    prisma.entry.update({ where: { id: entryId }, data: { paidAt } }),
+    prisma.auditLog.create({
+      data: {
+        tenantId: entry.tenantId,
+        userId,
+        action: "ENTRY_MARKED_PAID",
+        entityType: "Entry",
+        entityId: entryId,
+        before: JSON.parse(JSON.stringify(entry)),
+        after: Prisma.JsonNull,
+      },
+    }),
+  ]);
+  return updated;
+}
 
 /**
  * Supprime une écriture encore en attente (jamais validée) : suppression

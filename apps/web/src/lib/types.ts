@@ -22,6 +22,9 @@ export interface FakeEntry {
   source: "email" | "photo" | "manuel";
   reconciled: boolean; // rapproché avec une ligne du relevé bancaire (Dépenses)
   possibleDuplicate: boolean; // même document probablement déjà reçu par un autre canal
+  // Comptabilité de caisse (BOI-BA-BASE-20-10) : date de PAIEMENT réel, pas
+  // la date de facture ci-dessus. Vide = dette en cours (voir lib/cashStatus).
+  paidAt: string | null;
 }
 
 export type InvoiceType = "devis" | "facture";
@@ -37,6 +40,9 @@ export interface FakeInvoice {
   totalTtc: number;
   paExternalId: string | null;
   reconciled: boolean; // rapproché avec une ligne du relevé bancaire (Recettes)
+  // Comptabilité de caisse (BOI-BA-BASE-20-10) : date d'ENCAISSEMENT réel,
+  // pas issueDate ci-dessus. Vide = créance en cours (voir lib/cashStatus).
+  paidAt: string | null;
 }
 
 // Journal de caisse (vente directe) — voir CashJournalEntry dans le schéma.

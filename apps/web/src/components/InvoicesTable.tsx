@@ -1,7 +1,9 @@
 import type { FakeInvoice } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
+import { invoiceCashLabel } from "@/lib/cashStatus";
 import StatusBadge from "@/components/StatusBadge";
 import SendToPaButton from "@/components/invoicing/SendToPaButton";
+import MarkPaidButton from "@/components/MarkPaidButton";
 
 export default function InvoicesTable({
   invoices,
@@ -26,9 +28,10 @@ export default function InvoicesTable({
             <th className="px-4 py-2.5">Numéro</th>
             <th className="px-4 py-2.5">Type</th>
             <th className="px-4 py-2.5">Client</th>
-            <th className="px-4 py-2.5">Date</th>
+            <th className="px-4 py-2.5">Date de facture</th>
             <th className="px-4 py-2.5 text-right">Montant TTC</th>
             <th className="px-4 py-2.5">Statut</th>
+            <th className="px-4 py-2.5">Date d&apos;encaissement</th>
             <th className="px-4 py-2.5">Relevé bancaire</th>
             <th className="px-4 py-2.5" />
             <th className="px-4 py-2.5" />
@@ -43,7 +46,30 @@ export default function InvoicesTable({
               <td className="px-4 py-2.5 whitespace-nowrap">{formatDate(invoice.issueDate)}</td>
               <td className="px-4 py-2.5 text-right font-medium">{formatEuro(invoice.totalTtc)}</td>
               <td className="px-4 py-2.5">
-                <StatusBadge status={invoice.status} />
+                {invoice.type === "facture" ? (
+                  <span
+                    className={
+                      invoice.status !== "cancelled" && !invoice.paidAt
+                        ? "text-xs font-medium text-amber-700"
+                        : invoice.paidAt
+                          ? "text-xs font-medium text-emerald-700"
+                          : "text-xs text-slate-500"
+                    }
+                  >
+                    {invoiceCashLabel(invoice)}
+                  </span>
+                ) : (
+                  <StatusBadge status={invoice.status} />
+                )}
+              </td>
+              <td className="px-4 py-2.5 whitespace-nowrap text-xs">
+                {invoice.type !== "facture" || invoice.status === "cancelled" ? (
+                  "—"
+                ) : invoice.paidAt ? (
+                  formatDate(invoice.paidAt)
+                ) : (
+                  <MarkPaidButton url={`/api/invoices/${invoice.id}/mark-paid`} label="Marquer encaissée" />
+                )}
               </td>
               <td className="px-4 py-2.5 text-xs">
                 {invoice.reconciled ? (

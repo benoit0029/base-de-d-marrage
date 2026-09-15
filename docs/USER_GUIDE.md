@@ -112,6 +112,40 @@ pas une démo isolée, qui dit si le pipeline est fiable pour toi.
       expert-comptable ou sur impots.gouv.fr — l'app le rappelle déjà à
       l'écran, mais ça vaut la peine de le répéter ici.
 
+## 3 bis. Comptabilité de caisse — créances et dettes (le plus important à vérifier)
+
+Correction majeure : les recettes/dépenses comptent maintenant sur la date
+d'**encaissement/paiement réel**, jamais la date de facture — c'est la
+règle légale, mais elle change des chiffres déjà affichés avant.
+
+- [ ] Je crée une vraie facture (Maraîchage ou Kerbooth 360) : je vérifie
+      qu'elle affiche **« Facturée — créance en cours »**, pas encore
+      encaissée, tant que je n'ai rien fait d'autre.
+- [ ] Je vérifie qu'elle **n'apparaît pas** dans le CA du Registre TVA ni
+      dans les seuils de la Synthèse tant qu'elle reste une créance.
+- [ ] Je clique sur **« Marquer encaissée »** avec une vraie date de
+      paiement : le statut passe à **« Encaissée »**, et le montant
+      apparaît maintenant dans le bon trimestre du Registre TVA (celui de
+      la date d'encaissement, pas celui de la date de facture si les deux
+      diffèrent).
+- [ ] Je fais le test inverse en important un relevé bancaire : je
+      rapproche une facture non encaissée avec sa ligne de crédit — je
+      vérifie que la date d'encaissement se remplit **automatiquement**
+      avec la date de l'opération bancaire, sans que j'aie besoin de la
+      ressaisir.
+- [ ] Même test côté **Dépenses** : une dépense validée mais pas encore
+      payée doit afficher **« Facture reçue — dette en cours »**, et ne pas
+      compter dans la TVA déductible tant que je ne la marque pas payée
+      (ou que je ne la rapproche pas d'un débit du relevé).
+- [ ] Si j'annule un rapprochement fait par erreur, je vérifie que la date
+      d'encaissement/paiement disparaît aussi (elle redevient à saisir).
+
+⚠️ **Cas particulier non géré, à vérifier auprès de ta MSA/Cerfrance** : si
+une clause d'exigibilité "sur facture" a été retenue pour tes ventes
+(possible en régime simplifié agricole), la TVA pourrait être due dès la
+facturation plutôt qu'à l'encaissement — l'outil applique uniquement la
+règle par défaut (exigibilité à l'encaissement) pour l'instant.
+
 ## 4. Déclaration 2042, CA12A (Maraîchage) — encore en démonstration
 
 Ces deux sous-onglets affichent encore des données de démonstration à ce

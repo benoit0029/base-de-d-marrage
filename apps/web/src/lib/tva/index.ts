@@ -47,6 +47,16 @@ const QUARTERS_SHOWN = 6; // 1,5 an de recul — suffisant pour suivre l'histori
  * validées (TVA déductible) — jamais de saisie manuelle de ces montants.
  * Le statut confronte ce calcul aux acomptes réellement enregistrés
  * (TvaInstallment) pour la même période.
+ *
+ * Comptabilité de caisse (BOI-BA-BASE-20-10, BOI-TVA-SECT-80-30-30) : le
+ * rattachement se fait sur la date d'ENCAISSEMENT/PAIEMENT réel (`paidAt`),
+ * jamais sur la date de facture — une facture émise mais non encore
+ * encaissée (créance en cours) n'entre dans aucun calcul tant que `paidAt`
+ * est vide. ⚠️ Cas particulier non géré ici (à confirmer par Benoît auprès
+ * de la MSA/Cerfrance, voir prompt de construction) : si une facture est
+ * émise AVANT l'encaissement, la TVA peut devenir exigible dès la
+ * facturation plutôt qu'à l'encaissement — cette exception à la règle par
+ * défaut n'est pas implémentée.
  */
 export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
   const tenantId = await getDefaultTenantId();
@@ -64,7 +74,7 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
           activity: "BA_MARAICHAGE",
           type: "FACTURE",
           status: { in: ["SENT", "PAID"] },
-          issueDate: { gte: start, lte: end },
+          paidAt: { gte: start, lte: end },
         },
         _sum: { totalVat: true },
       }),
@@ -75,7 +85,7 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
           type: { in: ["ACHAT", "IMMOBILISATION"] },
           status: "VALIDATED",
           deletedAt: null,
-          date: { gte: start, lte: end },
+          paidAt: { gte: start, lte: end },
         },
         _sum: { amountVat: true },
       }),

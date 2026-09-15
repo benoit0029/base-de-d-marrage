@@ -1,15 +1,17 @@
 import { listInvoices } from "@/server/services/invoices";
 import { toInvoiceView } from "@/lib/serialize";
 import { formatDate, formatEuro } from "@/lib/format";
-import StatusBadge from "@/components/StatusBadge";
+import { invoiceCashLabel } from "@/lib/cashStatus";
+import MarkPaidButton from "@/components/MarkPaidButton";
 
 export const dynamic = "force-dynamic";
 
 // Kerbooth 360 est 100% facturé : le livre des recettes de cette activité ne
 // contient que des lignes de factures — pas de journal de caisse, pas de
-// capture IA de documents ici. Vue en lecture seule (la création/gestion des
-// factures se fait dans l'onglet Facturation) : c'est le registre légal, pas
-// l'espace de travail.
+// capture IA de documents ici. La création/gestion des factures se fait
+// dans l'onglet Facturation ; seul l'encaissement (comptabilité de caisse,
+// voir lib/cashStatus) se renseigne depuis cette vue ou automatiquement via
+// le rapprochement bancaire.
 export default async function Page() {
   const invoices = (await listInvoices("BIC_PHOTOBOOTH"))
     .filter((i) => i.type === "FACTURE" && i.status !== "CANCELLED")
@@ -18,8 +20,8 @@ export default async function Page() {
   return (
     <div className="rounded-lg border bg-white">
       <div className="border-b bg-slate-50 p-3 text-xs text-slate-500">
-        Livre des recettes — lecture seule. Pour créer ou envoyer une
-        facture, utilisez l&apos;onglet Facturation.
+        Livre des recettes. Pour créer ou envoyer une facture, utilisez
+        l&apos;onglet Facturation.
       </div>
       {invoices.length === 0 ? (
         <p className="p-6 text-sm text-slate-500">Aucune facture pour le moment.</p>
@@ -30,9 +32,10 @@ export default async function Page() {
               <tr>
                 <th className="px-4 py-2.5">Numéro</th>
                 <th className="px-4 py-2.5">Client</th>
-                <th className="px-4 py-2.5">Date</th>
+                <th className="px-4 py-2.5">Date de facture</th>
                 <th className="px-4 py-2.5 text-right">Montant TTC</th>
                 <th className="px-4 py-2.5">Statut</th>
+                <th className="px-4 py-2.5">Date d&apos;encaissement</th>
                 <th className="px-4 py-2.5">Relevé bancaire</th>
                 <th className="px-4 py-2.5" />
               </tr>
@@ -44,8 +47,21 @@ export default async function Page() {
                   <td className="px-4 py-2.5">{invoice.clientName}</td>
                   <td className="px-4 py-2.5 whitespace-nowrap">{formatDate(invoice.issueDate)}</td>
                   <td className="px-4 py-2.5 text-right font-medium">{formatEuro(invoice.totalTtc)}</td>
-                  <td className="px-4 py-2.5">
-                    <StatusBadge status={invoice.status} />
+                  <td className="px-4 py-2.5 text-xs">
+                    <span
+                      className={
+                        !invoice.paidAt ? "font-medium text-amber-700" : "font-medium text-emerald-700"
+                      }
+                    >
+                      {invoiceCashLabel(invoice)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs">
+                    {invoice.paidAt ? (
+                      formatDate(invoice.paidAt)
+                    ) : (
+                      <MarkPaidButton url={`/api/invoices/${invoice.id}/mark-paid`} label="Marquer encaissée" />
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-xs">
                     {invoice.reconciled ? (
