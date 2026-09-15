@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { FakeBankTransaction, FakeEntry, FakeInvoice, FakeCashJournalEntry } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
+import StatusBadge from "@/components/StatusBadge";
+import RegisterActions from "@/components/RegisterActions";
 
 interface Candidates {
   entries: FakeEntry[];
@@ -157,6 +159,8 @@ export default function BankTransactionsTable({
             <th className="px-4 py-2.5">Sens</th>
             <th className="px-4 py-2.5 text-right">Montant</th>
             <th className="px-4 py-2.5">Rapprochement</th>
+            <th className="px-4 py-2.5">Statut</th>
+            <th className="px-4 py-2.5" />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -183,6 +187,27 @@ export default function BankTransactionsTable({
                 ) : (
                   <ReconcilePicker transaction={tx} />
                 )}
+              </td>
+              <td className="px-4 py-2.5">
+                <StatusBadge status={tx.status} />
+              </td>
+              <td className="px-4 py-2.5 text-right">
+                <RegisterActions
+                  pending={tx.status === "pending"}
+                  validateUrl={tx.status === "pending" ? `/api/bank-transactions/${tx.id}/validate` : undefined}
+                  deleteUrl={
+                    tx.status === "pending"
+                      ? `/api/bank-transactions/${tx.id}`
+                      : `/api/bank-transactions/${tx.id}/soft-delete`
+                  }
+                  deleteMethod={tx.status === "pending" ? "DELETE" : "POST"}
+                  deleteLabel={tx.status === "pending" ? "Supprimer" : "Supprimer la ligne"}
+                  confirmMessage={
+                    tx.status === "pending"
+                      ? "Supprimer cette ligne importée en attente ?"
+                      : "Supprimer définitivement cette ligne validée de l'affichage ? Elle restera conservée en base en cas de contrôle fiscal."
+                  }
+                />
               </td>
             </tr>
           ))}

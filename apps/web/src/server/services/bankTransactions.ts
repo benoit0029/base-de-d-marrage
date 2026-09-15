@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { saveDocumentFile } from "@/lib/storage";
@@ -7,14 +8,83 @@ import type { Activity } from "@prisma/client";
 
 export class BankTransactionError extends Error {}
 export class BankTransactionNotFoundError extends Error {}
+export class BankTransactionAlreadyValidatedError extends Error {}
+export class BankTransactionNotValidatedError extends Error {}
 
 export async function listBankTransactions(activity: Activity) {
   const tenantId = await getDefaultTenantId();
   return prisma.bankTransaction.findMany({
-    where: { tenantId, activity },
+    where: { tenantId, activity, deletedAt: null },
     orderBy: { date: "desc" },
     include: { entry: true, invoice: true, cashJournalEntry: true },
   });
+}
+
+/**
+ * Confirme une ligne importée en attente (même règle transversale que les
+ * autres registres — voir docs/ARCHITECTURE.md).
+ */
+export async function validateBankTransaction(id: string, userId: string | null) {
+  const tx = await prisma.bankTransaction.findUnique({ where: { id } });
+  if (!tx) throw new BankTransactionNotFoundError(id);
+  if (tx.status === "VALIDATED") throw new BankTransactionAlreadyValidatedError(id);
+
+  const [updated] = await prisma.$transaction([
+    prisma.bankTransaction.update({
+      where: { id },
+      data: { status: "VALIDATED", validatedById: userId, validatedAt: new Date() },
+    }),
+    prisma.auditLog.create({
+      data: {
+        tenantId: tx.tenantId,
+        userId,
+        action: "BANK_TRANSACTION_VALIDATED",
+        entityType: "BankTransaction",
+        entityId: id,
+        before: JSON.parse(JSON.stringify(tx)),
+        after: Prisma.JsonNull,
+      },
+    }),
+  ]);
+  return updated;
+}
+
+/** Supprime une ligne importée encore en attente (jamais validée) : suppression réelle. */
+export async function deleteBankTransaction(id: string): Promise<void> {
+  const tx = await prisma.bankTransaction.findUnique({ where: { id } });
+  if (!tx) throw new BankTransactionNotFoundError(id);
+  if (tx.status === "VALIDATED") {
+    throw new BankTransactionAlreadyValidatedError(
+      "Ligne déjà validée : utilisez « Supprimer la ligne » plutôt que « Supprimer »."
+    );
+  }
+  await prisma.bankTransaction.delete({ where: { id } });
+}
+
+/** « Supprimer la ligne » : masque définitivement une ligne déjà validée, sans l'effacer (contrôle fiscal). */
+export async function softDeleteBankTransaction(id: string, userId: string | null): Promise<void> {
+  const tx = await prisma.bankTransaction.findUnique({ where: { id } });
+  if (!tx) throw new BankTransactionNotFoundError(id);
+  if (tx.status !== "VALIDATED") {
+    throw new BankTransactionNotValidatedError(
+      "Ligne pas encore validée : utilisez « Supprimer » plutôt que « Supprimer la ligne »."
+    );
+  }
+
+  await prisma.$transaction([
+    prisma.bankTransaction.update({ where: { id }, data: { deletedAt: new Date() } }),
+    prisma.auditLog.create({
+      data: {
+        tenantId: tx.tenantId,
+        userId,
+        action: "BANK_TRANSACTION_SOFT_DELETED",
+        entityType: "BankTransaction",
+        entityId: id,
+        before: JSON.parse(JSON.stringify(tx)),
+        after: Prisma.JsonNull,
+      },
+    }),
+  ]);
 }
 
 export type ImportStatementResult =
@@ -60,7 +130,7 @@ export async function importBankStatementCsv(
   }
 
   const existing = await prisma.bankTransaction.findMany({
-    where: { tenantId, activity },
+    where: { tenantId, activity, deletedAt: null },
     select: { date: true, label: true, amount: true, direction: true },
   });
   const existingKeys = new Set(
@@ -167,6 +237,7 @@ export async function listReconciliationCandidates(
         activity,
         type: { in: ["ACHAT", "IMMOBILISATION"] },
         bankTransactionId: null,
+        deletedAt: null,
         date: dateWindow(date),
       },
       orderBy: { date: "desc" },
@@ -187,7 +258,13 @@ export async function listReconciliationCandidates(
       orderBy: { issueDate: "desc" },
     }),
     prisma.cashJournalEntry.findMany({
-      where: { tenantId, activity, bankTransactionId: null, date: dateWindow(date) },
+      where: {
+        tenantId,
+        activity,
+        bankTransactionId: null,
+        deletedAt: null,
+        date: dateWindow(date),
+      },
       orderBy: { date: "desc" },
     }),
   ]);

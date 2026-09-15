@@ -368,3 +368,49 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   voir `proxy.ts`) et d'un petit utilitaire `lib/storage/url.ts` (sans
   dépendance à `node:fs`, donc utilisable depuis des composants clients)
   pour convertir une URL stockée en lien cliquable.
+
+## 12. Cycle Valider/Supprimer généralisé, suppression douce, Registre TVA réel
+
+- **Un même cycle PENDING/VALIDATED partout** : `BankTransaction` et
+  `SimpleImport` n'avaient pas de statut au moment de leur import — corrigé
+  pour uniformiser le comportement "Valider : confirme une ligne en attente,
+  en un clic" sur tous les sous-onglets registre (Dépenses, Recettes, Tesa+,
+  Cotisations non salarié, Relevé bancaire, Acompte TVA), pas seulement
+  Entry/CashJournalEntry qui l'avaient déjà.
+- **Deux suppressions bien distinctes**, mêmes règles partout
+  (`RegisterActions`, composant partagé par tous ces tableaux) :
+  - **"Supprimer"** (ligne encore PENDING) : suppression réelle en base —
+    rien à conserver, la ligne n'a jamais fait foi.
+  - **"Supprimer la ligne"** (ligne déjà VALIDATED) : suppression douce
+    (`deletedAt` posé, jamais réaffichée nulle part) plutôt qu'une vraie
+    suppression, pour garder une trace en cas de contrôle fiscal — ajouté
+    sur `Entry`, `CashJournalEntry`, `SimpleImport`, `BankTransaction`,
+    `TvaInstallment`. Toutes les requêtes de liste filtrent désormais
+    `deletedAt: null` (y compris les candidats de rapprochement bancaire,
+    pour ne jamais proposer une ligne masquée). `Invoice` n'a pas cette
+    mécanique : la facturation reste un module à part (son cycle
+    DRAFT/SENT/PAID/CANCELLED existant suffit), les lignes de facture dans
+    les tableaux Recette restent en lecture seule, gérées depuis l'onglet
+    Facturation.
+- **Cotisations Tesa+ salariales alimentent aussi les Dépenses** : la
+  logique déjà en place pour `COTISATION_NON_SALARIE` (créer une `Entry` à
+  la validation, jamais à l'import) s'applique maintenant aussi à
+  `TESA_COTISATIONS_SALARIALES` — les deux catégories partagent
+  `CATEGORIES_GENERATING_ENTRY` dans `server/services/simpleImports.ts`.
+- **Registre TVA réellement calculé** (`lib/tva`), plus une donnée de
+  démonstration : par trimestre glissant (les 6 derniers, calculés
+  dynamiquement depuis la date du jour, jamais codés en dur), TVA collectée
+  = somme des factures Maraîchage validées/envoyées de la période, TVA
+  déductible = somme des Dépenses validées (non supprimées) de la période.
+  Le statut ("Réglé"/"À traiter") confronte ce calcul à l'existence d'un
+  paiement d'acompte validé pour la même période (`TvaInstallment`,
+  correspondance par libellé d'échéance).
+- **Acompte TVA** (`TvaInstallment`, nouveau modèle) : même schéma qu'un
+  import simple — enregistré après paiement, justificatif optionnel,
+  détection de doublon, cycle Valider/Supprimer identique. Distinct de
+  `TvaDeclaration` (préexistant, jamais branché, gardé pour un usage futur
+  éventuel autour de la déclaration annuelle/CA12A plutôt que des acomptes).
+- **`PayrollEmployee`/`Payslip` restent orphelins** (déjà signalé phase
+  précédente) : aucune donnée réelle n'y a jamais transité, aucune migration
+  de suppression n'a été faite par prudence — à retirer un jour si confirmé
+  définitivement inutile.

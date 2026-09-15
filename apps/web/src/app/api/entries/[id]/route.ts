@@ -4,6 +4,7 @@ import {
   EntryAlreadyValidatedError,
   EntryNotFoundError,
   correctEntry,
+  deleteEntry,
 } from "@/server/services/entries";
 import { getCurrentUserId } from "@/lib/auth/currentUser";
 
@@ -34,6 +35,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
     if (err instanceof EntryAlreadyValidatedError) {
       return NextResponse.json({ error: "Écriture verrouillée (déjà validée)" }, { status: 409 });
+    }
+    throw err;
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  try {
+    await deleteEntry(id);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    if (err instanceof EntryNotFoundError) {
+      return NextResponse.json({ error: "Écriture introuvable" }, { status: 404 });
+    }
+    if (err instanceof EntryAlreadyValidatedError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
     }
     throw err;
   }

@@ -12,7 +12,7 @@ export interface ExceptionalSale {
 export async function listCashJournalEntries(activity: Activity) {
   const tenantId = await getDefaultTenantId();
   return prisma.cashJournalEntry.findMany({
-    where: { tenantId, activity },
+    where: { tenantId, activity, deletedAt: null },
     orderBy: { date: "desc" },
   });
 }
@@ -20,6 +20,7 @@ export async function listCashJournalEntries(activity: Activity) {
 export class CashJournalError extends Error {}
 export class CashJournalEntryNotFoundError extends Error {}
 export class CashJournalAlreadyValidatedError extends Error {}
+export class CashJournalNotValidatedError extends Error {}
 
 export interface CreateCashJournalEntryInput {
   date: Date;
@@ -112,4 +113,42 @@ export async function validateCashJournalEntry(
   ]);
 
   return updated;
+}
+
+/** Supprime une saisie encore en attente (jamais validée) : suppression réelle. */
+export async function deleteCashJournalEntry(id: string): Promise<void> {
+  const entry = await prisma.cashJournalEntry.findUnique({ where: { id } });
+  if (!entry) throw new CashJournalEntryNotFoundError(id);
+  if (entry.status === "VALIDATED") {
+    throw new CashJournalAlreadyValidatedError(
+      "Saisie déjà validée : utilisez « Supprimer la ligne » plutôt que « Supprimer »."
+    );
+  }
+  await prisma.cashJournalEntry.delete({ where: { id } });
+}
+
+/** « Supprimer la ligne » : masque définitivement une saisie déjà validée, sans l'effacer (contrôle fiscal). */
+export async function softDeleteCashJournalEntry(id: string, userId: string | null): Promise<void> {
+  const entry = await prisma.cashJournalEntry.findUnique({ where: { id } });
+  if (!entry) throw new CashJournalEntryNotFoundError(id);
+  if (entry.status !== "VALIDATED") {
+    throw new CashJournalNotValidatedError(
+      "Saisie pas encore validée : utilisez « Supprimer » plutôt que « Supprimer la ligne »."
+    );
+  }
+
+  await prisma.$transaction([
+    prisma.cashJournalEntry.update({ where: { id }, data: { deletedAt: new Date() } }),
+    prisma.auditLog.create({
+      data: {
+        tenantId: entry.tenantId,
+        userId,
+        action: "CASH_JOURNAL_ENTRY_SOFT_DELETED",
+        entityType: "CashJournalEntry",
+        entityId: id,
+        before: JSON.parse(JSON.stringify(entry)),
+        after: Prisma.JsonNull,
+      },
+    }),
+  ]);
 }

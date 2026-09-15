@@ -79,6 +79,7 @@ export interface FakeSimpleImport {
   fileUrl: string;
   amountTtc: number | null;
   linkedEntryId: string | null;
+  status: EntryStatus;
 }
 
 // Ligne de relevé bancaire importée, avec son éventuel rapprochement.
@@ -90,4 +91,15 @@ export interface FakeBankTransaction {
   direction: "DEBIT" | "CREDIT";
   reconciled: boolean;
   reconciledWith: string | null; // libellé de la pièce rapprochée, pour affichage
+  status: EntryStatus;
+}
+
+// Acompte TVA (Maraîchage) — voir TvaInstallment dans le schéma.
+export interface FakeTvaInstallment {
+  id: string;
+  dueLabel: string;
+  amountPaid: number;
+  paidAt: string;
+  justificatifUrl: string | null;
+  status: EntryStatus;
 }

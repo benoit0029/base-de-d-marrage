@@ -1,11 +1,11 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { Fragment, useState } from "react";
 import type { FakeCashJournalEntry } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
 import { toDocumentHref } from "@/lib/storage/url";
 import StatusBadge from "@/components/StatusBadge";
+import RegisterActions from "@/components/RegisterActions";
 
 const paymentMethodLabel: Record<string, string> = {
   especes: "Espèces",
@@ -13,36 +13,21 @@ const paymentMethodLabel: Record<string, string> = {
   cb: "CB",
 };
 
-export function CashJournalValidateButton({ entryId }: { entryId: string }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function handleClick() {
-    setError(null);
-    startTransition(async () => {
-      const res = await fetch(`/api/cash-journal/${entryId}/validate`, { method: "POST" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body.error ?? "Échec de la validation");
-        return;
-      }
-      router.refresh();
-    });
-  }
-
+export function CashJournalActions({ entry }: { entry: FakeCashJournalEntry }) {
+  const pending = entry.status === "pending";
   return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 disabled:opacity-50"
-      >
-        {isPending ? "…" : "Valider"}
-      </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
-    </div>
+    <RegisterActions
+      pending={pending}
+      validateUrl={pending ? `/api/cash-journal/${entry.id}/validate` : undefined}
+      deleteUrl={pending ? `/api/cash-journal/${entry.id}` : `/api/cash-journal/${entry.id}/soft-delete`}
+      deleteMethod={pending ? "DELETE" : "POST"}
+      deleteLabel={pending ? "Supprimer" : "Supprimer la ligne"}
+      confirmMessage={
+        pending
+          ? "Supprimer cette saisie en attente ?"
+          : "Supprimer définitivement cette ligne validée de l'affichage ? Elle restera conservée en base en cas de contrôle fiscal."
+      }
+    />
   );
 }
 
@@ -143,7 +128,7 @@ export default function CashJournalTable({ entries }: { entries: FakeCashJournal
                   </button>
                 </td>
                 <td className="px-4 py-2.5 text-right">
-                  {entry.status === "pending" ? <CashJournalValidateButton entryId={entry.id} /> : null}
+                  <CashJournalActions entry={entry} />
                 </td>
               </tr>
               {expanded === entry.id && (

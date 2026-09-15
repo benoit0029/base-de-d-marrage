@@ -1,14 +1,6 @@
-// Données factices — phase 2 uniquement (registre TVA, acomptes, paie, déclarations).
-
-export const tvaRegisterFixture = [
-  { id: "tva-1", periode: "2026-T2", baseHt: 4200, tvaCollectee: 0, tvaDeductible: 180, solde: -180 },
-  { id: "tva-2", periode: "2026-T3", baseHt: 5100, tvaCollectee: 0, tvaDeductible: 210, solde: -210 },
-];
-
-export const tvaInstallmentsFixture = [
-  { id: "acompte-1", periode: "2026-T3", echeance: "2026-09-15", montant: 320, statut: "a_payer" as const },
-  { id: "acompte-2", periode: "2026-T4", echeance: "2026-12-15", montant: 340, statut: "a_venir" as const },
-];
+// Données factices — déclarations annuelles (2042/CA12A) uniquement : le
+// registre TVA et les acomptes sont désormais calculés/enregistrés pour de
+// vrai (voir lib/tva et server/services/tvaInstallments).
 
 export const annualDeclarationFixture = {
   annee: 2025,

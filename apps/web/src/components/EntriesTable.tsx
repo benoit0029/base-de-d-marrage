@@ -1,10 +1,7 @@
-"use client";
-
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { FakeEntry } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
+import RegisterActions from "@/components/RegisterActions";
 
 const sourceLabel: Record<FakeEntry["source"], string> = {
   email: "📧 Email",
@@ -17,39 +14,6 @@ const typeLabel: Record<FakeEntry["type"], string> = {
   achat: "Achat",
   immobilisation: "Immobilisation",
 };
-
-function ValidateButton({ entryId }: { entryId: string }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function handleClick() {
-    setError(null);
-    startTransition(async () => {
-      const res = await fetch(`/api/entries/${entryId}/validate`, { method: "POST" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body.error ?? "Échec de la validation");
-        return;
-      }
-      router.refresh();
-    });
-  }
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 disabled:opacity-50"
-      >
-        {isPending ? "…" : "Valider"}
-      </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
-    </div>
-  );
-}
 
 export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
   if (entries.length === 0) {
@@ -120,7 +84,22 @@ export default function EntriesTable({ entries }: { entries: FakeEntry[] }) {
                 )}
               </td>
               <td className="px-4 py-2.5 text-right">
-                {entry.status === "pending" ? <ValidateButton entryId={entry.id} /> : null}
+                <RegisterActions
+                  pending={entry.status === "pending"}
+                  validateUrl={entry.status === "pending" ? `/api/entries/${entry.id}/validate` : undefined}
+                  deleteUrl={
+                    entry.status === "pending"
+                      ? `/api/entries/${entry.id}`
+                      : `/api/entries/${entry.id}/soft-delete`
+                  }
+                  deleteMethod={entry.status === "pending" ? "DELETE" : "POST"}
+                  deleteLabel={entry.status === "pending" ? "Supprimer" : "Supprimer la ligne"}
+                  confirmMessage={
+                    entry.status === "pending"
+                      ? "Supprimer cette écriture en attente ?"
+                      : "Supprimer définitivement cette ligne validée de l'affichage ? Elle restera conservée en base en cas de contrôle fiscal."
+                  }
+                />
               </td>
             </tr>
           ))}

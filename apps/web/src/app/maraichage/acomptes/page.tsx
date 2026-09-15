@@ -1,36 +1,21 @@
-import { tvaInstallmentsFixture } from "@/lib/fixtures/maraichage-admin";
-import { formatDate, formatEuro } from "@/lib/format";
-import StatusBadge from "@/components/StatusBadge";
+import { listTvaInstallments } from "@/server/services/tvaInstallments";
+import { toTvaInstallmentView } from "@/lib/serialize";
+import TvaInstallmentForm from "@/components/TvaInstallmentForm";
+import TvaInstallmentTable from "@/components/TvaInstallmentTable";
 
-const statusMap: Record<string, string> = {
-  a_payer: "pending",
-  a_venir: "draft",
-  paye: "validated",
-};
+export const dynamic = "force-dynamic";
 
-export default function Page() {
+// Acompte TVA (Maraîchage, régime simplifié agricole) : simple import après
+// paiement, justificatif à l'appui — plus une donnée de démonstration.
+export default async function Page() {
+  const items = await listTvaInstallments();
+
   return (
-    <div className="rounded-lg border bg-white">
-      <p className="p-4 text-sm text-slate-500">
-        Échéancier des acomptes de TVA trimestriels (régime simplifié
-        agricole).
-      </p>
-      <ul className="divide-y divide-slate-100">
-        {tvaInstallmentsFixture.map((row) => (
-          <li key={row.id} className="flex items-center justify-between px-4 py-3">
-            <div>
-              <p className="text-sm font-medium text-slate-800">{row.periode}</p>
-              <p className="text-xs text-slate-500">
-                Échéance : {formatDate(row.echeance)}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">{formatEuro(row.montant)}</span>
-              <StatusBadge status={statusMap[row.statut] ?? row.statut} />
-            </div>
-          </li>
-        ))}
-      </ul>
+    <div className="space-y-4">
+      <TvaInstallmentForm />
+      <div className="rounded-lg border bg-white">
+        <TvaInstallmentTable items={items.map(toTvaInstallmentView)} />
+      </div>
     </div>
   );
 }

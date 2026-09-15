@@ -36,6 +36,7 @@ model Tenant {
   cashJournalEntries CashJournalEntry[]
   simpleImports      SimpleImport[]
   bankTransactions   BankTransaction[]
+  tvaInstallments    TvaInstallment[]
 }
 
 model User {
@@ -195,11 +196,17 @@ model Entry {
   validatedAt     DateTime?
   createdAt       DateTime    @default(now())
 
+  // Suppression douce (ligne déjà validée) : jamais réaffichée nulle part,
+  // mais conservée en base pour un contrôle fiscal éventuel. Une ligne encore
+  // PENDING peut en revanche être vraiment supprimée (voir services).
+  deletedAt DateTime?
+
   // Rapprochement bancaire (une Dépense ↔ un débit du relevé importé).
   bankTransactionId String?          @unique
   bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
-  // Écriture générée automatiquement par un import "Cotisations non salarié"
-  // (voir SimpleImport.linkedEntryId) — présent seulement dans ce cas.
+  // Écriture générée automatiquement par un import Tesa+ (cotisations
+  // salariales) ou "Cotisations non salarié" (voir SimpleImport.linkedEntryId)
+  // — présent seulement dans ce cas.
   simpleImport      SimpleImport?
 
   @@index([tenantId, activity, status])
@@ -243,6 +250,9 @@ model CashJournalEntry {
   validatedById    String?
   validatedAt      DateTime?
   createdAt        DateTime    @default(now())
+
+  // Suppression douce une fois validée (voir Entry.deletedAt).
+  deletedAt DateTime?
 
   // Rapprochement bancaire (une saisie de caisse ↔ un crédit du relevé
   // importé — typiquement le dépôt en banque des espèces/chèques du jour).
@@ -352,6 +362,28 @@ model TvaDeclaration {
   createdAt DateTime @default(now())
 }
 
+// Acompte TVA (Maraîchage, régime simplifié agricole) : simple import après
+// paiement (justificatif), même cycle PENDING/VALIDATED que le reste des
+// registres. Le Registre TVA (calcul automatique, voir lib/tva) confronte
+// ces paiements enregistrés au montant réellement dû par trimestre.
+model TvaInstallment {
+  id              String      @id @default(cuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  dueLabel        String // ex. "2026-T3", ou "Régularisation annuelle"
+  amountPaid      Decimal     @db.Decimal(12, 2)
+  paidAt          DateTime
+  justificatifUrl String?
+  fileHash        String? // détection de doublon — voir lib/dedup.ts
+  status          EntryStatus @default(PENDING)
+  validatedById   String?
+  validatedAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+
+  @@index([tenantId, status])
+}
+
 // ---------------------------------------------------------------------------
 // Suivi des seuils (agent de suivi/alerte)
 // ---------------------------------------------------------------------------
@@ -448,9 +480,18 @@ model SimpleImport {
   fileUrl  String
   fileHash String // détection de doublon — voir lib/dedup.ts
 
-  // Montant optionnel (obligatoire en pratique pour COTISATION_NON_SALARIE,
-  // qui génère une ligne de Dépense — voir linkedEntry).
+  // Montant optionnel (obligatoire en pratique pour COTISATION_NON_SALARIE et
+  // TESA_COTISATIONS_SALARIALES, qui génèrent une ligne de Dépense à la
+  // validation — voir linkedEntry).
   amountTtc Decimal? @db.Decimal(12, 2)
+
+  // Même cycle PENDING/VALIDATED que le reste des registres. La Dépense
+  // liée (linkedEntry) n'est créée qu'à la validation, pas à l'import — pour
+  // ne jamais faire apparaître une dépense avant confirmation humaine.
+  status        EntryStatus @default(PENDING)
+  validatedById String?
+  validatedAt   DateTime?
+  deletedAt     DateTime? // suppression douce une fois validée
 
   linkedEntryId String? @unique
   linkedEntry   Entry?  @relation(fields: [linkedEntryId], references: [id])
@@ -496,7 +537,15 @@ model BankTransaction {
   duplicateCandidates   BankTransaction[] @relation("BankTransactionDuplicate")
   duplicateConfirmed    Boolean           @default(false)
 
-  createdAt DateTime @default(now())
+  // Même cycle PENDING/VALIDATED que le reste des registres : une ligne
+  // importée reste "en attente" tant qu'elle n'a pas été relue, "Valider"
+  // la confirme en un clic.
+  status        EntryStatus @default(PENDING)
+  validatedById String?
+  validatedAt   DateTime?
+
+  deletedAt DateTime? // suppression douce (ligne déjà validée)
+  createdAt DateTime  @default(now())
 
   entry            Entry?
   invoice          Invoice?

@@ -20,7 +20,7 @@ export const activities: ActivityNav[] = [
       { slug: "achats", label: "Dépenses" },
       { slug: "releve-bancaire", label: "Relevé bancaire" },
       { slug: "tva", label: "Registre TVA" },
-      { slug: "acomptes", label: "Acomptes TVA" },
+      { slug: "acomptes", label: "Acompte TVA" },
       { slug: "tesa-plus", label: "Tesa+" },
       { slug: "cotisations-non-salarie", label: "Cotisations non salarié" },
       { slug: "declaration-annuelle", label: "Déclaration 2042" },

@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 import type { LivreRecettesLigne } from "@/lib/types";
 import { formatDate, formatEuro } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
-import { CashJournalDetail, CashJournalValidateButton } from "@/components/CashJournalTable";
+import { CashJournalActions, CashJournalDetail } from "@/components/CashJournalTable";
 
 // Livre des recettes du Maraîchage : une ligne par facture ET une ligne par
 // jour de vente directe. Deux lignes à la même date restent deux lignes
@@ -104,7 +104,7 @@ export default function MaraichageLedgerTable({ lignes }: { lignes: LivreRecette
                       >
                         {expanded === rowKey ? "Masquer" : "Détail"}
                       </button>
-                      {cash.status === "pending" && <CashJournalValidateButton entryId={cash.id} />}
+                      <CashJournalActions entry={cash} />
                     </div>
                   </td>
                 </tr>

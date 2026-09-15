@@ -1,4 +1,12 @@
-import type { Document, Entry, Invoice, CashJournalEntry, SimpleImport, BankTransaction } from "@prisma/client";
+import type {
+  Document,
+  Entry,
+  Invoice,
+  CashJournalEntry,
+  SimpleImport,
+  BankTransaction,
+  TvaInstallment,
+} from "@prisma/client";
 import type {
   FakeEntry,
   FakeInvoice,
@@ -6,7 +14,14 @@ import type {
   FakeExceptionalSale,
   FakeSimpleImport,
   FakeBankTransaction,
+  FakeTvaInstallment,
+  EntryStatus,
 } from "@/lib/types";
+
+const genericStatusMap: Record<"PENDING" | "VALIDATED", EntryStatus> = {
+  PENDING: "pending",
+  VALIDATED: "validated",
+};
 
 const typeMap: Record<Entry["type"], FakeEntry["type"]> = {
   RECETTE: "recette",
@@ -68,11 +83,6 @@ export function toInvoiceView(invoice: Invoice): FakeInvoice {
   };
 }
 
-const cashJournalStatusMap: Record<CashJournalEntry["status"], FakeEntry["status"]> = {
-  PENDING: "pending",
-  VALIDATED: "validated",
-};
-
 function parseExceptionalSales(json: unknown): FakeExceptionalSale[] {
   if (!Array.isArray(json)) return [];
   return json
@@ -93,6 +103,18 @@ export function toSimpleImportView(item: SimpleImport): FakeSimpleImport {
     fileUrl: item.fileUrl,
     amountTtc: item.amountTtc ? Number(item.amountTtc) : null,
     linkedEntryId: item.linkedEntryId,
+    status: genericStatusMap[item.status],
+  };
+}
+
+export function toTvaInstallmentView(item: TvaInstallment): FakeTvaInstallment {
+  return {
+    id: item.id,
+    dueLabel: item.dueLabel,
+    amountPaid: Number(item.amountPaid),
+    paidAt: item.paidAt.toISOString(),
+    justificatifUrl: item.justificatifUrl,
+    status: genericStatusMap[item.status],
   };
 }
 
@@ -119,6 +141,7 @@ export function toBankTransactionView(tx: BankTransactionWithMatches): FakeBankT
     direction: tx.direction,
     reconciled: reconciledWith !== null,
     reconciledWith,
+    status: genericStatusMap[tx.status],
   };
 }
 
@@ -140,7 +163,7 @@ export function toCashJournalView(entry: CashJournalEntry): FakeCashJournalEntry
     depositSlipUrl: entry.depositSlipUrl,
     cardStatementUrl: entry.cardStatementUrl,
     exceptionalSales,
-    status: cashJournalStatusMap[entry.status],
+    status: genericStatusMap[entry.status],
     reconciled: entry.bankTransactionId !== null,
   };
 }

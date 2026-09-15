@@ -112,15 +112,16 @@ pas une démo isolée, qui dit si le pipeline est fiable pour toi.
       expert-comptable ou sur impots.gouv.fr — l'app le rappelle déjà à
       l'écran, mais ça vaut la peine de le répéter ici.
 
-## 4. TVA, déclarations (Maraîchage) — encore en démonstration
+## 4. Déclaration 2042, CA12A (Maraîchage) — encore en démonstration
 
-Ces sous-onglets (Registre TVA, Acomptes, Déclaration 2042, CA12A)
-affichent encore des données de démonstration à ce stade — ils n'ont pas
-été branchés sur tes écritures réelles. **Ne t'y fie pas encore** ; à
-traiter dans une itération ultérieure si tu veux les rendre opérationnels.
+Ces deux sous-onglets affichent encore des données de démonstration à ce
+stade. **Ne t'y fie pas encore** ; à traiter dans une itération ultérieure
+si tu veux les rendre opérationnels.
 
-**Tesa+** (ex-« Paie ») n'est plus concerné : c'est maintenant un vrai
-import de documents (voir section 4 bis), pas une donnée de démonstration.
+**Registre TVA et Acompte TVA ne sont plus concernés** : ils sont
+maintenant calculés/enregistrés pour de vrai (voir section 4 ter).
+**Tesa+** (ex-« Paie ») non plus : c'est un vrai import de documents (voir
+section 4 bis), pas une donnée de démonstration.
 
 ## 4 bis. Tesa+, Cotisations non salarié, Dépenses, Relevé bancaire
 
@@ -152,6 +153,27 @@ import de documents (voir section 4 bis), pas une donnée de démonstration.
       fichier (Tesa+, cotisation, ou relevé bancaire) sans cocher la case de
       confirmation, et je vérifie que rien n'est enregistré deux fois tant
       que je ne confirme pas explicitement.
+- [ ] Sur n'importe lequel de ces registres (Tesa+, Cotisations non
+      salarié, Dépenses, Relevé bancaire) : je **valide** une ligne en
+      attente, puis je clique sur **« Supprimer la ligne »**. Je vérifie
+      qu'elle disparaît bien de l'affichage — c'est le comportement attendu,
+      la donnée reste en base pour un contrôle fiscal éventuel, jamais
+      visible à l'écran. Je vérifie aussi qu'une ligne encore **en attente**
+      (jamais validée) propose bien **« Supprimer »** (sans le "la ligne") —
+      les deux boutons ne doivent jamais apparaître ensemble sur une même
+      ligne.
+
+## 4 ter. Registre TVA et Acompte TVA (Maraîchage)
+
+- [ ] Sur **Acompte TVA** : j'enregistre un vrai paiement déjà effectué
+      (échéance, montant, date, justificatif si j'en ai un), je le valide.
+- [ ] Sur **Registre TVA** : je vérifie que le trimestre correspondant
+      passe au statut **« Réglé »** une fois l'acompte validé pour la même
+      échéance (le libellé doit correspondre exactement, ex. « 2026-T3»).
+- [ ] Je compare les montants de TVA collectée/déductible affichés à mes
+      propres calculs pour au moins un trimestre déjà clos — **ce calcul
+      n'a pas encore été validé en conditions réelles**, un écart vaut la
+      peine d'être signalé avant de s'y fier pour de vrai.
 
 ## 5. Alertes automatiques (n8n)
 
