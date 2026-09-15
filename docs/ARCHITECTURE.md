@@ -577,6 +577,20 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   le même type d'endpoint Scaleway avec succès), mais la première
   validation réelle se fera au déploiement sur le VPS (voir
   `docs/DEPLOYMENT.md` §9) — accès réseau non restreint là-bas.
+- **`scripts/migrate-storage-to-s3.js` en JavaScript brut, pas TypeScript** :
+  l'image Docker de production (build `standalone` de Next.js) n'embarque
+  que ce que le code applicatif importe réellement — `tsx` (devDependency,
+  jamais importée par l'app) en est donc absente, ce qui a fait échouer un
+  premier essai en production (`tsx: not found`). Même limite préexistante
+  pour `db:seed`, jamais remarquée faute d'avoir été lancée en prod. Plutôt
+  que d'alourdir l'image avec `tsx` pour un script d'un seul usage, le
+  script est écrit en CommonJS pur (`require`), exécuté par `node`
+  directement — ses deux dépendances externes (`@prisma/client`,
+  `@aws-sdk/client-s3`) sont déjà présentes dans l'image (la première
+  copiée explicitement pour le CLI Prisma, la seconde tracée par le build
+  standalone puisque `lib/storage/index.ts` l'importe). Le `Dockerfile`
+  copie maintenant aussi `scripts/` dans l'image finale (absent du tracé
+  standalone, comme `prisma/`).
 
 ## 14. Répertoire Clients et Catalogue Produits/Prestations
 

@@ -4,11 +4,15 @@
 // STORAGE_DRIVER=local à STORAGE_DRIVER=s3 dans .env — sinon l'app tenterait
 // déjà de lire ces fichiers depuis S3 alors qu'ils n'y sont pas encore.
 //
-// Utilisation (depuis apps/web) : npm run storage:migrate-to-s3
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { PrismaClient } from "@prisma/client";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+// En JavaScript brut (pas TypeScript) : ce script tourne dans l'image Docker
+// de production, qui n'embarque pas tsx (devDependency absente du build
+// standalone Next.js) — voir docs/DEPLOYMENT.md §9.
+//
+// Utilisation (depuis le conteneur app) : npm run storage:migrate-to-s3
+const { readFile } = require("node:fs/promises");
+const path = require("node:path");
+const { PrismaClient } = require("@prisma/client");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 const prisma = new PrismaClient();
 const LOCAL_DIR = process.env.STORAGE_LOCAL_DIR ?? ".data/documents";
@@ -23,7 +27,7 @@ const s3 = new S3Client({
   },
 });
 
-async function migrateFile(localUrl: string): Promise<string> {
+async function migrateFile(localUrl) {
   const filename = localUrl.slice("local://".length);
   const buffer = await readFile(path.join(process.cwd(), LOCAL_DIR, filename));
   await s3.send(new PutObjectCommand({ Bucket: bucket, Key: filename, Body: buffer }));
@@ -48,7 +52,7 @@ async function main() {
   })) {
     await prisma.cashJournalEntry.update({
       where: { id: entry.id },
-      data: { depositSlipUrl: await migrateFile(entry.depositSlipUrl!) },
+      data: { depositSlipUrl: await migrateFile(entry.depositSlipUrl) },
     });
     console.log(`[migrate] CashJournalEntry.depositSlipUrl ${entry.id}`);
     migrated++;
@@ -59,7 +63,7 @@ async function main() {
   })) {
     await prisma.cashJournalEntry.update({
       where: { id: entry.id },
-      data: { cardStatementUrl: await migrateFile(entry.cardStatementUrl!) },
+      data: { cardStatementUrl: await migrateFile(entry.cardStatementUrl) },
     });
     console.log(`[migrate] CashJournalEntry.cardStatementUrl ${entry.id}`);
     migrated++;
@@ -76,7 +80,7 @@ async function main() {
   })) {
     await prisma.bankTransaction.update({
       where: { id: tx.id },
-      data: { sourceFileUrl: await migrateFile(tx.sourceFileUrl!) },
+      data: { sourceFileUrl: await migrateFile(tx.sourceFileUrl) },
     });
     console.log(`[migrate] BankTransaction ${tx.id}`);
     migrated++;
@@ -87,7 +91,7 @@ async function main() {
   })) {
     await prisma.tvaInstallment.update({
       where: { id: item.id },
-      data: { justificatifUrl: await migrateFile(item.justificatifUrl!) },
+      data: { justificatifUrl: await migrateFile(item.justificatifUrl) },
     });
     console.log(`[migrate] TvaInstallment ${item.id}`);
     migrated++;
@@ -98,7 +102,7 @@ async function main() {
   })) {
     await prisma.fiscalYearClosure.update({
       where: { id: closure.id },
-      data: { zipFileUrl: await migrateFile(closure.zipFileUrl!) },
+      data: { zipFileUrl: await migrateFile(closure.zipFileUrl) },
     });
     console.log(`[migrate] FiscalYearClosure ${closure.id}`);
     migrated++;
