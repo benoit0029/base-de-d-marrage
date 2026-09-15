@@ -3,6 +3,7 @@ import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { saveDocumentFile } from "@/lib/storage";
 import { hashFileBuffer, findProbableDuplicate } from "@/lib/dedup";
+import { assertDateNotInClosedYear } from "@/server/services/fiscalYearClosure";
 import type { TvaInstallment } from "@prisma/client";
 
 export class TvaInstallmentNotFoundError extends Error {}
@@ -124,6 +125,7 @@ export async function softDeleteTvaInstallment(id: string, userId: string | null
       "Paiement pas encore validé : utilisez « Supprimer » plutôt que « Supprimer la ligne »."
     );
   }
+  await assertDateNotInClosedYear(item.paidAt, "ce paiement d'acompte TVA");
 
   await prisma.$transaction([
     prisma.tvaInstallment.update({ where: { id }, data: { deletedAt: new Date() } }),

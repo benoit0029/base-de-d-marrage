@@ -4,6 +4,7 @@ import {
   TvaInstallmentNotValidatedError,
   softDeleteTvaInstallment,
 } from "@/server/services/tvaInstallments";
+import { FiscalYearClosedError } from "@/server/services/fiscalYearClosure";
 import { getCurrentUserId } from "@/lib/auth/currentUser";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (err instanceof TvaInstallmentNotFoundError) {
       return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
     }
-    if (err instanceof TvaInstallmentNotValidatedError) {
+    if (err instanceof TvaInstallmentNotValidatedError || err instanceof FiscalYearClosedError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
     }
     throw err;

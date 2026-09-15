@@ -1,6 +1,5 @@
-import { prisma } from "@/server/db/client";
-import { getDefaultTenantId } from "@/server/db/tenant";
 import { computeBaThreshold, computeBicThresholds } from "@/lib/thresholds";
+import { sumInvoicedTotal, sumCashJournalTotal, sumDepensesTotal, currentYearRange } from "@/lib/thresholds";
 import { renderClosingReportPdf } from "@/lib/pdf/render";
 import type { Activity } from "@prisma/client";
 
@@ -10,25 +9,33 @@ const activityLabels: Record<Activity, string> = {
   BIC_PHOTOBOOTH: "Kerbooth 360",
 };
 
-async function sumValidated(activity: Activity, type: "RECETTE" | "ACHAT", yearStart: Date, yearEnd: Date) {
-  const tenantId = await getDefaultTenantId();
-  const result = await prisma.entry.aggregate({
-    where: { tenantId, activity, type, status: "VALIDATED", date: { gte: yearStart, lte: yearEnd } },
-    _sum: { amountHt: true },
-  });
-  return Number(result._sum.amountHt ?? 0);
+// Recettes encaissées (comptabilité de caisse, voir lib/thresholds) : facture
+// (Invoice.paidAt) pour les activités facturantes, journal de caisse
+// (CashJournalEntry) pour la vente directe — jamais Entry.type=RECETTE, qui
+// n'est produit par aucun flux de saisie (voir docs/ARCHITECTURE.md).
+async function sumRecettesTotal(activity: Activity, yearStart: Date, yearEnd: Date): Promise<number> {
+  if (activity === "BIC_PHOTOBOOTH") {
+    return sumInvoicedTotal(activity, yearStart, yearEnd);
+  }
+  if (activity === "BIC_FRUITS_LEGUMES") {
+    return sumCashJournalTotal(activity, yearStart, yearEnd);
+  }
+  const [invoiced, cashJournal] = await Promise.all([
+    sumInvoicedTotal(activity, yearStart, yearEnd),
+    sumCashJournalTotal(activity, yearStart, yearEnd),
+  ]);
+  return invoiced + cashJournal;
 }
 
 export async function generateClosingReportPdf(year = new Date().getFullYear()): Promise<Buffer> {
-  const yearStart = new Date(year, 0, 1);
-  const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+  const { start: yearStart, end: yearEnd } = currentYearRange(year);
   const allActivities: Activity[] = ["BA_MARAICHAGE", "BIC_FRUITS_LEGUMES", "BIC_PHOTOBOOTH"];
 
   const activities = await Promise.all(
     allActivities.map(async (activity) => ({
       label: activityLabels[activity],
-      recettesHt: await sumValidated(activity, "RECETTE", yearStart, yearEnd),
-      achatsHt: await sumValidated(activity, "ACHAT", yearStart, yearEnd),
+      recettesHt: await sumRecettesTotal(activity, yearStart, yearEnd),
+      achatsHt: await sumDepensesTotal(activity, yearStart, yearEnd),
     }))
   );
 

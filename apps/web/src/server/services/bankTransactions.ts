@@ -4,6 +4,7 @@ import { getDefaultTenantId } from "@/server/db/tenant";
 import { saveDocumentFile } from "@/lib/storage";
 import { hashFileBuffer } from "@/lib/dedup";
 import { parseBankStatementCsv, BankStatementParseError } from "@/lib/bankStatement/parseCsv";
+import { assertDateNotInClosedYear } from "@/server/services/fiscalYearClosure";
 import type { Activity } from "@prisma/client";
 
 export class BankTransactionError extends Error {}
@@ -70,6 +71,7 @@ export async function softDeleteBankTransaction(id: string, userId: string | nul
       "Ligne pas encore validée : utilisez « Supprimer » plutôt que « Supprimer la ligne »."
     );
   }
+  await assertDateNotInClosedYear(tx.date, "cette ligne de relevé bancaire");
 
   await prisma.$transaction([
     prisma.bankTransaction.update({ where: { id }, data: { deletedAt: new Date() } }),
@@ -204,8 +206,16 @@ export async function reconcileBankTransaction(
 // Annule un rapprochement, y compris la date de paiement/encaissement posée
 // automatiquement lors du rapprochement — pour la ressaisir proprement si
 // besoin. Cas rare non géré : une paidAt saisie manuellement avant un
-// rapprochement se retrouve aussi effacée ici.
+// rapprochement se retrouve aussi effacée ici. Refusé si cela effacerait le
+// paidAt d'une écriture d'un exercice déjà clôturé (voir assertDateNotInClosedYear).
 export async function unreconcileBankTransaction(bankTransactionId: string) {
+  const [linkedEntry, linkedInvoice] = await Promise.all([
+    prisma.entry.findUnique({ where: { bankTransactionId }, select: { paidAt: true } }),
+    prisma.invoice.findUnique({ where: { bankTransactionId }, select: { paidAt: true } }),
+  ]);
+  await assertDateNotInClosedYear(linkedEntry?.paidAt, "cette dépense payée");
+  await assertDateNotInClosedYear(linkedInvoice?.paidAt, "cette facture encaissée");
+
   await prisma.$transaction([
     prisma.entry.updateMany({
       where: { bankTransactionId },

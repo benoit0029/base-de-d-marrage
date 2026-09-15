@@ -7,6 +7,8 @@ import MailboxSettingsForm from "@/components/settings/MailboxSettingsForm";
 import PaConnectionForm from "@/components/settings/PaConnectionForm";
 import { getPaConnection } from "@/server/services/pa";
 import { logout } from "@/app/actions/auth";
+import { listClosures, listPendingBlockers, suggestNextClosableYear } from "@/server/services/fiscalYearClosure";
+import FiscalYearClosureSection from "@/components/settings/FiscalYearClosureSection";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +21,16 @@ const activityBySlug: Record<string, "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "B
 const abEligible = new Set(["BA_MARAICHAGE", "BIC_FRUITS_LEGUMES"]);
 
 export default async function Page() {
-  const [company, activitySettings, mailboxConnections, paConnection] = await Promise.all([
-    getCompanySettings(),
-    listActivitySettings(),
-    listMailboxConnections(),
-    getPaConnection(),
-  ]);
+  const [company, activitySettings, mailboxConnections, paConnection, closures, blockers, nextClosableYear] =
+    await Promise.all([
+      getCompanySettings(),
+      listActivitySettings(),
+      listMailboxConnections(),
+      getPaConnection(),
+      listClosures(),
+      listPendingBlockers(),
+      suggestNextClosableYear(),
+    ]);
   const settingsByActivity = new Map(activitySettings.map((s) => [s.activity, s]));
   const mailboxByActivity = new Map(mailboxConnections.map((m) => [m.activity, m]));
 
@@ -130,6 +136,17 @@ export default async function Page() {
         </h2>
         <PaConnectionForm status={paConnection?.status ?? "DISCONNECTED"} />
       </section>
+
+      {/* Clôture d'exercice */}
+      <FiscalYearClosureSection
+        closures={closures.map((c) => ({
+          year: c.year,
+          closedAt: c.closedAt.toLocaleDateString("fr-FR"),
+          zipFileUrl: c.zipFileUrl,
+        }))}
+        blockers={blockers}
+        nextClosableYear={nextClosableYear}
+      />
 
       {/* Session */}
       <section className="rounded-lg border bg-white p-4 md:hidden">

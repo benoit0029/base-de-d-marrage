@@ -4,6 +4,7 @@ import {
   BankTransactionNotValidatedError,
   softDeleteBankTransaction,
 } from "@/server/services/bankTransactions";
+import { FiscalYearClosedError } from "@/server/services/fiscalYearClosure";
 import { getCurrentUserId } from "@/lib/auth/currentUser";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (err instanceof BankTransactionNotFoundError) {
       return NextResponse.json({ error: "Opération introuvable" }, { status: 404 });
     }
-    if (err instanceof BankTransactionNotValidatedError) {
+    if (err instanceof BankTransactionNotValidatedError || err instanceof FiscalYearClosedError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
     }
     throw err;

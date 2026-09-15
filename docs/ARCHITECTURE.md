@@ -504,3 +504,81 @@ Voir `prisma/schema.prisma`. Résumé des entités :
 - **Dictée vocale** : déjà implémentée depuis une phase précédente
   (`dictateInvoiceAction`/Voxtral) et alimente le même formulaire que la
   saisie manuelle — rien à ajouter sur ce point du prompt de construction.
+
+## 15. Module Clôture d'exercice
+
+- **Un seul bouton transversal**, `Réglages → Clôture d'exercice`, jamais
+  un bouton par activité : un exercice fiscal couvre les 3 activités à la
+  fois. Modèle `FiscalYearClosure` (`server/services/fiscalYearClosure.ts`),
+  une ligne = un exercice clos, unique par `(tenantId, year)`.
+- **Blocage tant qu'il reste une ligne en attente n'importe où**
+  (`listPendingBlockers`) : compte les `PENDING` non supprimés sur `Entry`,
+  `CashJournalEntry`, `BankTransaction`, `SimpleImport` et
+  `TvaInstallment`, groupés par activité, et affiche le détail
+  (sous-onglet + nombre) plutôt qu'un refus opaque. Le blocage est
+  volontairement **global**, pas limité à l'année qu'on tente de clôturer :
+  une ligne encore en attente peut, une fois traitée, se rattacher à
+  n'importe quel exercice (via sa date de paiement réelle).
+- **Ne bloque jamais sur les créances/dettes en cours** (`paidAt` vide) :
+  elles restent modifiables après clôture et rejoignent automatiquement
+  l'exercice de leur règlement réel une fois payées — c'est déjà le
+  comportement naturel de la comptabilité de caisse (§13), rien de
+  spécifique à coder pour ce point.
+- **Ordre chronologique imposé** (`suggestNextClosableYear`) : calculé à
+  partir des seules années portant des mouvements **réglés** (`paidAt` non
+  vide côté Entry/Invoice, `CashJournalEntry`/`TvaInstallment` validés) —
+  une année sans aucun mouvement réglé n'a pas besoin d'être clôturée avant
+  la suivante. `closeFiscalYear` refuse (`FiscalYearOrderError`) toute
+  tentative de clôturer une année ultérieure tant qu'une année antérieure
+  avec mouvements réglés reste ouverte.
+- **Verrouillage en lecture seule effectif** : `assertDateNotInClosedYear`
+  est appelée avant chaque suppression douce (`softDeleteEntry`,
+  `softDeleteCashJournalEntry`, `softDeleteBankTransaction`,
+  `softDeleteTvaInstallment`) et avant `unreconcileBankTransaction` — sur
+  la date qui rattache réellement la ligne à un exercice (`paidAt` pour une
+  dépense/facture, `date` pour une saisie de caisse/ligne de relevé/acompte
+  TVA). Une dette/créance en cours (`paidAt` vide) n'est jamais bloquée par
+  cette garde, conformément au point précédent. **Limite connue** : rien
+  n'empêche aujourd'hui la création d'une toute nouvelle ligne `PENDING`
+  datée dans un exercice déjà clos (ex. import tardif d'un relevé
+  contenant une vieille opération) — elle suit son cycle normal de
+  validation/suppression sans déclencher la garde, qui ne s'applique qu'à
+  une ligne déjà validée/payée. Non traité en v1, à surveiller en usage
+  réel.
+- **Dossier ZIP généré à la clôture** (`archiver`, dépendance ajoutée pour
+  cette seule fonctionnalité — Node n'a pas de writer ZIP natif) et stocké
+  via `saveDocumentFile` (retéléchargeable depuis Réglages, jamais
+  régénéré à la volée pour un exercice déjà clos puisque ses pièces sont
+  figées) :
+  - `synthese-cloture-<année>.pdf` : un seul PDF couvrant les 3 activités
+    (recettes/dépenses/résultat + seuils), pas trois fichiers séparés —
+    simplification délibérée, le détail par activité y est déjà présent
+    en sections distinctes.
+  - `creances-dettes-en-cours-<année>.pdf` : état des créances/dettes au
+    moment de la clôture, transversal (pas rattaché à un exercice précis
+    par nature).
+  - `pieces/<activité>/<sous-onglet>/…` : pièces sources de l'exercice
+    (justificatifs de dépense, bordereaux de caisse, relevés bancaires,
+    PDF de facture régénérés à la volée via `renderInvoicePdfBuffer` —
+    extrait de la route `/api/invoices/[id]/pdf` pour être réutilisé ici
+    sans dupliquer la logique de rendu —, pièces Tesa+/cotisations/acompte
+    TVA), organisées exactement comme les onglets registre de
+    l'application pour rester lisibles hors contexte (contrôle fiscal,
+    remise à un expert-comptable).
+- **Bug corrigé au passage** : `sumCashJournalTotal` (`lib/thresholds`)
+  n'excluait pas les saisies de caisse supprimées (`deletedAt`), ce qui
+  aurait gonflé indéfiniment le CA retenu pour le suivi des seuils avec
+  toute correction d'erreur. `generateClosingReportPdf`
+  (`server/services/reports.ts`) utilisait par ailleurs `Entry.type =
+  RECETTE`, un type que plus aucun flux ne produit depuis le passage à
+  Invoice/CashJournalEntry comme sources de recettes (§13/14 précédents) —
+  le rapport de clôture affichait donc 0 € de recettes pour toutes les
+  activités. Les deux corrections réutilisent désormais les mêmes
+  fonctions d'agrégation (`sumInvoicedTotal`/`sumCashJournalTotal`,
+  nouvellement exportées, + `sumDepensesTotal` ajoutée) que le suivi des
+  seuils, pour ne plus jamais dupliquer cette logique de calcul.
+- **Irréversible depuis l'interface** : aucune fonction de réouverture
+  d'exercice en v1. Une erreur découverte après clôture nécessite une
+  intervention manuelle en base (hors périmètre de l'interface utilisateur,
+  volontairement — une réouverture en un clic serait trop dangereuse pour
+  un exercice déjà déclaré).

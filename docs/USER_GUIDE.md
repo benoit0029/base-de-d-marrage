@@ -225,6 +225,35 @@ section 4 bis), pas une donnée de démonstration.
       n'a pas encore été validé en conditions réelles**, un écart vaut la
       peine d'être signalé avant de s'y fier pour de vrai.
 
+## 4 quater. Clôture d'exercice (Réglages)
+
+- [ ] En bas de la page **Réglages**, je vérifie que le bandeau « Lignes
+      encore en attente » liste bien, avec le bon nombre, toute écriture
+      que je laisse volontairement non validée sur n'importe quel
+      sous-onglet (Recettes, Dépenses, Relevé bancaire, Tesa+, Acompte
+      TVA...) — le bouton de clôture doit rester invisible tant qu'il en
+      reste au moins une.
+- [ ] Une fois tout validé (ou supprimé), je vérifie que le bouton
+      **« Clôturer l'exercice [année] »** propose bien la bonne année (la
+      plus ancienne qui a des mouvements réglés et n'est pas encore
+      clôturée) — jamais une année plus récente en sautant une année
+      antérieure non traitée.
+- [ ] Après clôture, je télécharge le dossier ZIP et je vérifie qu'il
+      contient : la synthèse PDF (recettes/dépenses par activité), le
+      récapitulatif des créances/dettes en cours, et les pièces sources
+      rangées par activité puis par sous-onglet (Dépenses, Recettes,
+      Relevé bancaire, Facturation, etc.).
+- [ ] Je vérifie qu'une facture encaissée ou une dépense payée **dans
+      l'exercice clôturé** ne peut plus être supprimée (« Supprimer la
+      ligne » doit refuser avec un message explicite).
+- [ ] Je vérifie à l'inverse qu'une créance (facture envoyée, pas encore
+      encaissée) ou une dette (dépense validée, pas encore payée) reste
+      normalement modifiable même après la clôture — c'est volontaire,
+      elle rejoindra l'exercice de son règlement réel une fois payée.
+- [ ] **Il n'existe aucune fonction de réouverture** d'un exercice clos
+      depuis l'interface : à tester uniquement quand tu es sûr de toi, ou
+      sur une base de test (voir §6 Sauvegarde) la première fois.
+
 ## 5. Alertes automatiques (n8n)
 
 - [ ] Une fois les workflows n8n importés (voir `n8n/workflows/README.md`) :

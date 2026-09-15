@@ -62,8 +62,12 @@ function levelFor(ca: number, seuil: number, tolerance?: number): AlertLevel {
  * mais non encore payée est une créance en cours, hors seuil tant qu'elle
  * n'est pas encaissée (elle rejoindra alors automatiquement l'année de son
  * encaissement réel, pas celle de sa facturation).
+ *
+ * Exportée pour être réutilisée telle quelle par le rapport de clôture
+ * d'exercice (voir server/services/reports) : même calcul, pas de logique
+ * dupliquée.
  */
-async function sumInvoicedTotal(
+export async function sumInvoicedTotal(
   activity: "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "BIC_PHOTOBOOTH",
   yearStart: Date,
   yearEnd: Date
@@ -95,8 +99,11 @@ async function sumInvoicedTotal(
  * montants du journal de caisse sont utilisés tels quels, comme le sont déjà
  * les montants TTC de facture pour les deux activités micro-BIC sous
  * franchise en base (HT = TTC en l'absence de TVA).
+ *
+ * Exportée pour réutilisation par le rapport de clôture (voir
+ * server/services/reports).
  */
-async function sumCashJournalTotal(
+export async function sumCashJournalTotal(
   activity: "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES",
   yearStart: Date,
   yearEnd: Date
@@ -107,6 +114,7 @@ async function sumCashJournalTotal(
       tenantId,
       activity,
       status: "VALIDATED",
+      deletedAt: null,
       date: { gte: yearStart, lte: yearEnd },
     },
     select: { cashAmount: true, checkAmount: true, cardAmount: true, exceptionalSales: true },
@@ -127,7 +135,34 @@ async function sumCashJournalTotal(
   }, 0);
 }
 
-function currentYearRange(year: number): { start: Date; end: Date } {
+/**
+ * Dépenses payées (validées ET réglées) d'une activité sur une période —
+ * Entry ACHAT/IMMOBILISATION, comptabilité de caisse sur `paidAt` (voir
+ * sumInvoicedTotal ci-dessus, même principe). Utilisée par le rapport de
+ * clôture ; n'entre dans aucun calcul de seuil (les seuils de franchise/
+ * plafond ne portent que sur les recettes).
+ */
+export async function sumDepensesTotal(
+  activity: "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "BIC_PHOTOBOOTH",
+  yearStart: Date,
+  yearEnd: Date
+): Promise<number> {
+  const tenantId = await getDefaultTenantId();
+  const result = await prisma.entry.aggregate({
+    where: {
+      tenantId,
+      activity,
+      type: { in: ["ACHAT", "IMMOBILISATION"] },
+      status: "VALIDATED",
+      deletedAt: null,
+      paidAt: { gte: yearStart, lte: yearEnd },
+    },
+    _sum: { amountHt: true },
+  });
+  return Number(result._sum.amountHt ?? 0);
+}
+
+export function currentYearRange(year: number): { start: Date; end: Date } {
   return { start: new Date(year, 0, 1), end: new Date(year, 11, 31, 23, 59, 59) };
 }
 

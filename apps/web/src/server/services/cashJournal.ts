@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
+import { assertDateNotInClosedYear } from "@/server/services/fiscalYearClosure";
 import type { Activity, CashJournalEntry } from "@prisma/client";
 
 export interface ExceptionalSale {
@@ -136,6 +137,9 @@ export async function softDeleteCashJournalEntry(id: string, userId: string | nu
       "Saisie pas encore validée : utilisez « Supprimer » plutôt que « Supprimer la ligne »."
     );
   }
+  // Une vente directe est encaissée le jour même : sa date fait toujours
+  // foi (contrairement à une facture, jamais de créance en cours ici).
+  await assertDateNotInClosedYear(entry.date, "cette saisie de caisse");
 
   await prisma.$transaction([
     prisma.cashJournalEntry.update({ where: { id }, data: { deletedAt: new Date() } }),

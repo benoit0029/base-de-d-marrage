@@ -4,6 +4,7 @@ import {
   EntryNotValidatedError,
   softDeleteEntry,
 } from "@/server/services/entries";
+import { FiscalYearClosedError } from "@/server/services/fiscalYearClosure";
 import { getCurrentUserId } from "@/lib/auth/currentUser";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (err instanceof EntryNotFoundError) {
       return NextResponse.json({ error: "Écriture introuvable" }, { status: 404 });
     }
-    if (err instanceof EntryNotValidatedError) {
+    if (err instanceof EntryNotValidatedError || err instanceof FiscalYearClosedError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
     }
     throw err;

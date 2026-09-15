@@ -14,15 +14,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ fil
     return NextResponse.json({ error: "Fichier introuvable" }, { status: 404 });
   }
 
-  const contentType = filename.toLowerCase().endsWith(".pdf")
+  const lower = filename.toLowerCase();
+  const contentType = lower.endsWith(".pdf")
     ? "application/pdf"
-    : filename.toLowerCase().endsWith(".png")
+    : lower.endsWith(".png")
       ? "image/png"
-      : filename.toLowerCase().match(/\.(jpe?g)$/)
+      : lower.match(/\.(jpe?g)$/)
         ? "image/jpeg"
-        : "application/octet-stream";
+        : lower.endsWith(".zip")
+          ? "application/zip"
+          : "application/octet-stream";
 
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: { "Content-Type": contentType },
-  });
+  const headers: Record<string, string> = { "Content-Type": contentType };
+  // Un dossier de clôture (ZIP) se télécharge toujours, jamais un affichage
+  // inline dans le navigateur — contrairement aux justificatifs PDF/image.
+  if (lower.endsWith(".zip")) {
+    headers["Content-Disposition"] = `attachment; filename="${filename}"`;
+  }
+
+  return new NextResponse(new Uint8Array(buffer), { headers });
 }

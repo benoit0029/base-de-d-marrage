@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
+import { assertDateNotInClosedYear } from "@/server/services/fiscalYearClosure";
 import type { Activity, Entry } from "@prisma/client";
 
 export async function listEntries(activity: Activity) {
@@ -80,6 +81,9 @@ export async function softDeleteEntry(entryId: string, userId: string | null): P
       "Écriture pas encore validée : utilisez « Supprimer » plutôt que « Supprimer la ligne »."
     );
   }
+  // Une dette encore en cours (paidAt vide) n'est rattachée à aucun exercice
+  // et reste donc modifiable même après clôture — voir assertDateNotInClosedYear.
+  await assertDateNotInClosedYear(entry.paidAt, "cette dépense payée");
 
   await prisma.$transaction([
     prisma.entry.update({ where: { id: entryId }, data: { deletedAt: new Date() } }),

@@ -39,6 +39,7 @@ model Tenant {
   tvaInstallments    TvaInstallment[]
   clients            Client[]
   products           Product[]
+  fiscalYearClosures FiscalYearClosure[]
 }
 
 model User {
@@ -610,6 +611,34 @@ model BankTransaction {
   cashJournalEntry CashJournalEntry?
 
   @@index([tenantId, activity, direction, date])
+}
+
+// ---------------------------------------------------------------------------
+// Clôture d'exercice — transversale aux 3 activités (un seul bouton "Clôturer
+// l'exercice [année]"). Verrouille l'exercice en lecture seule une fois
+// posée : voir server/services/fiscalYearClosure (assertYearNotClosed),
+// appelé par les "Supprimer la ligne"/rapprochements des différents
+// registres. Ne bloque JAMAIS sur les créances/dettes en cours : elles
+// restent modifiables après clôture, et rejoignent l'année où leur paiement
+// tombe réellement une fois réglées (voir Entry.paidAt / Invoice.paidAt).
+// Clôture uniquement possible dans l'ordre chronologique (voir
+// listPendingBlockers / assertChronologicalOrder).
+// ---------------------------------------------------------------------------
+
+model FiscalYearClosure {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  year       Int
+  closedById String?
+  // Dossier ZIP généré à la clôture (synthèses PDF par activité + récap
+  // créances/dettes en cours + pièces sources organisées par activité/
+  // sous-onglet) — conservé pour retéléchargement, jamais régénéré à la volée
+  // pour un exercice déjà clos (les pièces qu'il contient sont figées).
+  zipFileUrl String?
+  createdAt  DateTime @default(now())
+
+  @@unique([tenantId, year])
 }
 
 // ---------------------------------------------------------------------------
