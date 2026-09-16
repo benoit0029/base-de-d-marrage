@@ -83,9 +83,9 @@ pas une démo isolée, qui dit si le pipeline est fiable pour toi.
 - [ ] Je télécharge le PDF (bouton PDF dans le tableau) et je le regarde
       vraiment : mentions légales, numéro, montants, lisibilité. Je le
       compare à un modèle que mon expert-comptable jugerait correct.
-- [ ] Je teste la **dictée vocale** : je décris oralement une prestation
-      et je vérifie que les lignes proposées correspondent avant de
-      valider (je corrige si besoin, comme pour la capture).
+- [ ] La dictée vocale est retirée de l'interface pour l'instant (bouton
+      pas assez abouti), rien à tester ici tant qu'elle ne revient pas sous
+      une autre forme.
 - [ ] Si Abby est connectée : j'envoie une facture via le bouton « Envoyer
       via Abby » et je vérifie côté Abby qu'elle est bien arrivée.
 - [ ] Fruits/Légumes reste confirmé 100% vente directe (facturation
@@ -194,10 +194,19 @@ section 4 bis), pas une donnée de démonstration.
       selon les banques** — si l'import échoue ou lit mal les colonnes, dis-le
       moi avec un extrait du fichier (sans les données sensibles), le
       parseur devra sans doute être ajusté à ton relevé réel.
-- [ ] Je **rapproche** une ligne de débit avec une Dépense existante, et une
-      ligne de crédit avec une facture ou une saisie de caisse existante.
-      Je vérifie que le statut passe à « ✓ Pointé » des deux côtés (sur la
-      ligne de relevé ET sur la Dépense/Recette elle-même).
+- [ ] Je vérifie que, quand une Dépense/facture/saisie de caisse du bon
+      montant existe déjà dans la fenêtre de date, une **suggestion**
+      apparaît directement sur la ligne de relevé (« Suggestion : ... ») —
+      je n'ai qu'à cliquer **Confirmer**, pas besoin d'ouvrir « Rapprocher »
+      et de chercher dans une liste.
+- [ ] Je vérifie qu'en cas de suggestion visiblement fausse, « Choisir un
+      autre » me permet de revenir à la sélection manuelle.
+- [ ] Quand aucune suggestion fiable n'existe (montant qui ne correspond à
+      rien, ou plusieurs candidats au même montant), je **rapproche**
+      manuellement via « Rapprocher » — une ligne de débit avec une Dépense
+      existante, une ligne de crédit avec une facture ou une saisie de
+      caisse. Je vérifie que le statut passe à « ✓ Pointé » des deux côtés
+      (sur la ligne de relevé ET sur la Dépense/Recette elle-même).
 - [ ] Je vérifie que je peux **annuler** un rapprochement fait par erreur.
 - [ ] Je teste la détection de doublon : j'importe deux fois le même
       fichier (Tesa+, cotisation, ou relevé bancaire) sans cocher la case de

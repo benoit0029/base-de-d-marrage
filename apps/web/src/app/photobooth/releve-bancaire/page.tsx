@@ -1,4 +1,4 @@
-import { listBankTransactions } from "@/server/services/bankTransactions";
+import { listBankTransactions, suggestReconciliationMatches } from "@/server/services/bankTransactions";
 import { listClosedYears } from "@/server/services/fiscalYearClosure";
 import { toBankTransactionView } from "@/lib/serialize";
 import { filterByYear, yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
@@ -21,8 +21,15 @@ export default async function Page({
     listBankTransactions("BIC_PHOTOBOOTH"),
     listClosedYears(),
   ]);
+
+  const unreconciled = transactions.filter((t) => !t.entry && !t.invoice && !t.cashJournalEntry);
+  const suggestions = await suggestReconciliationMatches(
+    "BIC_PHOTOBOOTH",
+    unreconciled.map((t) => ({ id: t.id, direction: t.direction, date: t.date, amount: Number(t.amount) }))
+  );
+
   const view = filterByYear(
-    transactions.map(toBankTransactionView),
+    transactions.map((t) => ({ ...toBankTransactionView(t), suggestedMatch: suggestions[t.id] ?? null })),
     (t) => yearOfIsoDate(t.date),
     Number.isInteger(year) ? year : null
   );

@@ -89,6 +89,15 @@ export interface FakeSimpleImport {
 }
 
 // Ligne de relevé bancaire importée, avec son éventuel rapprochement.
+// Rapprochement suggéré automatiquement (montant identique, unique candidat
+// dans la fenêtre de date) — voir suggestReconciliationMatch. `null` :
+// aucune suggestion fiable, retombe sur la sélection manuelle.
+export interface FakeSuggestedMatch {
+  type: "entry" | "invoice" | "cashJournal";
+  id: string;
+  label: string;
+}
+
 export interface FakeBankTransaction {
   id: string;
   date: string;
@@ -98,6 +107,7 @@ export interface FakeBankTransaction {
   reconciled: boolean;
   reconciledWith: string | null; // libellé de la pièce rapprochée, pour affichage
   status: EntryStatus;
+  suggestedMatch?: FakeSuggestedMatch | null;
 }
 
 // Acompte TVA (Maraîchage) — voir TvaInstallment dans le schéma.

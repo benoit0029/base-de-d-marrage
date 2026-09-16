@@ -1,4 +1,4 @@
-import { listBankTransactions } from "@/server/services/bankTransactions";
+import { listBankTransactions, suggestReconciliationMatches } from "@/server/services/bankTransactions";
 import { listClosedYears } from "@/server/services/fiscalYearClosure";
 import { toBankTransactionView } from "@/lib/serialize";
 import { filterByYear, yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
@@ -21,8 +21,19 @@ export default async function Page({
     listBankTransactions("BA_MARAICHAGE"),
     listClosedYears(),
   ]);
+
+  // Rapprochement suggéré automatiquement (montant identique, candidat
+  // unique) pour chaque ligne pas encore pointée — évite d'avoir à ouvrir
+  // "Rapprocher" pour découvrir s'il y a une correspondance, voir
+  // docs/ARCHITECTURE.md.
+  const unreconciled = transactions.filter((t) => !t.entry && !t.invoice && !t.cashJournalEntry);
+  const suggestions = await suggestReconciliationMatches(
+    "BA_MARAICHAGE",
+    unreconciled.map((t) => ({ id: t.id, direction: t.direction, date: t.date, amount: Number(t.amount) }))
+  );
+
   const view = filterByYear(
-    transactions.map(toBankTransactionView),
+    transactions.map((t) => ({ ...toBankTransactionView(t), suggestedMatch: suggestions[t.id] ?? null })),
     (t) => yearOfIsoDate(t.date),
     Number.isInteger(year) ? year : null
   );

@@ -1,12 +1,8 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  createInvoiceAction,
-  dictateInvoiceAction,
-  type CreateInvoiceActionInput,
-} from "@/app/actions/invoices";
+import { createInvoiceAction, type CreateInvoiceActionInput } from "@/app/actions/invoices";
 import type { FakeClient, FakeProduct } from "@/lib/types";
 import type { Activity } from "@prisma/client";
 
@@ -45,11 +41,6 @@ export default function InvoiceForm({
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-
   function updateLine(index: number, patch: Partial<LineDraft>) {
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
   }
@@ -60,56 +51,6 @@ export default function InvoiceForm({
 
   function removeLine(index: number) {
     setLines((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
-  }
-
-  async function startRecording() {
-    setMessage(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        setIsTranscribing(true);
-        const formData = new FormData();
-        formData.append("audio", blob, "dictation.webm");
-        const result = await dictateInvoiceAction(formData);
-        setIsTranscribing(false);
-
-        if (result.status === "error") {
-          setMessage({ kind: "error", text: result.message });
-          return;
-        }
-        if (result.clientName && !clientName) setClientName(result.clientName);
-        if (result.lines?.length) {
-          setLines((prev) => [
-            ...(prev.length === 1 && !prev[0].description ? [] : prev),
-            ...result.lines!.map((l) => ({
-              description: l.description,
-              quantity: String(l.quantity),
-              unitPrice: String(l.unitPrice),
-              vatRate: "0",
-            })),
-          ]);
-        }
-        setMessage({ kind: "success", text: result.message });
-      };
-      mediaRecorderRef.current = recorder;
-      recorder.start();
-      setIsRecording(true);
-    } catch {
-      setMessage({
-        kind: "error",
-        text: "Micro indisponible ou accès refusé. Vous pouvez saisir les lignes manuellement.",
-      });
-    }
-  }
-
-  function stopRecording() {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -162,14 +103,6 @@ export default function InvoiceForm({
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={isRecording ? stopRecording : startRecording}
-          disabled={isTranscribing}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 disabled:opacity-50"
-        >
-          {isTranscribing ? "Transcription…" : isRecording ? "⏹ Arrêter la dictée" : "🎙️ Dicter le contenu"}
-        </button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

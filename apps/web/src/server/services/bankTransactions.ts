@@ -304,3 +304,76 @@ export async function listReconciliationCandidates(
   ]);
   return { entries: [], invoices, cashJournalEntries };
 }
+
+export interface SuggestedMatch {
+  type: ReconcileTargetType;
+  id: string;
+  label: string;
+}
+
+function cashJournalTotal(entry: {
+  cashAmount: unknown;
+  checkAmount: unknown;
+  cardAmount: unknown;
+  exceptionalSales: unknown;
+}): number {
+  const exceptional = Array.isArray(entry.exceptionalSales)
+    ? entry.exceptionalSales.reduce((s: number, sale) => {
+        const amount =
+          sale && typeof sale === "object" && "amountTtc" in sale
+            ? Number((sale as { amountTtc: unknown }).amountTtc)
+            : 0;
+        return s + (Number.isFinite(amount) ? amount : 0);
+      }, 0)
+    : 0;
+  return Number(entry.cashAmount) + Number(entry.checkAmount) + Number(entry.cardAmount) + exceptional;
+}
+
+/**
+ * Suggestion automatique de rapprochement : parmi les candidats déjà
+ * calculés (même fenêtre de date que listReconciliationCandidates), ne
+ * retient que ceux dont le montant correspond exactement à celui de la
+ * ligne de relevé. Fiable seulement si un SEUL candidat correspond — sinon
+ * (aucun montant identique, ou plusieurs), pas de suggestion : l'utilisateur
+ * retombe sur la sélection manuelle (voir ReconcilePicker), plutôt que de
+ * risquer un rapprochement faux.
+ */
+export async function suggestReconciliationMatch(
+  activity: Activity,
+  transaction: { direction: "DEBIT" | "CREDIT"; date: Date; amount: number }
+): Promise<SuggestedMatch | null> {
+  const candidates = await listReconciliationCandidates(activity, transaction.direction, transaction.date);
+
+  if (transaction.direction === "DEBIT") {
+    const matches = candidates.entries.filter((e) => Number(e.amountTtc) === transaction.amount);
+    if (matches.length !== 1) return null;
+    return { type: "entry", id: matches[0].id, label: `Dépense — ${matches[0].counterpartyName}` };
+  }
+
+  const matches: SuggestedMatch[] = [
+    ...candidates.invoices
+      .filter((i) => Number(i.totalTtc) === transaction.amount)
+      .map((i) => ({ type: "invoice" as const, id: i.id, label: `Facture ${i.number}` })),
+    ...candidates.cashJournalEntries
+      .filter((c) => cashJournalTotal(c) === transaction.amount)
+      .map((c) => ({ type: "cashJournal" as const, id: c.id, label: "Vente directe (caisse)" })),
+  ];
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/**
+ * Version en lot, pour calculer en une passe les suggestions de toutes les
+ * lignes non rapprochées d'une page — évite à l'utilisateur de cliquer sur
+ * chaque ligne pour découvrir s'il y a une suggestion (voir docs/ARCHITECTURE.md).
+ */
+export async function suggestReconciliationMatches(
+  activity: Activity,
+  transactions: { id: string; direction: "DEBIT" | "CREDIT"; date: Date; amount: number }[]
+): Promise<Record<string, SuggestedMatch>> {
+  const result: Record<string, SuggestedMatch> = {};
+  for (const tx of transactions) {
+    const match = await suggestReconciliationMatch(activity, tx);
+    if (match) result[tx.id] = match;
+  }
+  return result;
+}

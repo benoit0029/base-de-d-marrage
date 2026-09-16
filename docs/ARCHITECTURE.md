@@ -592,6 +592,51 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   copie maintenant aussi `scripts/` dans l'image finale (absent du tracé
   standalone, comme `prisma/`).
 
+## 17. Rapprochement bancaire suggéré automatiquement
+
+- **Constat de Benoît en usage réel** : après avoir dû choisir manuellement
+  parmi une liste de candidats non filtrée par montant pour rapprocher une
+  ligne de relevé, il a demandé que l'application propose elle-même le
+  rapprochement, l'utilisateur se contentant de valider — même logique que
+  "Valider" partout ailleurs dans l'app plutôt qu'une recherche manuelle.
+- **`suggestReconciliationMatch`** (`server/services/bankTransactions.ts`) :
+  réutilise `listReconciliationCandidates` (même fenêtre de date, ±100/7
+  jours) puis ne retient que les candidats dont le **montant correspond
+  exactement**. Suggestion posée seulement si un **seul** candidat
+  correspond — deux candidats au même montant dans la fenêtre, ou aucun,
+  et l'utilisateur retombe sur la sélection manuelle existante (jamais de
+  rapprochement risqué posé tout seul sur une ambiguïté).
+- **Calculée en une passe pour toute la page** (`suggestReconciliationMatches`,
+  appelée depuis les 3 pages `releve-bancaire`) : la suggestion est déjà
+  affichée à l'ouverture de la page, pas seulement après avoir cliqué sur
+  "Rapprocher" — c'est le changement demandé, l'utilisateur voit
+  directement "Suggestion : Facture 2026-042" avec un bouton "Confirmer".
+  "Choisir un autre" reste disponible pour retomber sur le sélecteur manuel
+  en cas de faux positif (rare, mais un montant identique par coïncidence
+  reste possible).
+- **`reconcileBankTransaction` posait déjà `paidAt` automatiquement** (voir
+  §13, comptabilité de caisse) : ce changement ne touche que la façon dont
+  le rapprochement lui-même est proposé, pas ce qui se passe une fois
+  confirmé — aucune "double étape" date de paiement + rapprochement à
+  faire séparément, il n'y en a jamais eu.
+- **Limite assumée** : le filtre est un montant strictement identique, sans
+  tolérance (ex. frais bancaires de quelques centimes). Un rapprochement à
+  quelques centimes près reste manuel via "Choisir un autre" — à revoir si
+  ce cas s'avère fréquent en usage réel.
+
+## 18. Dictée vocale des factures désactivée (temporairement)
+
+- **Bouton "🎙️ Dicter le contenu" retiré de `InvoiceForm`** à la demande de
+  Benoît : pas encore assez pertinent en l'état pour un usage quotidien,
+  gardé pour une refonte future en assistant vocal complet ("type Jarvis")
+  plutôt que ce bouton isolé sur le seul formulaire de facturation.
+- **Rien de supprimé côté serveur** : `dictateInvoiceAction`
+  (`app/actions/invoices.ts`), `transcribeInvoiceDictation`
+  (`lib/mistral/agents.ts`) et `transcribeAudio`/Voxtral
+  (`lib/mistral/client.ts`) restent en place, simplement plus appelés
+  depuis l'UI — pas de perte de travail si la fonctionnalité revient sous
+  une autre forme.
+
 ## 14. Répertoire Clients et Catalogue Produits/Prestations
 
 - **Deux nouveaux modèles, `Client` et `Product`**, scopés par activité
