@@ -1,0 +1,112 @@
+{
+  "name": "Kerbooth 360° — Demande de réservation (dispatch)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kerbooth-booking-request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1a1a1a1-0001-4000-8000-000000000001",
+      "name": "Réception du formulaire (site ou HubSpot)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "kerbooth-booking-request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ clientName: $json.body.clientName, clientEmail: $json.body.clientEmail, clientPhone: $json.body.clientPhone, eventDateStart: $json.body.eventDateStart, eventDateEnd: $json.body.eventDateEnd, formula: $json.body.formula, totalAmount: $json.body.totalAmount, acompteAmount: $json.body.acompteAmount, durationDays: $json.body.durationDays }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "a1a1a1a1-0001-4000-8000-000000000002",
+      "name": "Créer la réservation (dispatch)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "a1a1a1a1-0001-4000-8000-000000000003",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 201,
+              "operator": { "type": "number", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1a1a1a1-0001-4000-8000-000000000004",
+      "name": "Unité trouvée ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: \"ok\", bookingId: $json.body.id, unit: $json.body.unitId, acompteAmount: $json.body.acompteAmount } }}",
+        "options": {}
+      },
+      "id": "a1a1a1a1-0001-4000-8000-000000000005",
+      "name": "Répondre : réservation créée",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 409,
+        "responseBody": "={{ { status: \"complet\", message: \"Aucune unité disponible à cette date, proposer une date alternative.\" } }}",
+        "options": {}
+      },
+      "id": "a1a1a1a1-0001-4000-8000-000000000006",
+      "name": "Répondre : complet à cette date",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 380]
+    }
+  ],
+  "connections": {
+    "Réception du formulaire (site ou HubSpot)": {
+      "main": [[{ "node": "Créer la réservation (dispatch)", "type": "main", "index": 0 }]]
+    },
+    "Créer la réservation (dispatch)": {
+      "main": [[{ "node": "Unité trouvée ?", "type": "main", "index": 0 }]]
+    },
+    "Unité trouvée ?": {
+      "main": [
+        [{ "node": "Répondre : réservation créée", "type": "main", "index": 0 }],
+        [{ "node": "Répondre : complet à cette date", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "b1b1b1b1-0001-4000-8000-000000000001"
+}

@@ -1,9 +1,10 @@
-# Workflows n8n — Phase 5
+# Workflows n8n — Phase 5 + Kerbooth 360°
 
-Ces 7 workflows sont des **modèles à importer et adapter**, pas des exports
+Ces workflows sont des **modèles à importer et adapter**, pas des exports
 testés sur une instance n8n réelle : cette session de développement n'a pas
 d'accès à l'instance n8n du VPS. Compter environ 30 min de vérification par
-workflow au premier import.
+workflow au premier import (davantage pour les 4 workflows Kerbooth, qui
+dépendent de Stripe/Yousign — voir section dédiée ci-dessous).
 
 ## Import
 
@@ -56,10 +57,51 @@ Les workflows d'alerte appellent des endpoints protégés par
 `INGEST_API_TOKEN` (même jeton que l'ingestion) — voir
 `src/lib/auth/n8nToken.ts` côté application.
 
+## Workflows Kerbooth 360° (nouveau)
+
+Voir `kerbooth360/architecture-decision.md` pour le contexte : ces workflows
+appellent l'outil compta (nouveaux points d'API `/api/kerbooth/*`, mêmes
+`APP_URL`/`INGEST_API_TOKEN` que ci-dessus) au lieu de Supabase/Abby comme
+prévu dans le dossier Kerbooth original — Phase 1 (Benoît seul) uniquement.
+
+| Fichier | Déclencheur | Rôle |
+|---|---|---|
+| `kerbooth-booking-request.json` | Webhook (formulaire site/HubSpot) | Crée la réservation, dispatch automatique vers une unité libre ; répond 409 "complet" si aucune unité disponible |
+| `kerbooth-stripe-acompte-paid.json` | Webhook Stripe (`payment_intent.succeeded`) | Crée et marque payée la facture d'acompte dans l'outil compta, puis envoie le contrat à signer via Yousign |
+| `kerbooth-yousign-contract-signed.json` | Webhook Yousign (`signature_request.done`) | Confirme la réservation (statut CONFIRMED) |
+| `kerbooth-stripe-solde-paid.json` | Planifié (9h/jour) | Repère les événements terminés la veille, déclenche le prélèvement Stripe du solde, marque la facture de solde payée |
+
+**⚠️ Ces 4 workflows sont nettement moins mûrs que les 7 premiers** : ils
+n'ont pu être vérifiés ni contre une vraie instance n8n, ni contre les API
+réelles de Stripe/Yousign/HubSpot (comptes pas encore créés au moment de
+l'écriture). En particulier :
+- Les nœuds Stripe/Yousign sont des `httpRequest` génériques avec des
+  notes `"notes"` marquant explicitement ce qui reste à compléter (corps de
+  requête, authentification) — préférer les nœuds natifs Stripe/Yousign de
+  n8n s'ils sont disponibles sur votre instance, plus simples à configurer
+  qu'un appel HTTP brut.
+- Le `bookingId` doit être propagé en métadonnée à chaque étape externe
+  (métadonnée Stripe à la création du paiement, `external_id` Yousign à la
+  création de la demande de signature) pour que les webhooks de retour
+  sachent quelle réservation mettre à jour — à vérifier avec les vrais
+  identifiants de champs une fois les comptes créés.
+- Manquent encore (prochaine itération, non bloquant pour un lancement
+  minimal) : relance/annulation si le contrat n'est pas signé sous 48h,
+  gestion de l'échec de prélèvement du solde, lien d'annulation en
+  libre-service, rappel du chèque de caution à J-1, rappel de déclaration
+  URSSAF pour Kerbooth.
+
+**Réglages complémentaires** (unités Kerbooth) : se font directement dans
+l'outil compta (onglet Réglages → "Kerbooth 360° — Unités"), pas dans n8n —
+donner un nom à chacune des 2 unités avant le premier test de dispatch.
+
 ## Ce qui reste à faire manuellement sur le VPS (hors de cette session)
 
 - Créer les 3 boîtes mail de capture + l'adresse d'émission, si ce n'est pas
   déjà fait (fournisseur mail au choix).
-- Importer et configurer ces 7 workflows.
-- Vérifier qu'ils tournent sans erreur pendant quelques jours avant de faire
+- Importer et configurer les 7 premiers workflows.
+- Créer les comptes Stripe/Yousign/HubSpot pour Kerbooth 360°, puis importer
+  et connecter les 4 workflows Kerbooth (voir avertissements ci-dessus).
+- Nommer les 2 unités Kerbooth dans Réglages avant le premier test.
+- Vérifier que tout tourne sans erreur pendant quelques jours avant de faire
   confiance à la relance automatique.

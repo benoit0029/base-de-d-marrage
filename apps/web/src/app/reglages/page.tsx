@@ -9,6 +9,8 @@ import { getPaConnection } from "@/server/services/pa";
 import { logout } from "@/app/actions/auth";
 import { listClosures, listPendingBlockers, suggestNextClosableYear } from "@/server/services/fiscalYearClosure";
 import FiscalYearClosureSection from "@/components/settings/FiscalYearClosureSection";
+import { listUnits } from "@/server/services/kerbooth/units";
+import KerboothUnitsSection from "@/components/settings/KerboothUnitsSection";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,7 @@ const activityBySlug: Record<string, "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "B
 const abEligible = new Set(["BA_MARAICHAGE", "BIC_FRUITS_LEGUMES"]);
 
 export default async function Page() {
-  const [company, activitySettings, mailboxConnections, paConnection, closures, blockers, nextClosableYear] =
+  const [company, activitySettings, mailboxConnections, paConnection, closures, blockers, nextClosableYear, kerboothUnits] =
     await Promise.all([
       getCompanySettings(),
       listActivitySettings(),
@@ -30,6 +32,7 @@ export default async function Page() {
       listClosures(),
       listPendingBlockers(),
       suggestNextClosableYear(),
+      listUnits(),
     ]);
   const settingsByActivity = new Map(activitySettings.map((s) => [s.activity, s]));
   const mailboxByActivity = new Map(mailboxConnections.map((m) => [m.activity, m]));
@@ -137,6 +140,17 @@ export default async function Page() {
         </h2>
         <PaConnectionForm status={paConnection?.status ?? "DISCONNECTED"} />
       </section>
+
+      {/* Kerbooth 360° — Unités */}
+      <KerboothUnitsSection
+        units={kerboothUnits.map((u) => ({
+          id: u.id,
+          label: u.label,
+          baseLocation: u.baseLocation,
+          ownerLabel: u.ownerLabel,
+          active: u.active,
+        }))}
+      />
 
       {/* Clôture d'exercice */}
       <FiscalYearClosureSection

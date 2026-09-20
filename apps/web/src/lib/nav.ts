@@ -50,6 +50,7 @@ export const activities: ActivityNav[] = [
       { slug: "releve-bancaire", label: "Relevé bancaire" },
       { slug: "factures", label: "Factures" },
       { slug: "seuils", label: "Suivi des seuils" },
+      { slug: "reservations", label: "Réservations" },
     ],
   },
 ];

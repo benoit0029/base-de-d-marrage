@@ -661,6 +661,57 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   depuis l'UI — pas de perte de travail si la fonctionnalité revient sous
   une autre forme.
 
+## 19. Kerbooth 360° — dispatch et réservations intégrés à l'outil compta
+
+Voir `kerbooth360/` à la racine du dépôt (documents légaux corrigés,
+décision d'architecture détaillée) — cette section résume ce qui a été
+construit côté outil compta.
+
+- **`KerboothUnit`/`KerboothBooking`** (nouveaux modèles Prisma) vivent
+  dans la même base Postgres que le reste de l'outil, pas dans un Supabase
+  séparé — décision Phase 1 (Benoît seul), migration vers un vrai projet
+  Supabase partagé prévue seulement en Phase 2 (partenaire), voir
+  `kerbooth360/architecture-decision.md`.
+- **Dispatch automatique** (`server/services/kerbooth/dispatch.ts`) :
+  réplique la logique SQL du dossier original en deux temps (unités sans
+  réservation `CONFIRMED` chevauchante, puis la moins chargée en jours
+  cumulés sur l'année) — en requêtes Prisma plutôt qu'en SQL brut, cohérent
+  avec le reste du code. Une réservation `PENDING_PAYMENT`/
+  `PENDING_SIGNATURE` ne bloque jamais une unité : seule une réservation
+  confirmée compte comme "prise".
+- **Facturation Kerbooth réutilise le moteur existant**
+  (`server/services/invoices.ts`, activité `BIC_PHOTOBOOTH`) plutôt qu'Abby
+  — une facture d'acompte à la réservation, une facture de solde à la fin
+  de la location, toutes deux marquées payées immédiatement (`markInvoicePaid`)
+  puisque le paiement Stripe qui les déclenche est déjà confirmé au moment
+  de l'appel. Le bouton "Envoyer via Abby" déjà existant (PA) reste
+  disponible sur ces factures pour les clients Entreprise (obligation
+  d'e-invoicing B2B à venir).
+- **API n8n-facing** (`/api/kerbooth/bookings*`, protégées par
+  `INGEST_API_TOKEN` comme le reste du pipeline n8n) : créer une
+  réservation (dispatch), marquer l'acompte payé, confirmer la signature,
+  marquer le solde payé, annuler. Chaque transition vérifie l'état courant
+  de la réservation (`KerboothBookingStateError`) — impossible de marquer
+  un solde payé sur une réservation pas encore confirmée, par exemple.
+- **`NoAvailableUnitError` → HTTP 409** sur la création : le workflow n8n
+  doit afficher "complet à cette date" côté site plutôt que de laisser
+  échouer silencieusement (déclencheur 2bis du dossier original).
+- **Unités gérées comme un réglage** (`Réglages → Kerbooth 360° — Unités`),
+  pas via n8n : se fait une fois (nommer les 2 unités), jamais au fil de
+  l'eau — mêmes formulaires/actions serveur que le reste de Réglages.
+- **Nouvel onglet "Réservations"** (`/photobooth/reservations`) : vue en
+  lecture seule des réservations et de leur statut, pas d'action possible
+  ici (tout passe par n8n) — juste pour suivre visuellement le dispatch
+  sans avoir besoin d'ouvrir n8n.
+- **Workflows n8n** (`n8n/workflows/kerbooth-*.json`) : 4 gabarits
+  couvrant le chemin nominal (demande → acompte → signature → solde) —
+  volontairement moins aboutis que les 7 workflows Phase 5 existants,
+  faute de comptes Stripe/Yousign/HubSpot réels au moment de l'écriture.
+  Détail des limites connues dans `n8n/workflows/README.md`. Encore à
+  construire : relance/annulation contrat non signé à 48h, échec de
+  prélèvement du solde, lien d'annulation en libre-service, rappel
+  caution J-1, rappel de déclaration URSSAF Kerbooth.
+
 ## 14. Répertoire Clients et Catalogue Produits/Prestations
 
 - **Deux nouveaux modèles, `Client` et `Product`**, scopés par activité

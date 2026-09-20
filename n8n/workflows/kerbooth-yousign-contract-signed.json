@@ -1,0 +1,50 @@
+{
+  "name": "Kerbooth 360° — Contrat signé (Yousign)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kerbooth-yousign-contract-signed",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "e1e1e1e1-0003-4000-8000-000000000001",
+      "name": "Webhook Yousign (signature_request.done)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "kerbooth-yousign-contract-signed",
+      "notes": "À configurer côté Yousign : webhook sur l'événement signature_request.done. Le bookingId doit être passé en métadonnée externe (external_id) à la création de la demande de signature (voir workflow kerbooth-stripe-acompte-paid) pour être retrouvé ici."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/bookings/{{ $json.body.data.signature_request.external_id }}/contract-signed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ yousignRequestId: $json.body.data.signature_request.id, signedAt: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "e1e1e1e1-0003-4000-8000-000000000002",
+      "name": "Confirmer la réservation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Yousign (signature_request.done)": {
+      "main": [[{ "node": "Confirmer la réservation", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "f1f1f1f1-0003-4000-8000-000000000001"
+}

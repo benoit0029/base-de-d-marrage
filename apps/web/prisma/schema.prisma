@@ -40,6 +40,8 @@ model Tenant {
   clients            Client[]
   products           Product[]
   fiscalYearClosures FiscalYearClosure[]
+  kerboothUnits      KerboothUnit[]
+  kerboothBookings   KerboothBooking[]
 }
 
 model User {
@@ -646,6 +648,89 @@ model FiscalYearClosure {
   createdAt  DateTime @default(now())
 
   @@unique([tenantId, year])
+}
+
+// ---------------------------------------------------------------------------
+// Kerbooth 360° — location de photobooths (activité BIC_PHOTOBOOTH)
+// Voir kerbooth360/architecture-decision.md : Phase 1 (Benoît seul, 2
+// unités) construite ici directement dans la base compta, sans Supabase —
+// migration vers un projet Supabase partagé prévue seulement en Phase 2,
+// quand le partenaire rejoint avec ses propres unités.
+// ---------------------------------------------------------------------------
+
+// Une unité physique (photobooth + iPhone associé, sticker portant le même
+// nom sur les deux — voir feuille de route). `ownerLabel` reste un simple
+// texte libre non contraint : en Phase 1 il n'y a qu'un seul propriétaire,
+// aucune logique de répartition à modéliser tant que la Phase 2 n'existe pas.
+model KerboothUnit {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  label        String // nom de fleur, ex. "Camélia"
+  baseLocation String // "Tourc'h"
+  ownerLabel   String   @default("Benoît")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  bookings KerboothBooking[]
+
+  @@unique([tenantId, label])
+}
+
+enum KerboothFormula {
+  ESSENTIEL
+  POPULAIRE
+  ENTREPRISE
+}
+
+enum KerboothBookingStatus {
+  PENDING_PAYMENT // créée, acompte pas encore réglé
+  PENDING_SIGNATURE // acompte réglé, contrat pas encore signé
+  CONFIRMED // contrat signé, réservation ferme
+  CANCELLED // annulée — acompte jamais remboursé (voir CGV article 5)
+  COMPLETED // solde prélevé, événement terminé
+}
+
+// Une réservation cliente. `unitId` posé par le dispatch automatique (voir
+// server/services/kerbooth/dispatch.ts) dès qu'une unité libre est trouvée —
+// vide tant qu'aucune unité n'a encore été assignée (ne devrait durer qu'un
+// instant, le dispatch tourne dans le même appel n8n que la création).
+model KerboothBooking {
+  id             String                @id @default(cuid())
+  tenantId       String
+  tenant         Tenant                @relation(fields: [tenantId], references: [id])
+  unitId         String?
+  unit           KerboothUnit?         @relation(fields: [unitId], references: [id])
+  clientName     String
+  clientEmail    String?
+  clientPhone    String?
+  eventDateStart DateTime
+  eventDateEnd   DateTime
+  formula        KerboothFormula
+  durationDays   Int
+  status         KerboothBookingStatus @default(PENDING_PAYMENT)
+  acompteAmount  Decimal               @db.Decimal(12, 2)
+  soldeAmount    Decimal               @db.Decimal(12, 2)
+
+  // Références externes posées par les workflows n8n au fil du parcours —
+  // simples chaînes, jamais de FK vers un système tiers (Stripe/Yousign).
+  stripeCustomerId String?
+  yousignRequestId String?
+
+  // Factures créées dans l'outil compta (voir server/services/invoices) —
+  // référence souple, pas de relation Prisma formelle : une facture reste
+  // indépendante d'une réservation modifiée plus tard, même principe déjà
+  // retenu pour Client/Product (voir docs/ARCHITECTURE.md §14).
+  invoiceAcompteId String?
+  invoiceSoldeId   String?
+
+  contractSignedAt DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId, eventDateStart, eventDateEnd])
+  @@index([tenantId, status])
 }
 
 // ---------------------------------------------------------------------------

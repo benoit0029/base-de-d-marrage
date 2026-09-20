@@ -1,0 +1,99 @@
+{
+  "name": "Kerbooth 360° — Solde prélevé (Stripe, J+1)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "days", "triggerAtHour": 9 }]
+        }
+      },
+      "id": "01010101-0004-4000-8000-000000000001",
+      "name": "Chaque matin à 9h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "notes": "Alternative au webhook direct : ce workflow interroge les réservations CONFIRMED dont l'événement s'est terminé la veille, puis déclenche le prélèvement Stripe du solde — à adapter selon que le prélèvement est initié par n8n (PaymentIntent off_session) ou déjà géré côté Stripe/HubSpot avec un simple webhook de confirmation à recevoir ici à la place de ce déclencheur planifié."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" }]
+        },
+        "options": {}
+      },
+      "id": "01010101-0004-4000-8000-000000000002",
+      "name": "Lister les réservations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nyesterday.setHours(0,0,0,0);\nconst tomorrow = new Date(yesterday);\ntomorrow.setDate(tomorrow.getDate() + 1);\n\nreturn items[0].json.filter((b) => {\n  if (b.status !== 'CONFIRMED') return false;\n  const end = new Date(b.eventDateEnd);\n  return end >= yesterday && end < tomorrow;\n}).map((b) => ({ json: b }));"
+      },
+      "id": "01010101-0004-4000-8000-000000000003",
+      "name": "Filtrer : événements terminés hier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.stripe.com/v1/payment_intents",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "stripeApi",
+        "sendBody": true,
+        "options": {}
+      },
+      "id": "01010101-0004-4000-8000-000000000004",
+      "name": "Prélever le solde (Stripe, off_session)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 220],
+      "notes": "À COMPLÉTER : corps de la requête (amount, currency, customer, payment_method, off_session: true, confirm: true) avec le stripeCustomerId et soldeAmount de chaque réservation. Non testé — vérifier le node Stripe natif n8n comme alternative au HTTP Request brut."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/bookings/{{ $json.id }}/solde-paid",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ paidAt: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "01010101-0004-4000-8000-000000000005",
+      "name": "Marquer le solde payé (facture + statut)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 220]
+    }
+  ],
+  "connections": {
+    "Chaque matin à 9h": {
+      "main": [[{ "node": "Lister les réservations", "type": "main", "index": 0 }]]
+    },
+    "Lister les réservations": {
+      "main": [[{ "node": "Filtrer : événements terminés hier", "type": "main", "index": 0 }]]
+    },
+    "Filtrer : événements terminés hier": {
+      "main": [[{ "node": "Prélever le solde (Stripe, off_session)", "type": "main", "index": 0 }]]
+    },
+    "Prélever le solde (Stripe, off_session)": {
+      "main": [[{ "node": "Marquer le solde payé (facture + statut)", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "11111111-0004-4000-8000-000000000001"
+}
