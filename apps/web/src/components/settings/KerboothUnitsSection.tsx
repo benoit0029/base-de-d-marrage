@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { submitKerboothUnit, toggleKerboothUnitAction, type KerboothUnitFormState } from "@/app/actions/kerbooth";
 
 const initialState: KerboothUnitFormState = { status: "idle", message: "" };
@@ -13,32 +13,98 @@ export interface KerboothUnitView {
   active: boolean;
 }
 
-function UnitRow({ unit }: { unit: KerboothUnitView }) {
+function UnitRow({
+  unit,
+  editing,
+  onEdit,
+}: {
+  unit: KerboothUnitView;
+  editing: boolean;
+  onEdit: (id: string | null) => void;
+}) {
   const [isPending, startTransition] = useTransition();
+  const [state, formAction, pending] = useActionState(submitKerboothUnit, initialState);
+
+  useEffect(() => {
+    if (state.status === "success") onEdit(null);
+  }, [state, onEdit]);
+
+  if (editing) {
+    return (
+      <li className="py-2">
+        <form action={formAction} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="id" value={unit.id} />
+          <label className="text-sm">
+            <span className="text-slate-600">Nom</span>
+            <input
+              name="label"
+              defaultValue={unit.label}
+              required
+              className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="text-slate-600">Lieu de base</span>
+            <input
+              name="baseLocation"
+              defaultValue={unit.baseLocation}
+              required
+              className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 disabled:opacity-50"
+          >
+            {pending ? "…" : "Enregistrer"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit(null)}
+            className="text-xs font-medium text-slate-500 underline"
+          >
+            Annuler
+          </button>
+          {state.status === "error" && <span className="text-xs text-red-600">{state.message}</span>}
+        </form>
+      </li>
+    );
+  }
 
   return (
     <li className="flex items-center justify-between py-2 text-sm">
       <span>
         <span className="font-medium">{unit.label}</span> — {unit.baseLocation} ({unit.ownerLabel})
       </span>
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={() => startTransition(() => toggleKerboothUnitAction(unit.id, !unit.active))}
-        className={`rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${
-          unit.active
-            ? "border-slate-300 text-slate-600"
-            : "border-amber-300 bg-amber-50 text-amber-700"
-        }`}
-      >
-        {isPending ? "…" : unit.active ? "Active" : "Désactivée"}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onEdit(unit.id)}
+          className="text-xs font-medium text-slate-500 underline"
+        >
+          Modifier
+        </button>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => startTransition(() => toggleKerboothUnitAction(unit.id, !unit.active))}
+          className={`rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${
+            unit.active
+              ? "border-slate-300 text-slate-600"
+              : "border-amber-300 bg-amber-50 text-amber-700"
+          }`}
+        >
+          {isPending ? "…" : unit.active ? "Active" : "Désactivée"}
+        </button>
+      </div>
     </li>
   );
 }
 
 export default function KerboothUnitsSection({ units }: { units: KerboothUnitView[] }) {
   const [state, formAction, pending] = useActionState(submitKerboothUnit, initialState);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
     <section className="rounded-lg border bg-white p-4 md:p-6">
@@ -47,13 +113,15 @@ export default function KerboothUnitsSection({ units }: { units: KerboothUnitVie
         Une unité = un photobooth + son iPhone associé (même nom collé en
         sticker sur les deux). Le dispatch automatique des réservations
         (voir kerbooth360/architecture-technique-kerbooth360.md) ne choisit
-        qu'entre les unités actives.
+        qu'entre les unités actives. Cliquez sur "Modifier" pour renommer
+        une unité existante, ou ajoutez-en une nouvelle ci-dessous — jamais
+        limité à 2, prêt pour de futures unités.
       </p>
 
       {units.length > 0 && (
         <ul className="mt-4 divide-y divide-slate-100">
           {units.map((u) => (
-            <UnitRow key={u.id} unit={u} />
+            <UnitRow key={u.id} unit={u} editing={editingId === u.id} onEdit={setEditingId} />
           ))}
         </ul>
       )}

@@ -30,6 +30,31 @@ associés — cohérent avec le principe déjà acté qu'aucune des deux
 comptabilités personnelles (chacune dans son propre outil) n'a à héberger
 les données de dispatch de l'autre. Pas à construire maintenant.
 
+**Confirmé le 20/09/2026** (Benoît a redemandé si le report posait un
+risque pour la Phase 2) : non, ce choix ne complique pas l'arrivée du
+partenaire. `KerboothUnit`/`KerboothBooking` n'ont que deux dépendances
+vers le reste de la base compta de Benoît : `tenantId` (son tenant) et
+`invoiceId` (ses factures `BIC_PHOTOBOOTH`) — aucune autre table ne
+pointe vers elles. Migrer ces deux modèles vers Supabase en Phase 2
+consistera à exporter leurs lignes, les réimporter dans le nouveau projet
+partagé, et remplacer les deux champs ci-dessus (le partenaire aura sa
+propre facturation, dans son propre outil, avec son propre lien vers ses
+propres factures) — un export/import classique, pas une restructuration.
+Rien dans le code actuel n'ancre ces modèles à la base de Benoît au-delà
+de ces deux champs.
+
+**Abby comme PA n'a aucune dépendance envers Supabase** (point soulevé par
+Benoît le 20/09/2026, "si besoin du PA pour septembre 2027 autant utilisé
+tout de suite abby supabase") : ce sont deux produits indépendants — Abby
+transmet des factures déjà créées vers la plateforme agréée, Supabase est
+juste une base de données. Créer un compte Abby maintenant plutôt qu'en
+2027 n'a aucun lien technique avec la question Supabase, et n'apporte rien
+avant que l'obligation B2B n'entre en vigueur (le bouton "Envoyer via
+Abby" existant suffira le moment venu, voir point 2). Migrer vers Supabase
+maintenant, à l'inverse, ajouterait un compte et une dépendance externe
+pour un besoin qui n'existe pas encore en Phase 1 solo — la recommandation
+reste donc : aucun des deux tout de suite, comme confirmé par Benoît.
+
 ### 2. Pas d'Abby comme moteur de facturation Kerbooth — réutilisation de l'outil compta
 
 Le dossier original prévoit qu'Abby (API) génère les factures Kerbooth.
@@ -68,7 +93,7 @@ que soit la périodicité de déclaration réellement choisie (mensuelle ou
 trimestrielle) — un rappel de trop coûte moins cher qu'une échéance
 manquée.
 
-### 4. Signature du contrat AVANT le paiement de l'acompte (revu le 20/09/2026)
+### 4. Signature du contrat AVANT le paiement (revu le 20/09/2026)
 
 Le dossier original prévoyait : dispatch → paiement de l'acompte → envoi
 du contrat à signer → confirmation. **Benoît a demandé l'inverse** : la
@@ -78,36 +103,32 @@ ordre (`PENDING_SIGNATURE` → `PENDING_PAYMENT` → `CONFIRMED`), et les
 workflows n8n ont été réordonnés en conséquence (voir
 `n8n/workflows/README.md`).
 
-### 5. Échec de prélèvement du solde — construit
+### 5. Paiement direct en une fois, sans lien d'annulation ni remboursement automatique (revu le 20/09/2026, remplace les points 5-6 initiaux)
 
-`checkSoldeOverdue` (`server/services/kerbooth/alerts.ts`) détecte les
-réservations confirmées dont l'événement est terminé sans facture de
-solde : relance simple du client à partir de J+2, alerte prioritaire à
-Benoît à partir de J+5 (répétée chaque jour tant que non résolu — la
-caution reste la garantie de dernier recours, CGV article 5bis). Workflow :
-`kerbooth-solde-overdue-alert.json`.
+Benoît est revenu sur le découpage acompte/solde : **"j'enlève l'acompte et
+je fais paiement direct, ça évite des flux"**. Décision actée, elle résout
+au passage la contradiction du point 6 initial (acompte non remboursable vs
+lien d'annulation en libre-service) :
 
-### 6. Lien d'annulation en libre-service — EN ATTENTE D'ARBITRAGE
+- **Paiement en une fois** à la confirmation du contrat (`totalAmount`
+  unique, `KerboothBooking` n'a plus qu'une seule facture). Plus de second
+  prélèvement Stripe à J+1, donc plus d'échec de prélèvement du solde à
+  gérer (`checkSoldeOverdue` supprimé, ainsi que `kerbooth-solde-overdue-
+  alert.json` et `kerbooth-stripe-solde-paid.json`) — simplification nette
+  du nombre de flux et de points de défaillance.
+- **Pas de lien d'annulation en libre-service ni de remboursement
+  automatique** : Benoît a d'abord demandé un tel lien "donc remboursement
+  automatique", proposition initialement implémentée avec un délai de
+  courtoisie de 14 jours (`REFUND_WINDOW_DAYS`) — puis **explicitement
+  retirée le même jour** ("supprime le lien d'annulation et délai de
+  rétractation si pas obligatoire"), cette prestation n'y étant de toute
+  façon pas légalement obligée (art. L221-28 12° du Code de la
+  consommation, "activités de loisirs à date déterminée"). `cancelBooking`
+  (`server/services/kerbooth/bookings.ts`) se contente donc d'annuler la
+  réservation et de libérer l'unité ; un remboursement éventuel reste un
+  geste manuel de Benoît, cohérent avec la politique CGV article 5.
 
-Benoît a demandé un lien d'annulation en libre-service **"donc
-remboursement automatique"**. Or les CGV corrigées le 20/09/2026 (à sa
-demande explicite, critique 2) posent que **l'acompte n'est remboursable
-en aucun cas**. Ces deux demandes se contredisent frontalement — non
-implémenté tant que ce point n'est pas tranché avec Benoît :
-- Soit le lien d'annulation libre-service ne rembourse jamais l'acompte
-  (cohérent avec les CGV telles qu'elles sont aujourd'hui) : il ne fait
-  qu'annuler la réservation et libérer l'unité, sans aucun mouvement
-  d'argent.
-- Soit la politique de remboursement doit être révisée de nouveau (CGV,
-  contrat, politique d'annulation, email de confirmation à corriger une
-  seconde fois) pour prévoir un remboursement automatique sous certaines
-  conditions (délai avant l'événement ?), ce qui annule la simplification
-  actée le 20/09/2026.
-`cancelBooking` (déjà construit) gère déjà l'annulation sans mouvement
-financier — reste à brancher un lien public (page ou email) qui l'appelle,
-une fois la question du remboursement tranchée.
-
-### 4. n8n reste l'orchestrateur, HubSpot/Stripe/Yousign/LumaBooth inchangés
+### 6. n8n reste l'orchestrateur, HubSpot/Stripe/Yousign/LumaBooth inchangés
 
 Rien ne change sur ces 4 outils, déjà correctement positionnés comme
 externes et autonomes dans le dossier original. n8n appelle désormais
@@ -119,11 +140,11 @@ Abby/Supabase directement pour la facturation et le dispatch.
 
 ```
 Site (formulaire) → n8n → [Unit/Booking dans Postgres compta] → dispatch
-                        → Stripe (acompte) → outil compta (créer facture,
-                          BIC_PHOTOBOOTH) → Yousign (contrat) → si signé,
-                          confirmer Booking
-                        → J+1 : Stripe (solde) → outil compta (marquer
-                          facture payée / facture de solde)
+                        → Yousign (contrat) → si signé, réservation en
+                          attente de paiement
+                        → Stripe (paiement en une fois) → outil compta
+                          (créer facture BIC_PHOTOBOOTH, la marquer payée,
+                          confirmer Booking) → email facture au client
                         → si formule Entreprise : bouton "Envoyer via
                           Abby" (PA) sur la facture, déjà existant
 ```

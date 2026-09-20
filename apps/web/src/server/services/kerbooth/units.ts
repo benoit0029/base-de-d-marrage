@@ -24,3 +24,12 @@ export async function createUnit(label: string, baseLocation: string, ownerLabel
 export async function setUnitActive(id: string, active: boolean) {
   return prisma.kerboothUnit.update({ where: { id }, data: { active } });
 }
+
+export async function updateUnit(id: string, label: string, baseLocation: string) {
+  const trimmedLabel = label.trim();
+  if (!trimmedLabel) throw new KerboothUnitError("Le nom de l'unité est obligatoire.");
+  return prisma.kerboothUnit.update({
+    where: { id },
+    data: { label: trimmedLabel, baseLocation: baseLocation.trim() },
+  });
+}

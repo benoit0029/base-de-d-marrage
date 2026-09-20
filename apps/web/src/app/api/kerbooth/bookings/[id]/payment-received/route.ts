@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedN8nRequest } from "@/lib/auth/n8nToken";
 import {
-  markAcomptePaid,
+  markPaymentReceived,
   KerboothBookingNotFoundError,
   KerboothBookingStateError,
 } from "@/server/services/kerbooth/bookings";
 
-// Appelé par n8n depuis le webhook Stripe "acompte payé" (déclencheur 4) :
-// crée et marque payée la facture d'acompte dans l'outil compta.
+// Appelé par n8n depuis le webhook Stripe "paiement reçu" (déclencheur 4,
+// paiement direct en une fois — plus d'acompte/solde séparés, voir
+// kerbooth360/architecture-decision.md point 4) : crée et marque payée la
+// facture dans l'outil compta.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!isAuthorizedN8nRequest(req)) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const paidAt = typeof body.paidAt === "string" ? new Date(body.paidAt) : new Date();
 
   try {
-    const booking = await markAcomptePaid(id, { stripeCustomerId, paidAt });
+    const booking = await markPaymentReceived(id, { stripeCustomerId, paidAt });
     return NextResponse.json(booking);
   } catch (err) {
     if (err instanceof KerboothBookingNotFoundError) {

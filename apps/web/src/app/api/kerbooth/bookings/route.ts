@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Corps JSON invalide" }, { status: 400 });
   }
 
-  const { clientName, clientEmail, clientPhone, eventDateStart, eventDateEnd, formula, totalAmount, acompteAmount, durationDays } =
+  const { clientName, clientEmail, clientPhone, eventDateStart, eventDateEnd, formula, totalAmount, durationDays } =
     body as Record<string, unknown>;
 
   if (typeof clientName !== "string" || !clientName.trim()) {
@@ -45,7 +45,6 @@ export async function POST(req: NextRequest) {
       eventDateEnd: new Date(eventDateEnd),
       formula: formula as "ESSENTIEL" | "POPULAIRE" | "ENTREPRISE",
       totalAmount: typeof totalAmount === "number" ? totalAmount : undefined,
-      acompteAmount: typeof acompteAmount === "number" ? acompteAmount : undefined,
       durationDays: typeof durationDays === "number" ? durationDays : undefined,
     });
     return NextResponse.json(booking, { status: 201 });

@@ -5,19 +5,17 @@ import type { KerboothBookingStatus, KerboothFormula } from "@prisma/client";
 export const dynamic = "force-dynamic";
 
 const statusLabel: Record<KerboothBookingStatus, string> = {
-  PENDING_PAYMENT: "En attente d'acompte",
   PENDING_SIGNATURE: "En attente de signature",
+  PENDING_PAYMENT: "En attente de paiement",
   CONFIRMED: "Confirmée",
   CANCELLED: "Annulée",
-  COMPLETED: "Terminée",
 };
 
 const statusClass: Record<KerboothBookingStatus, string> = {
-  PENDING_PAYMENT: "bg-amber-100 text-amber-800",
   PENDING_SIGNATURE: "bg-amber-100 text-amber-800",
-  CONFIRMED: "bg-sky-100 text-sky-800",
+  PENDING_PAYMENT: "bg-amber-100 text-amber-800",
+  CONFIRMED: "bg-emerald-100 text-emerald-800",
   CANCELLED: "bg-slate-100 text-slate-500",
-  COMPLETED: "bg-emerald-100 text-emerald-800",
 };
 
 const formulaLabel: Record<KerboothFormula, string> = {
@@ -50,8 +48,7 @@ export default async function Page() {
             <th className="px-4 py-2.5">Événement</th>
             <th className="px-4 py-2.5">Formule</th>
             <th className="px-4 py-2.5">Unité</th>
-            <th className="px-4 py-2.5 text-right">Acompte</th>
-            <th className="px-4 py-2.5 text-right">Solde</th>
+            <th className="px-4 py-2.5 text-right">Montant</th>
             <th className="px-4 py-2.5">Statut</th>
           </tr>
         </thead>
@@ -69,8 +66,7 @@ export default async function Page() {
               </td>
               <td className="px-4 py-2.5">{formulaLabel[b.formula]}</td>
               <td className="px-4 py-2.5">{b.unit?.label ?? "—"}</td>
-              <td className="px-4 py-2.5 text-right">{formatEuro(Number(b.acompteAmount))}</td>
-              <td className="px-4 py-2.5 text-right">{formatEuro(Number(b.soldeAmount))}</td>
+              <td className="px-4 py-2.5 text-right">{formatEuro(Number(b.totalAmount))}</td>
               <td className="px-4 py-2.5">
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass[b.status]}`}>
                   {statusLabel[b.status]}

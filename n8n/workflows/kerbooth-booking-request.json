@@ -28,7 +28,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ clientName: $json.body.clientName, clientEmail: $json.body.clientEmail, clientPhone: $json.body.clientPhone, eventDateStart: $json.body.eventDateStart, eventDateEnd: $json.body.eventDateEnd, formula: $json.body.formula, totalAmount: $json.body.totalAmount, acompteAmount: $json.body.acompteAmount, durationDays: $json.body.durationDays }) }}",
+        "jsonBody": "={{ JSON.stringify({ clientName: $json.body.clientName, clientEmail: $json.body.clientEmail, clientPhone: $json.body.clientPhone, eventDateStart: $json.body.eventDateStart, eventDateEnd: $json.body.eventDateEnd, formula: $json.body.formula, totalAmount: $json.body.totalAmount, durationDays: $json.body.durationDays }) }}",
         "options": {
           "response": {
             "response": {

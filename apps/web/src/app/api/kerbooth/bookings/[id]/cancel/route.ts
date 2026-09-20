@@ -6,10 +6,10 @@ import {
   KerboothBookingStateError,
 } from "@/server/services/kerbooth/bookings";
 
-// Appelé par n8n : lien d'annulation en libre-service (déclencheur 12) ou
-// contrat non signé sous 48h (déclencheur 5bis). L'acompte n'est jamais
-// remboursé automatiquement ici (voir CGV article 5) — un remboursement
-// éventuel reste un geste manuel de Benoît, hors du périmètre de cette route.
+// Appelé par n8n : contrat non signé sous 48h (déclencheur 5bis) ou
+// annulation manuelle. Aucun remboursement automatique (voir CGV article 5
+// et server/services/kerbooth/bookings.ts) — un remboursement éventuel
+// reste un geste manuel de Benoît, hors du périmètre de cette route.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!isAuthorizedN8nRequest(req)) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });

@@ -11,12 +11,10 @@ export class KerboothBookingInputError extends Error {}
 
 // Formules à prix fixe (voir kerbooth360/grille-tarifaire-kerbooth360.md) —
 // Entreprise reste négociée manuellement, montants fournis explicitement.
-const FORMULA_DEFAULTS: Record<
-  "ESSENTIEL" | "POPULAIRE",
-  { totalAmount: number; acompteAmount: number; durationDays: number }
-> = {
-  ESSENTIEL: { totalAmount: 250, acompteAmount: 100, durationDays: 1 },
-  POPULAIRE: { totalAmount: 500, acompteAmount: 200, durationDays: 2 },
+// Paiement en une fois (revu le 20/09/2026, plus d'acompte/solde séparés).
+const FORMULA_DEFAULTS: Record<"ESSENTIEL" | "POPULAIRE", { totalAmount: number; durationDays: number }> = {
+  ESSENTIEL: { totalAmount: 250, durationDays: 1 },
+  POPULAIRE: { totalAmount: 500, durationDays: 2 },
 };
 
 const FORMULA_LABEL: Record<KerboothFormula, string> = {
@@ -35,7 +33,6 @@ export interface CreateBookingInput {
   // Obligatoires pour ENTREPRISE uniquement (négocié manuellement, voir
   // documents-types-kerbooth360.md §6) ; ignorés sinon.
   totalAmount?: number;
-  acompteAmount?: number;
   durationDays?: number;
 }
 
@@ -49,22 +46,19 @@ export async function createBooking(input: CreateBookingInput): Promise<Kerbooth
   const tenantId = await getDefaultTenantId();
 
   let totalAmount: number;
-  let acompteAmount: number;
   let durationDays: number;
 
   if (input.formula === "ENTREPRISE") {
-    if (input.totalAmount === undefined || input.acompteAmount === undefined || input.durationDays === undefined) {
+    if (input.totalAmount === undefined || input.durationDays === undefined) {
       throw new KerboothBookingInputError(
-        "totalAmount, acompteAmount et durationDays sont obligatoires pour la formule Entreprise."
+        "totalAmount et durationDays sont obligatoires pour la formule Entreprise."
       );
     }
     totalAmount = input.totalAmount;
-    acompteAmount = input.acompteAmount;
     durationDays = input.durationDays;
   } else {
     const defaults = FORMULA_DEFAULTS[input.formula];
     totalAmount = defaults.totalAmount;
-    acompteAmount = defaults.acompteAmount;
     durationDays = defaults.durationDays;
   }
 
@@ -84,8 +78,7 @@ export async function createBooking(input: CreateBookingInput): Promise<Kerbooth
       eventDateEnd: input.eventDateEnd,
       formula: input.formula,
       durationDays,
-      acompteAmount,
-      soldeAmount: totalAmount - acompteAmount,
+      totalAmount,
     },
   });
 }
@@ -97,10 +90,9 @@ async function getBookingOrThrow(id: string) {
 }
 
 /**
- * Contrat signé (webhook Yousign, déclencheur 5 — désormais AVANT le
- * paiement, revu le 20/09/2026 : la page de signature s'affiche avant la
- * page de paiement de l'acompte, pas après). Fait passer la réservation en
- * attente de paiement.
+ * Contrat signé (webhook Yousign, déclencheur 5 — AVANT le paiement, voir
+ * kerbooth360/architecture-decision.md point 4). Fait passer la réservation
+ * en attente de paiement.
  */
 export async function confirmContractSigned(
   bookingId: string,
@@ -124,19 +116,20 @@ export async function confirmContractSigned(
 }
 
 /**
- * Acompte réglé (webhook Stripe, déclencheur 4 — après signature désormais) :
- * crée et marque payée la facture d'acompte dans l'outil compta
- * (BIC_PHOTOBOOTH — même moteur que les 2 autres activités, voir
- * kerbooth360/architecture-decision.md), confirme la réservation.
+ * Paiement reçu (webhook Stripe, paiement direct en une fois — plus
+ * d'acompte/solde séparés, voir kerbooth360/architecture-decision.md
+ * point 4) : crée et marque payée la facture dans l'outil compta
+ * (BIC_PHOTOBOOTH — même moteur que les 2 autres activités), confirme la
+ * réservation.
  */
-export async function markAcomptePaid(
+export async function markPaymentReceived(
   bookingId: string,
   input: { stripeCustomerId: string; paidAt: Date }
 ): Promise<KerboothBooking> {
   const booking = await getBookingOrThrow(bookingId);
   if (booking.status !== "PENDING_PAYMENT") {
     throw new KerboothBookingStateError(
-      `Réservation dans l'état ${booking.status}, acompte déjà traité, contrat pas encore signé, ou réservation invalide.`
+      `Réservation dans l'état ${booking.status}, paiement déjà traité, contrat pas encore signé, ou réservation invalide.`
     );
   }
 
@@ -147,9 +140,9 @@ export async function markAcomptePaid(
     issueDate: input.paidAt,
     lines: [
       {
-        description: `Acompte réservation Kerbooth 360° — ${FORMULA_LABEL[booking.formula]} du ${booking.eventDateStart.toLocaleDateString("fr-FR")}`,
+        description: `Location Kerbooth 360° — ${FORMULA_LABEL[booking.formula]} du ${booking.eventDateStart.toLocaleDateString("fr-FR")}`,
         quantity: 1,
-        unitPrice: Number(booking.acompteAmount),
+        unitPrice: Number(booking.totalAmount),
         vatRate: 0,
       },
     ],
@@ -161,60 +154,29 @@ export async function markAcomptePaid(
     data: {
       status: "CONFIRMED",
       stripeCustomerId: input.stripeCustomerId,
-      invoiceAcompteId: invoice.id,
+      invoiceId: invoice.id,
     },
   });
 }
 
 /**
- * Solde réglé (webhook Stripe J+1, déclencheur 9) : crée et marque payée la
- * facture de solde, termine la réservation.
+ * Annulation — aucun remboursement automatique (pas de lien libre-service,
+ * pas de délai de courtoisie : Benoît a tranché le 20/09/2026 pour ne pas
+ * en proposer, cette prestation n'y étant de toute façon pas légalement
+ * obligée, voir CGV article 5). Un remboursement éventuel reste un geste
+ * manuel de Benoît, hors du périmètre de cette fonction. Libère toujours
+ * l'unité : le dispatch ne regarde que les réservations CONFIRMED, une
+ * réservation CANCELLED ne bloque plus rien.
  */
-export async function markSoldePaid(bookingId: string, paidAt: Date): Promise<KerboothBooking> {
+export async function cancelBooking(bookingId: string, now = new Date()): Promise<KerboothBooking> {
   const booking = await getBookingOrThrow(bookingId);
-  if (booking.status !== "CONFIRMED") {
-    throw new KerboothBookingStateError(
-      `Réservation dans l'état ${booking.status}, pas confirmée — solde inattendu.`
-    );
-  }
-
-  const invoice = await createInvoice({
-    activity: "BIC_PHOTOBOOTH",
-    type: "FACTURE",
-    clientName: booking.clientName,
-    issueDate: paidAt,
-    lines: [
-      {
-        description: `Solde réservation Kerbooth 360° — ${FORMULA_LABEL[booking.formula]} du ${booking.eventDateStart.toLocaleDateString("fr-FR")}`,
-        quantity: 1,
-        unitPrice: Number(booking.soldeAmount),
-        vatRate: 0,
-      },
-    ],
-  });
-  await markInvoicePaid(invoice.id, paidAt, null);
-
-  return prisma.kerboothBooking.update({
-    where: { id: bookingId },
-    data: { status: "COMPLETED", invoiceSoldeId: invoice.id },
-  });
-}
-
-/**
- * Annulation — jamais de remboursement de l'acompte (CGV article 5, voir
- * kerbooth360/documents/documents-types-kerbooth360.md). Libère
- * implicitement l'unité : le dispatch ne regarde que les réservations
- * CONFIRMED, une réservation CANCELLED ne bloque plus rien.
- */
-export async function cancelBooking(bookingId: string, cancelledAt = new Date()): Promise<KerboothBooking> {
-  const booking = await getBookingOrThrow(bookingId);
-  if (booking.status === "CANCELLED" || booking.status === "COMPLETED") {
-    throw new KerboothBookingStateError(`Réservation déjà ${booking.status.toLowerCase()}, annulation impossible.`);
+  if (booking.status === "CANCELLED") {
+    throw new KerboothBookingStateError("Réservation déjà annulée.");
   }
 
   return prisma.kerboothBooking.update({
     where: { id: bookingId },
-    data: { status: "CANCELLED", cancelledAt },
+    data: { status: "CANCELLED", cancelledAt: now },
   });
 }
 

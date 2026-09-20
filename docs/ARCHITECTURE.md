@@ -679,56 +679,64 @@ construit côté outil compta.
   avec le reste du code. Une réservation `PENDING_SIGNATURE`/
   `PENDING_PAYMENT` ne bloque jamais une unité : seule une réservation
   confirmée compte comme "prise".
-- **Signature du contrat AVANT le paiement de l'acompte** (revu le
-  20/09/2026, à la demande de Benoît — inverse du dossier original) :
-  `KerboothBookingStatus` va `PENDING_SIGNATURE` → `PENDING_PAYMENT` →
-  `CONFIRMED` → `COMPLETED`. `confirmContractSigned` fait passer la
-  réservation en attente de paiement ; `markAcomptePaid` la confirme et
-  crée la facture d'acompte, seulement une fois signée.
+- **Signature du contrat AVANT le paiement** (revu le 20/09/2026, à la
+  demande de Benoît — inverse du dossier original) : `KerboothBookingStatus`
+  va `PENDING_SIGNATURE` → `PENDING_PAYMENT` → `CONFIRMED` → `CANCELLED`.
+  `confirmContractSigned` fait passer la réservation en attente de
+  paiement ; `markPaymentReceived` la confirme et crée la facture, seulement
+  une fois signée.
+- **Paiement direct en une fois** (revu le 20/09/2026, à la demande de
+  Benoît — remplace l'ancien découpage acompte/solde) : `KerboothBooking`
+  n'a plus qu'un seul `totalAmount`/`invoiceId`, réglés à la confirmation du
+  contrat. Plus de second prélèvement à J+1 ni de risque d'échec de
+  prélèvement du solde.
+- **Pas de remboursement automatique, pas de lien d'annulation en
+  libre-service** (décision de Benoît le 20/09/2026) : `cancelBooking`
+  (`server/services/kerbooth/bookings.ts`) se contente de passer la
+  réservation en `CANCELLED` et de libérer l'unité, sans toucher à la
+  facture ni au paiement — un remboursement éventuel reste un geste manuel
+  de Benoît. Cette prestation est de toute façon exclue du droit de
+  rétractation légal (art. L221-28 12° du Code de la consommation,
+  activité de loisirs à date déterminée) : aucun délai de rétractation ou
+  de courtoisie n'est proposé, conformément aux CGV article 5.
 - **Facturation Kerbooth réutilise le moteur existant**
   (`server/services/invoices.ts`, activité `BIC_PHOTOBOOTH`) plutôt qu'Abby
-  — une facture d'acompte à la confirmation, une facture de solde à la fin
-  de la location, toutes deux marquées payées immédiatement (`markInvoicePaid`)
-  puisque le paiement Stripe qui les déclenche est déjà confirmé au moment
-  de l'appel. Le bouton "Envoyer via Abby" déjà existant (PA) reste
-  disponible sur ces factures pour les clients Entreprise (obligation
-  d'e-invoicing B2B à venir, PA jamais utilisée comme moteur de facturation
-  côté Kerbooth — voir `kerbooth360/architecture-decision.md` point 2).
-- **Échec de prélèvement et rappel URSSAF** (`server/services/kerbooth/alerts.ts`) :
-  `checkSoldeOverdue` relance le client à J+2, alerte Benoît en priorité à
-  partir de J+5 (répétée chaque jour, même mécanisme de déduplication que
-  les alertes existantes — `alreadyNotifiedIds` désormais exportée de
-  `server/services/alerts.ts` pour être réutilisée ici). `computeUrssafReminder`
-  calcule le CA Kerbooth encaissé du mois précédent et la cotisation due
-  (21,2 %) — aucune télétransmission possible (pas d'API URSSAF publique),
-  juste le bon montant à reporter soi-même.
+  — une facture unique par réservation, marquée payée immédiatement
+  (`markInvoicePaid`) puisque le paiement Stripe qui la déclenche est déjà
+  confirmé au moment de l'appel. Le bouton "Envoyer via Abby" déjà existant
+  (PA) reste disponible sur ces factures pour les clients Entreprise
+  (obligation d'e-invoicing B2B à venir, PA jamais utilisée comme moteur de
+  facturation côté Kerbooth — voir `kerbooth360/architecture-decision.md`
+  point 2).
+- **Rappel URSSAF** (`server/services/kerbooth/alerts.ts`,
+  `computeUrssafReminder`) : calcule le CA Kerbooth encaissé du mois
+  précédent et la cotisation due (21,2 %) — aucune télétransmission
+  possible (pas d'API URSSAF publique), juste le bon montant à reporter
+  soi-même.
 - **API n8n-facing** (`/api/kerbooth/bookings*`, protégées par
   `INGEST_API_TOKEN` comme le reste du pipeline n8n) : créer une
-  réservation (dispatch), marquer l'acompte payé, confirmer la signature,
-  marquer le solde payé, annuler. Chaque transition vérifie l'état courant
-  de la réservation (`KerboothBookingStateError`) — impossible de marquer
-  un solde payé sur une réservation pas encore confirmée, par exemple.
+  réservation (dispatch), confirmer la signature, marquer le paiement
+  reçu, annuler. Chaque transition vérifie l'état courant de la réservation
+  (`KerboothBookingStateError`) — impossible de marquer un paiement reçu
+  sur une réservation pas encore signée, par exemple.
 - **`NoAvailableUnitError` → HTTP 409** sur la création : le workflow n8n
   doit afficher "complet à cette date" côté site plutôt que de laisser
   échouer silencieusement (déclencheur 2bis du dossier original).
 - **Unités gérées comme un réglage** (`Réglages → Kerbooth 360° — Unités`),
-  pas via n8n : se fait une fois (nommer les 2 unités), jamais au fil de
-  l'eau — mêmes formulaires/actions serveur que le reste de Réglages.
+  pas via n8n : nommer/modifier/ajouter des unités se fait à tout moment
+  (édition en ligne, pas seulement à la création) — mêmes formulaires/
+  actions serveur que le reste de Réglages.
 - **Nouvel onglet "Réservations"** (`/photobooth/reservations`) : vue en
   lecture seule des réservations et de leur statut, pas d'action possible
   ici (tout passe par n8n) — juste pour suivre visuellement le dispatch
   sans avoir besoin d'ouvrir n8n.
-- **Workflows n8n** (`n8n/workflows/kerbooth-*.json`) : 6 gabarits
-  couvrant le chemin nominal (demande → signature → acompte → solde) plus
-  l'échec de prélèvement et le rappel URSSAF — volontairement moins
+- **Workflows n8n** (`n8n/workflows/kerbooth-*.json`) : 4 gabarits couvrant
+  le chemin nominal (demande → signature → paiement → confirmation +
+  facture + lien d'annulation) plus le rappel URSSAF — volontairement moins
   aboutis que les 7 workflows Phase 5 existants, faute de comptes Stripe/
-  Yousign/HubSpot réels au moment de l'écriture. Détail des limites
-  connues dans `n8n/workflows/README.md`. Encore à construire : relance/
-  annulation contrat non signé à 48h, rappel caution J-1, lien
-  d'annulation en libre-service (**bloqué en attente d'arbitrage avec
-  Benoît** — "remboursement automatique" demandé contredit la politique
-  CGV "acompte jamais remboursé" actée le même jour, voir
-  `kerbooth360/architecture-decision.md` point 6).
+  Yousign/HubSpot réels au moment de l'écriture. Détail des limites connues
+  dans `n8n/workflows/README.md`. Encore à construire : relance/annulation
+  contrat non signé à 48h, rappel caution J-1.
 
 ## 14. Répertoire Clients et Catalogue Produits/Prestations
 

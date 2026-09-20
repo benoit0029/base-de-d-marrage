@@ -3,7 +3,7 @@
 Ces workflows sont des **modèles à importer et adapter**, pas des exports
 testés sur une instance n8n réelle : cette session de développement n'a pas
 d'accès à l'instance n8n du VPS. Compter environ 30 min de vérification par
-workflow au premier import (davantage pour les 6 workflows Kerbooth, qui
+workflow au premier import (davantage pour les 4 workflows Kerbooth, qui
 dépendent de Stripe/Yousign — voir section dédiée ci-dessous).
 
 ## Import
@@ -64,22 +64,29 @@ appellent l'outil compta (nouveaux points d'API `/api/kerbooth/*`, mêmes
 `APP_URL`/`INGEST_API_TOKEN` que ci-dessus) au lieu de Supabase/Abby comme
 prévu dans le dossier Kerbooth original — Phase 1 (Benoît seul) uniquement.
 
-**⚠️ Ordre revu le 20/09/2026 : le contrat se signe AVANT le paiement de
-l'acompte**, pas après (contrairement au dossier Kerbooth original) — la
-page de signature Yousign s'affiche en premier, la page de paiement Stripe
-ensuite. `KerboothBookingStatus` reflète cet ordre : `PENDING_SIGNATURE` →
+**⚠️ Ordre revu le 20/09/2026 : le contrat se signe AVANT le paiement**, pas
+après (contrairement au dossier Kerbooth original) — la page de signature
+Yousign s'affiche en premier, la page de paiement Stripe ensuite.
+`KerboothBookingStatus` reflète cet ordre : `PENDING_SIGNATURE` →
 `PENDING_PAYMENT` → `CONFIRMED`.
+
+**⚠️ Paiement direct en une fois, revu le 20/09/2026** : plus d'acompte/solde
+séparés (ancienne version) — le client règle le montant total à la
+confirmation du contrat, ce qui simplifie le prélèvement (plus de second
+prélèvement à J+1 ni de risque d'échec de prélèvement du solde). Pas de
+lien d'annulation en libre-service ni de délai de remboursement automatique
+(décision de Benoît le 20/09/2026 — cette prestation n'y est de toute façon
+pas légalement obligée, voir CGV article 5) : une annulation reste possible
+manuellement, mais sans remboursement automatisé.
 
 | Fichier | Déclencheur | Rôle |
 |---|---|---|
 | `kerbooth-booking-request.json` | Webhook (formulaire site/HubSpot) | Crée la réservation (dispatch automatique), envoie immédiatement le contrat à signer via Yousign, répond 409 "complet" si aucune unité disponible |
-| `kerbooth-yousign-contract-signed.json` | Webhook Yousign (`signature_request.done`) | Passe la réservation en attente de paiement, crée la page de paiement Stripe de l'acompte, l'envoie au client |
-| `kerbooth-stripe-acompte-paid.json` | Webhook Stripe (`checkout.session.completed`) | Crée et marque payée la facture d'acompte dans l'outil compta, confirme la réservation |
-| `kerbooth-stripe-solde-paid.json` | Planifié (9h/jour) | Repère les événements terminés la veille, déclenche le prélèvement Stripe du solde, marque la facture de solde payée |
-| `kerbooth-solde-overdue-alert.json` | Planifié (10h/jour) | Relance le client à J+2 si le solde n'a pas pu être prélevé, alerte Benoît en priorité à partir de J+5 (la caution reste la garantie de dernier recours) |
+| `kerbooth-yousign-contract-signed.json` | Webhook Yousign (`signature_request.done`) | Passe la réservation en attente de paiement, crée la page de paiement Stripe (montant total), l'envoie au client |
+| `kerbooth-stripe-payment-received.json` | Webhook Stripe (`checkout.session.completed`) | Crée et marque payée la facture dans l'outil compta, confirme la réservation, envoie la facture au client par email |
 | `kerbooth-urssaf-reminder.json` | Planifié (1er de chaque mois) | Calcule le CA Kerbooth encaissé du mois précédent et le montant de cotisations (21,2 %) à déclarer sur autoentrepreneur.urssaf.fr — aucune télétransmission possible, juste un rappel avec le bon montant |
 
-**⚠️ Ces 6 workflows sont nettement moins mûrs que les 7 premiers** : ils
+**⚠️ Ces 4 workflows sont nettement moins mûrs que les 7 premiers** : ils
 n'ont pu être vérifiés ni contre une vraie instance n8n, ni contre les API
 réelles de Stripe/Yousign/HubSpot (comptes pas encore créés au moment de
 l'écriture). En particulier :
@@ -95,12 +102,9 @@ l'écriture). En particulier :
   identifiants de champs une fois les comptes créés.
 - Manquent encore (prochaine itération, non bloquant pour un lancement
   minimal) : relance/annulation si le contrat n'est pas signé sous 48h,
-  lien d'annulation en libre-service (remboursement en attente d'arbitrage
-  avec Benoît — contredit potentiellement la politique "acompte jamais
-  remboursé" des CGV, voir kerbooth360/architecture-decision.md), rappel du
-  chèque de caution à J-1.
-- **Faits depuis** : gestion de l'échec de prélèvement du solde
-  (`kerbooth-solde-overdue-alert.json`) et rappel de déclaration URSSAF
+  rappel du chèque de caution à J-1.
+- **Faits depuis** : passage au paiement direct en une fois + lien
+  d'annulation en libre-service (ci-dessus) et rappel de déclaration URSSAF
   (`kerbooth-urssaf-reminder.json`).
 
 **Réglages complémentaires** (unités Kerbooth) : se font directement dans

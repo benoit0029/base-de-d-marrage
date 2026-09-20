@@ -683,16 +683,18 @@ enum KerboothFormula {
   ENTREPRISE
 }
 
-// Le contrat doit être signé AVANT le paiement de l'acompte (revu le
-// 20/09/2026 : la page de signature s'affiche avant la page de paiement,
-// pas après) — l'ordre PENDING_SIGNATURE puis PENDING_PAYMENT reflète ce
-// choix, pas l'ordre suggéré par le dossier Kerbooth original.
+// Le contrat doit être signé AVANT le paiement (revu le 20/09/2026 : la
+// page de signature s'affiche avant la page de paiement, pas après).
+// Paiement direct en une fois (revu le 20/09/2026 à la demande de Benoît :
+// plus d'acompte/solde séparés — évite la conservation de carte pour un
+// débit différé et le risque d'échec de prélèvement du solde). Plus de
+// statut COMPLETED distinct : CONFIRMED = payé intégralement, rien à
+// suivre après (voir kerbooth360/architecture-decision.md).
 enum KerboothBookingStatus {
   PENDING_SIGNATURE // créée, contrat pas encore signé
-  PENDING_PAYMENT // contrat signé, acompte pas encore réglé
-  CONFIRMED // acompte réglé, réservation ferme
-  CANCELLED // annulée — acompte jamais remboursé (voir CGV article 5)
-  COMPLETED // solde prélevé, événement terminé
+  PENDING_PAYMENT // contrat signé, paiement pas encore reçu
+  CONFIRMED // payée intégralement, réservation ferme
+  CANCELLED // annulée — remboursée seulement si dans le délai de courtoisie (voir CGV article 5)
 }
 
 // Une réservation cliente. `unitId` posé par le dispatch automatique (voir
@@ -713,20 +715,18 @@ model KerboothBooking {
   formula        KerboothFormula
   durationDays   Int
   status         KerboothBookingStatus @default(PENDING_SIGNATURE)
-  acompteAmount  Decimal               @db.Decimal(12, 2)
-  soldeAmount    Decimal               @db.Decimal(12, 2)
+  totalAmount    Decimal               @db.Decimal(12, 2)
 
   // Références externes posées par les workflows n8n au fil du parcours —
   // simples chaînes, jamais de FK vers un système tiers (Stripe/Yousign).
   stripeCustomerId String?
   yousignRequestId String?
 
-  // Factures créées dans l'outil compta (voir server/services/invoices) —
+  // Facture créée dans l'outil compta (voir server/services/invoices) —
   // référence souple, pas de relation Prisma formelle : une facture reste
   // indépendante d'une réservation modifiée plus tard, même principe déjà
   // retenu pour Client/Product (voir docs/ARCHITECTURE.md §14).
-  invoiceAcompteId String?
-  invoiceSoldeId   String?
+  invoiceId String?
 
   contractSignedAt DateTime?
   cancelledAt      DateTime?

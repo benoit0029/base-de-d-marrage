@@ -1,21 +1,26 @@
 # Documents types — Kerbooth 360° (version corrigée)
 
-Reprend `documents-types-kerbooth360.md` (dossier original) en appliquant 3
+Reprend `documents-types-kerbooth360.md` (dossier original) en appliquant les
 corrections actées avec Benoît le 20/09/2026 :
 
 1. **RGPD** : la politique de confidentialité (§2) citait encore une
    conservation "6 à 18 mois" — corrigée en suppression immédiate à la
    récupération du matériel, pour rester cohérente avec
    `architecture-technique-kerbooth360.md` et `conformite-rgpd-kerbooth360.md`.
-2. **Prélèvement du solde** : ajout d'une clause explicite (CGV article 2bis
-   + contrat point 3bis) autorisant nommément le prélèvement automatique du
-   solde sur la carte enregistrée — absente des modèles originaux, qui ne
-   couvraient explicitement que l'acompte et la caution.
-3. **Politique d'annulation simplifiée** : l'acompte est désormais **non
-   remboursable dans tous les cas**, quelle que soit la date d'annulation —
-   remplace la règle précédente ("remboursé si annulation à plus de 7
-   jours"). Répercuté dans les CGV (article 5), le contrat, la politique
-   d'annulation autonome (§8) et l'email de confirmation.
+2. **Paiement direct en une fois, plus d'acompte ni de solde séparés**
+   (décision du 20/09/2026, revue le même jour) : le Client règle
+   l'intégralité du prix à la confirmation du contrat signé, en une seule
+   fois — plus de second prélèvement le lendemain de l'événement, donc plus
+   de clause d'autorisation de prélèvement différé à prévoir. Simplifie au
+   passage la politique d'annulation : un seul montant à traiter, pas un
+   acompte "coincé" et un solde à venir.
+3. **Politique d'annulation** : le montant réglé **n'est remboursable en
+   aucun cas**, quelle que soit la date d'annulation par le Client — aucun
+   délai de rétractation ni de courtoisie n'est proposé, cette prestation
+   n'y étant de toute façon pas légalement obligée (article 4). Un report
+   de date reste possible sous réserve de disponibilité. Répercuté dans les
+   CGV (article 5), le contrat, la politique d'annulation autonome (§8) et
+   l'email de confirmation.
 
 Tous les champs entre crochets [ ] restent à compléter par Benoît (SIRET
 après immatriculation, coordonnées, etc.).
@@ -120,23 +125,12 @@ Les présentes CGV régissent la location, sans animation ni présence
 pendant l'usage, d'un ou plusieurs photobooths 360° par [Prénom NOM],
 [SIRET], pour des événements privés ou professionnels.
 
-Article 2 — Réservation et paiement de l'acompte
-La réservation est confirmée à réception d'un acompte (100 € pour la
-formule Essentiel, 200 € pour la formule Populaire) et de la signature
-électronique (via Yousign) du devis et du contrat de location. En
-réglant l'acompte, le Client enregistre sa carte bancaire et autorise
-expressément Kerbooth 360° à l'utiliser pour le prélèvement automatique
-du solde dans les conditions de l'article 2bis.
-
-Article 2bis — Prélèvement automatique du solde (NOUVEAU)
-Le solde de la location est prélevé automatiquement sur la carte
-enregistrée à l'article 2, le lendemain de la fin de la période louée,
-sans nouvelle action du Client. Il s'agit d'un débit à part entière (et
-non d'une simple autorisation prolongée), dont le Client est informé du
-montant et de la date dans le contrat de location et l'email de
-confirmation de réservation. En cas d'échec du prélèvement, Kerbooth
-360° recontacte le Client sous 48h ; le dépôt de garantie (article
-5bis) reste la garantie de dernier recours en cas d'échec persistant.
+Article 2 — Réservation et paiement
+La réservation est proposée à la signature électronique (via Yousign) du
+devis et du contrat de location. Une fois le contrat signé, elle n'est
+définitivement confirmée qu'à réception du paiement intégral du prix
+(100 € pour la formule Essentiel, 200 € pour la formule Populaire, montant
+sur devis pour la formule Entreprise), réglé en une seule fois, en ligne.
 
 Article 3 — Tarifs
 Les tarifs sont ceux indiqués sur le devis accepté par le client.
@@ -146,12 +140,13 @@ Article 4 — Absence de droit de rétractation
 Conformément à l'article L221-28 12° du Code de la consommation, le droit
 de rétractation ne s'applique pas aux prestations d'activités de loisirs
 devant être fournies à une date déterminée. La présente location, liée
-à la date de votre événement, n'ouvre donc pas droit à rétractation
-après acceptation du devis et versement de l'acompte.
+à la date de votre événement, n'ouvre donc pas droit à rétractation après
+acceptation du devis et paiement du prix.
 
-Article 5 — Annulation (CORRIGÉ : acompte non remboursable dans tous les cas)
-L'acompte versé à la réservation n'est remboursable en aucun cas, quelle
-que soit la date d'annulation par le Client. Un report de date reste
+Article 5 — Annulation
+Le prix versé à la réservation n'est remboursable en aucun cas, quelle que
+soit la date d'annulation par le Client — aucun délai de rétractation ni
+de courtoisie n'est accordé (voir article 4). Un report de date reste
 possible sous réserve de disponibilité du matériel, à convenir avec le
 Prestataire. En cas d'annulation à l'initiative de Kerbooth 360° (panne
 matérielle, indisponibilité imprévue), l'intégralité des sommes versées
@@ -215,16 +210,9 @@ Il a été convenu ce qui suit :
 2. Formule retenue : [Essentiel (1 jour) / Populaire (weekend) /
    Entreprise, sur devis]
 
-3. Montant total : [montant] € — Acompte versé à la signature :
-   [100 € / 200 €], non remboursable en cas d'annulation (voir CGV
-   article 5) — Solde : [montant] €, prélevé automatiquement sur la
-   carte enregistrée le [date, lendemain de la fin de la location].
-
-3bis. Autorisation de prélèvement (NOUVEAU) : en signant le présent
-   contrat, le Locataire autorise expressément Kerbooth 360° à débiter
-   la carte enregistrée à l'article 3 du montant du solde indiqué
-   ci-dessus, à la date indiquée, sans action supplémentaire de sa
-   part (voir CGV article 2bis).
+3. Montant total : [montant] €, réglé en une seule fois à la confirmation
+   du présent contrat signé, non remboursable en cas d'annulation (voir
+   CGV article 5).
 
 4. Livraison et récupération : le Loueur installe le matériel avant le
    début du créneau loué et le récupère à la fin. Le Locataire n'est
@@ -248,8 +236,8 @@ Il a été convenu ce qui suit :
 8. CGV : le Locataire reconnaît avoir pris connaissance des CGV de
    Kerbooth 360°, annexées au présent contrat, et notamment de
    l'absence de droit de rétractation applicable (art. L221-28 12° du
-   Code de la consommation) et du caractère non remboursable de
-   l'acompte (article 5 des CGV).
+   Code de la consommation) et du caractère non remboursable du prix
+   versé (article 5 des CGV).
 
 Signé électroniquement via Yousign par les deux parties.
 
@@ -295,7 +283,7 @@ Le Loueur                               Le Locataire
 
 ## 6. Devis type (formule Entreprise uniquement)
 
-*(Inchangé — obsolète pour Essentiel/Populaire, prix fixe direct à la facture.)*
+*(Obsolète pour Essentiel/Populaire, prix fixe direct à la facture.)*
 
 ```
                               KERBOOTH 360°
@@ -318,23 +306,23 @@ Déplacement (si hors zone gratuite)                       [·] €
 Total                                                      [·] €
 TVA non applicable, art. 293 B du CGI
 
-Acompte à la réservation (obligatoire, en ligne, non remboursable en
-cas d'annulation) : 100 € (formule Essentiel) ou 200 € (formule
-Populaire). Solde : prélevé automatiquement sur la carte enregistrée
-le lendemain de la fin de la location. Formule Entreprise : contact
-direct, paiement à réception de facture, échéance 30 jours (hors flux
-en ligne).
+Paiement intégral à la confirmation (obligatoire, en ligne, non
+remboursable en cas d'annulation) : 100 € (formule Essentiel) ou 200 €
+(formule Populaire), réglés en une seule fois une fois le contrat signé.
+Formule Entreprise : contact direct, paiement à réception de facture,
+échéance 30 jours (hors flux en ligne).
 
-Conditions : voir CGV jointes. Ce devis vaut contrat à réception de
-l'acompte, une fois signé électroniquement via Yousign avec le contrat
-de location joint.
+Conditions : voir CGV jointes. Ce devis vaut contrat une fois signé
+électroniquement via Yousign avec le contrat de location joint, puis
+réglé intégralement.
 ```
 
 ---
 
 ## 7. Facture type
 
-*(Inchangé.)*
+*(Réglée intégralement au paiement en ligne — plus de "reste dû" à
+suivre, contrairement à l'ancien découpage acompte/solde.)*
 
 ```
                               KERBOOTH 360°
@@ -355,11 +343,9 @@ Location photobooth 360° — [événement du ·]               [·] €
 Total TTC                                                  [·] €
 TVA non applicable, art. 293 B du CGI
 
-Déjà réglé (acompte du [date])                            [·] €
-Reste dû                                                   [·] €
+Réglé le [date]                                            [·] €
 
-Mode de paiement : [virement / carte / espèces]
-Date d'échéance : [·]
+Mode de paiement : [carte en ligne / virement, formule Entreprise]
 ```
 
 **Principe retenu** : "Kerbooth 360°" reste l'en-tête visible de chaque
@@ -375,8 +361,11 @@ réalisé l'événement apparaissent juste en dessous — voir
 ```
 POLITIQUE D'ANNULATION — KERBOOTH 360°
 
-- L'acompte versé à la réservation n'est remboursable en aucun cas,
-  quelle que soit la date d'annulation.
+- Le prix versé à la réservation n'est remboursable en aucun cas, quelle
+  que soit la date d'annulation. Cette prestation est exclue du droit de
+  rétractation légal (art. L221-28 12° du Code de la consommation,
+  activités de loisirs à date déterminée) et aucun délai de courtoisie
+  n'est accordé.
 - Report de date : possible sous réserve de disponibilité du matériel,
   à demander par écrit dès que possible.
 - Annulation à l'initiative de Kerbooth 360° (panne matérielle,
@@ -399,13 +388,11 @@ Bonjour [Prénom],
 Votre réservation est confirmée pour le [date], formule [Essentiel/Populaire].
 Voici un récapitulatif :
 
-- Acompte réglé : [100€/200€] (non remboursable en cas d'annulation,
-  voir notre politique d'annulation)
-- Solde à venir : [montant], prélevé automatiquement le [date, lendemain
-  de la fin de location] sur la carte utilisée pour l'acompte — cette
-  autorisation a été validée à la signature du contrat de location
+- Montant réglé : [100€/200€], payé intégralement en une fois (non
+  remboursable en cas d'annulation, voir notre politique d'annulation)
 - Contrat de location et CGV : signés électroniquement, vous trouverez
   une copie en pièce jointe
+- Votre facture est jointe à cet email
 
 ⚠️ IMPORTANT — dépôt de garantie :
 Merci de prévoir un chèque de caution de 1 500 €, à remettre en main
@@ -428,5 +415,4 @@ Kerbooth 360°
 - L'adresse d'hébergement du site, une fois choisie.
 - ⚠️ Ces modèles corrigés couvrent les mentions identifiées comme
   nécessaires ; une relecture par un avocat reste recommandée avant
-  publication définitive, en particulier pour l'article 2bis (nouveau)
-  sur l'autorisation de prélèvement différé.
+  publication définitive.

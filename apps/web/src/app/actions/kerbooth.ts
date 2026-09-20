@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createUnit, setUnitActive, KerboothUnitError } from "@/server/services/kerbooth/units";
+import { createUnit, setUnitActive, updateUnit, KerboothUnitError } from "@/server/services/kerbooth/units";
 
 export interface KerboothUnitFormState {
   status: "idle" | "success" | "error";
@@ -12,11 +12,16 @@ export async function submitKerboothUnit(
   _prev: KerboothUnitFormState,
   formData: FormData
 ): Promise<KerboothUnitFormState> {
+  const id = formData.get("id")?.toString() || undefined;
   const label = formData.get("label")?.toString() ?? "";
   const baseLocation = formData.get("baseLocation")?.toString() ?? "";
 
   try {
-    await createUnit(label, baseLocation);
+    if (id) {
+      await updateUnit(id, label, baseLocation);
+    } else {
+      await createUnit(label, baseLocation);
+    }
   } catch (err) {
     if (err instanceof KerboothUnitError) {
       return { status: "error", message: err.message };
@@ -25,7 +30,7 @@ export async function submitKerboothUnit(
   }
 
   revalidatePath("/reglages");
-  return { status: "success", message: "Unité ajoutée." };
+  return { status: "success", message: id ? "Unité modifiée." : "Unité ajoutée." };
 }
 
 export async function toggleKerboothUnitAction(unitId: string, active: boolean): Promise<void> {
