@@ -413,6 +413,16 @@ Kerbooth 360°
 
 - Le SIRET, une fois obtenu (ajout d'activité, cf. feuille de route).
 - L'adresse d'hébergement du site, une fois choisie.
+- **⚠️ À construire sur le site kerbooth360.fr (hors de ce dépôt) — point
+  confirmé le 20/09/2026** : l'absence de droit de rétractation (CGV
+  article 4) doit être affichée de façon visible sur la page de l'offre,
+  **avant** que le client ne s'engage (avant paiement, donc avant ou
+  pendant l'étape de signature du contrat) — l'obligation légale porte sur
+  l'information du consommateur avant qu'il soit engagé, pas sur
+  l'existence de l'exemption elle-même (art. L221-5 et L221-28 12° du Code
+  de la consommation). La mentionner seulement dans les CGV/contrat déjà
+  signés ne suffit pas à couvrir cette obligation d'information
+  précontractuelle.
 - ⚠️ Ces modèles corrigés couvrent les mentions identifiées comme
   nécessaires ; une relecture par un avocat reste recommandée avant
   publication définitive.
