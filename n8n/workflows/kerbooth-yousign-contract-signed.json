@@ -1,5 +1,5 @@
 {
-  "name": "Kerbooth 360° — Contrat signé (Yousign)",
+  "name": "Kerbooth 360° — Contrat signé (Yousign) → envoi du paiement",
   "nodes": [
     {
       "parameters": {
@@ -14,7 +14,7 @@
       "typeVersion": 2,
       "position": [240, 300],
       "webhookId": "kerbooth-yousign-contract-signed",
-      "notes": "À configurer côté Yousign : webhook sur l'événement signature_request.done. Le bookingId doit être passé en métadonnée externe (external_id) à la création de la demande de signature (voir workflow kerbooth-stripe-acompte-paid) pour être retrouvé ici."
+      "notes": "À configurer côté Yousign : webhook sur l'événement signature_request.done. Le bookingId doit être passé en métadonnée externe (external_id) à la création de la demande de signature (voir workflow kerbooth-booking-request, qui envoie désormais le contrat AVANT le paiement — revu le 20/09/2026) pour être retrouvé ici."
     },
     {
       "parameters": {
@@ -33,15 +33,55 @@
         "options": {}
       },
       "id": "e1e1e1e1-0003-4000-8000-000000000002",
-      "name": "Confirmer la réservation",
+      "name": "Passer la réservation en attente de paiement",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.stripe.com/v1/checkout/sessions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "stripeApi",
+        "sendBody": true,
+        "options": {}
+      },
+      "id": "e1e1e1e1-0003-4000-8000-000000000003",
+      "name": "Créer la page de paiement de l'acompte (Stripe)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "notes": "À COMPLÉTER : mode='payment', amount=acompteAmount de la réservation, metadata.bookingId=bookingId (pour que le webhook payment_intent.succeeded, workflow kerbooth-stripe-acompte-paid, retrouve la réservation), setup_future_usage='off_session' pour pouvoir prélever le solde plus tard sans nouvelle action du client (voir CGV article 2bis)."
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $json.body.clientEmail }}",
+        "subject": "Kerbooth 360° — Contrat signé, dernière étape avant votre réservation",
+        "emailFormat": "text",
+        "text": "Votre contrat de location est signé. Il ne reste plus qu'à régler l'acompte pour confirmer définitivement votre réservation : {{ $json.url }}",
+        "options": {}
+      },
+      "id": "e1e1e1e1-0003-4000-8000-000000000004",
+      "name": "Envoyer le lien de paiement au client",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [900, 300],
+      "credentials": {
+        "smtp": { "name": "SMTP — adresse dédiée (émission)" }
+      }
     }
   ],
   "connections": {
     "Webhook Yousign (signature_request.done)": {
-      "main": [[{ "node": "Confirmer la réservation", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Passer la réservation en attente de paiement", "type": "main", "index": 0 }]]
+    },
+    "Passer la réservation en attente de paiement": {
+      "main": [[{ "node": "Créer la page de paiement de l'acompte (Stripe)", "type": "main", "index": 0 }]]
+    },
+    "Créer la page de paiement de l'acompte (Stripe)": {
+      "main": [[{ "node": "Envoyer le lien de paiement au client", "type": "main", "index": 0 }]]
     }
   },
   "active": false,

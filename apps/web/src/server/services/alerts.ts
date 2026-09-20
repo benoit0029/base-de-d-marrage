@@ -4,7 +4,10 @@ import { computeBaThreshold, computeBicThresholds } from "@/lib/thresholds";
 
 const DEDUP_WINDOW_HOURS = 24;
 
-async function alreadyNotifiedIds(type: string, tenantId: string): Promise<Set<string>> {
+// Exportée pour être réutilisée par les alertes Kerbooth 360°
+// (server/services/kerbooth/alerts.ts) — même mécanisme de déduplication,
+// pas de raison d'en écrire un second.
+export async function alreadyNotifiedIds(type: string, tenantId: string): Promise<Set<string>> {
   const since = new Date(Date.now() - DEDUP_WINDOW_HOURS * 60 * 60 * 1000);
   const logs = await prisma.notificationLog.findMany({
     where: { tenantId, type, sentAt: { gte: since } },

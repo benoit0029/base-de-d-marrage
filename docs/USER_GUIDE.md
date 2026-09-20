@@ -321,17 +321,27 @@ section 4 bis), pas une donnée de démonstration.
       (nom de fleur + lieu de base) avant tout premier test de dispatch.
 - [ ] Une fois les workflows n8n Kerbooth connectés (voir
       `n8n/workflows/README.md`), je fais une réservation test de bout en
-      bout et je vérifie sur l'onglet **Kerbooth 360 → Réservations**
-      qu'elle apparaît avec la bonne unité assignée.
+      bout et je vérifie l'ordre : **signature du contrat proposée avant
+      la page de paiement de l'acompte** (revu le 20/09/2026, pas l'inverse).
+- [ ] Je vérifie sur l'onglet **Kerbooth 360 → Réservations** que la
+      réservation test apparaît avec la bonne unité assignée, et que le
+      statut suit bien l'ordre : en attente de signature → en attente de
+      paiement → confirmée.
 - [ ] Je vérifie qu'une facture d'acompte apparaît automatiquement dans
-      **Kerbooth 360 → Recettes** dès le paiement de l'acompte, sans
-      double saisie.
+      **Kerbooth 360 → Recettes** dès le paiement de l'acompte (donc après
+      la signature), sans double saisie.
 - [ ] Je teste le cas "complet" : je crée 2 réservations qui se chevauchent
       sur la même période pendant que mes 2 unités sont déjà prises
       ailleurs, et je vérifie que la 3e est bien rejetée (409) plutôt que
       d'écraser une réservation existante.
 - [ ] Une fois le solde prélevé, je vérifie qu'une seconde facture (solde)
       apparaît, et que la réservation passe au statut "Terminée".
+- [ ] Je force un échec de prélèvement du solde (carte de test refusée) et
+      je vérifie que je reçois bien l'alerte à J+2, puis l'alerte
+      prioritaire à J+5 si toujours impayé.
+- [ ] Je vérifie que le rappel URSSAF mensuel donne un CA et un montant de
+      cotisations cohérents avec les factures Kerbooth réellement
+      encaissées sur la période.
 
 ## Avant de basculer complètement
 

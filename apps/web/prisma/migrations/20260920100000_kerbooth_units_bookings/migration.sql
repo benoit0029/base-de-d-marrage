@@ -2,7 +2,7 @@
 CREATE TYPE "KerboothFormula" AS ENUM ('ESSENTIEL', 'POPULAIRE', 'ENTREPRISE');
 
 -- CreateEnum
-CREATE TYPE "KerboothBookingStatus" AS ENUM ('PENDING_PAYMENT', 'PENDING_SIGNATURE', 'CONFIRMED', 'CANCELLED', 'COMPLETED');
+CREATE TYPE "KerboothBookingStatus" AS ENUM ('PENDING_SIGNATURE', 'PENDING_PAYMENT', 'CONFIRMED', 'CANCELLED', 'COMPLETED');
 
 -- CreateTable
 CREATE TABLE "KerboothUnit" (
@@ -29,7 +29,7 @@ CREATE TABLE "KerboothBooking" (
     "eventDateEnd" TIMESTAMP(3) NOT NULL,
     "formula" "KerboothFormula" NOT NULL,
     "durationDays" INTEGER NOT NULL,
-    "status" "KerboothBookingStatus" NOT NULL DEFAULT 'PENDING_PAYMENT',
+    "status" "KerboothBookingStatus" NOT NULL DEFAULT 'PENDING_SIGNATURE',
     "acompteAmount" DECIMAL(12,2) NOT NULL,
     "soldeAmount" DECIMAL(12,2) NOT NULL,
     "stripeCustomerId" TEXT,

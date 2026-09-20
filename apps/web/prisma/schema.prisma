@@ -683,10 +683,14 @@ enum KerboothFormula {
   ENTREPRISE
 }
 
+// Le contrat doit être signé AVANT le paiement de l'acompte (revu le
+// 20/09/2026 : la page de signature s'affiche avant la page de paiement,
+// pas après) — l'ordre PENDING_SIGNATURE puis PENDING_PAYMENT reflète ce
+// choix, pas l'ordre suggéré par le dossier Kerbooth original.
 enum KerboothBookingStatus {
-  PENDING_PAYMENT // créée, acompte pas encore réglé
-  PENDING_SIGNATURE // acompte réglé, contrat pas encore signé
-  CONFIRMED // contrat signé, réservation ferme
+  PENDING_SIGNATURE // créée, contrat pas encore signé
+  PENDING_PAYMENT // contrat signé, acompte pas encore réglé
+  CONFIRMED // acompte réglé, réservation ferme
   CANCELLED // annulée — acompte jamais remboursé (voir CGV article 5)
   COMPLETED // solde prélevé, événement terminé
 }
@@ -708,7 +712,7 @@ model KerboothBooking {
   eventDateEnd   DateTime
   formula        KerboothFormula
   durationDays   Int
-  status         KerboothBookingStatus @default(PENDING_PAYMENT)
+  status         KerboothBookingStatus @default(PENDING_SIGNATURE)
   acompteAmount  Decimal               @db.Decimal(12, 2)
   soldeAmount    Decimal               @db.Decimal(12, 2)
 

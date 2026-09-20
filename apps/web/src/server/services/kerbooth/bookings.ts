@@ -97,10 +97,37 @@ async function getBookingOrThrow(id: string) {
 }
 
 /**
- * Acompte réglé (webhook Stripe, déclencheur 4) : crée et marque payée la
- * facture d'acompte dans l'outil compta (BIC_PHOTOBOOTH — même moteur que
- * les 2 autres activités, voir kerbooth360/architecture-decision.md), fait
- * passer la réservation en attente de signature.
+ * Contrat signé (webhook Yousign, déclencheur 5 — désormais AVANT le
+ * paiement, revu le 20/09/2026 : la page de signature s'affiche avant la
+ * page de paiement de l'acompte, pas après). Fait passer la réservation en
+ * attente de paiement.
+ */
+export async function confirmContractSigned(
+  bookingId: string,
+  input: { yousignRequestId: string; signedAt: Date }
+): Promise<KerboothBooking> {
+  const booking = await getBookingOrThrow(bookingId);
+  if (booking.status !== "PENDING_SIGNATURE") {
+    throw new KerboothBookingStateError(
+      `Réservation dans l'état ${booking.status}, pas en attente de signature.`
+    );
+  }
+
+  return prisma.kerboothBooking.update({
+    where: { id: bookingId },
+    data: {
+      status: "PENDING_PAYMENT",
+      yousignRequestId: input.yousignRequestId,
+      contractSignedAt: input.signedAt,
+    },
+  });
+}
+
+/**
+ * Acompte réglé (webhook Stripe, déclencheur 4 — après signature désormais) :
+ * crée et marque payée la facture d'acompte dans l'outil compta
+ * (BIC_PHOTOBOOTH — même moteur que les 2 autres activités, voir
+ * kerbooth360/architecture-decision.md), confirme la réservation.
  */
 export async function markAcomptePaid(
   bookingId: string,
@@ -109,7 +136,7 @@ export async function markAcomptePaid(
   const booking = await getBookingOrThrow(bookingId);
   if (booking.status !== "PENDING_PAYMENT") {
     throw new KerboothBookingStateError(
-      `Réservation dans l'état ${booking.status}, acompte déjà traité ou réservation invalide.`
+      `Réservation dans l'état ${booking.status}, acompte déjà traité, contrat pas encore signé, ou réservation invalide.`
     );
   }
 
@@ -132,31 +159,9 @@ export async function markAcomptePaid(
   return prisma.kerboothBooking.update({
     where: { id: bookingId },
     data: {
-      status: "PENDING_SIGNATURE",
+      status: "CONFIRMED",
       stripeCustomerId: input.stripeCustomerId,
       invoiceAcompteId: invoice.id,
-    },
-  });
-}
-
-/** Contrat signé (webhook Yousign, déclencheur 5) : réservation ferme. */
-export async function confirmContractSigned(
-  bookingId: string,
-  input: { yousignRequestId: string; signedAt: Date }
-): Promise<KerboothBooking> {
-  const booking = await getBookingOrThrow(bookingId);
-  if (booking.status !== "PENDING_SIGNATURE") {
-    throw new KerboothBookingStateError(
-      `Réservation dans l'état ${booking.status}, pas en attente de signature.`
-    );
-  }
-
-  return prisma.kerboothBooking.update({
-    where: { id: bookingId },
-    data: {
-      status: "CONFIRMED",
-      yousignRequestId: input.yousignRequestId,
-      contractSignedAt: input.signedAt,
     },
   });
 }

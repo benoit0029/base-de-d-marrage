@@ -676,17 +676,32 @@ construit côté outil compta.
   réplique la logique SQL du dossier original en deux temps (unités sans
   réservation `CONFIRMED` chevauchante, puis la moins chargée en jours
   cumulés sur l'année) — en requêtes Prisma plutôt qu'en SQL brut, cohérent
-  avec le reste du code. Une réservation `PENDING_PAYMENT`/
-  `PENDING_SIGNATURE` ne bloque jamais une unité : seule une réservation
+  avec le reste du code. Une réservation `PENDING_SIGNATURE`/
+  `PENDING_PAYMENT` ne bloque jamais une unité : seule une réservation
   confirmée compte comme "prise".
+- **Signature du contrat AVANT le paiement de l'acompte** (revu le
+  20/09/2026, à la demande de Benoît — inverse du dossier original) :
+  `KerboothBookingStatus` va `PENDING_SIGNATURE` → `PENDING_PAYMENT` →
+  `CONFIRMED` → `COMPLETED`. `confirmContractSigned` fait passer la
+  réservation en attente de paiement ; `markAcomptePaid` la confirme et
+  crée la facture d'acompte, seulement une fois signée.
 - **Facturation Kerbooth réutilise le moteur existant**
   (`server/services/invoices.ts`, activité `BIC_PHOTOBOOTH`) plutôt qu'Abby
-  — une facture d'acompte à la réservation, une facture de solde à la fin
+  — une facture d'acompte à la confirmation, une facture de solde à la fin
   de la location, toutes deux marquées payées immédiatement (`markInvoicePaid`)
   puisque le paiement Stripe qui les déclenche est déjà confirmé au moment
   de l'appel. Le bouton "Envoyer via Abby" déjà existant (PA) reste
   disponible sur ces factures pour les clients Entreprise (obligation
-  d'e-invoicing B2B à venir).
+  d'e-invoicing B2B à venir, PA jamais utilisée comme moteur de facturation
+  côté Kerbooth — voir `kerbooth360/architecture-decision.md` point 2).
+- **Échec de prélèvement et rappel URSSAF** (`server/services/kerbooth/alerts.ts`) :
+  `checkSoldeOverdue` relance le client à J+2, alerte Benoît en priorité à
+  partir de J+5 (répétée chaque jour, même mécanisme de déduplication que
+  les alertes existantes — `alreadyNotifiedIds` désormais exportée de
+  `server/services/alerts.ts` pour être réutilisée ici). `computeUrssafReminder`
+  calcule le CA Kerbooth encaissé du mois précédent et la cotisation due
+  (21,2 %) — aucune télétransmission possible (pas d'API URSSAF publique),
+  juste le bon montant à reporter soi-même.
 - **API n8n-facing** (`/api/kerbooth/bookings*`, protégées par
   `INGEST_API_TOKEN` comme le reste du pipeline n8n) : créer une
   réservation (dispatch), marquer l'acompte payé, confirmer la signature,
@@ -703,14 +718,17 @@ construit côté outil compta.
   lecture seule des réservations et de leur statut, pas d'action possible
   ici (tout passe par n8n) — juste pour suivre visuellement le dispatch
   sans avoir besoin d'ouvrir n8n.
-- **Workflows n8n** (`n8n/workflows/kerbooth-*.json`) : 4 gabarits
-  couvrant le chemin nominal (demande → acompte → signature → solde) —
-  volontairement moins aboutis que les 7 workflows Phase 5 existants,
-  faute de comptes Stripe/Yousign/HubSpot réels au moment de l'écriture.
-  Détail des limites connues dans `n8n/workflows/README.md`. Encore à
-  construire : relance/annulation contrat non signé à 48h, échec de
-  prélèvement du solde, lien d'annulation en libre-service, rappel
-  caution J-1, rappel de déclaration URSSAF Kerbooth.
+- **Workflows n8n** (`n8n/workflows/kerbooth-*.json`) : 6 gabarits
+  couvrant le chemin nominal (demande → signature → acompte → solde) plus
+  l'échec de prélèvement et le rappel URSSAF — volontairement moins
+  aboutis que les 7 workflows Phase 5 existants, faute de comptes Stripe/
+  Yousign/HubSpot réels au moment de l'écriture. Détail des limites
+  connues dans `n8n/workflows/README.md`. Encore à construire : relance/
+  annulation contrat non signé à 48h, rappel caution J-1, lien
+  d'annulation en libre-service (**bloqué en attente d'arbitrage avec
+  Benoît** — "remboursement automatique" demandé contredit la politique
+  CGV "acompte jamais remboursé" actée le même jour, voir
+  `kerbooth360/architecture-decision.md` point 6).
 
 ## 14. Répertoire Clients et Catalogue Produits/Prestations
 

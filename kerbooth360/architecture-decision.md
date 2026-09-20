@@ -60,12 +60,52 @@ facture de l'outil compta suffit.
 
 Il n'existe pas d'API publique pour déclarer et payer les cotisations
 URSSAF à la place de l'exploitant — cette étape reste manuelle
-(autoentrepreneur.urssaf.fr). **Ce qui est automatisable** : un rappel
-n8n calculant le CA encaissé de la période à partir des factures Kerbooth
-déjà enregistrées dans l'outil compta, envoyé à échéance de la
-périodicité choisie (mensuelle/trimestrielle) — même principe que le
-workflow `alert-thresholds.json` déjà en place pour les 2 autres
-activités, étendu pour inclure Kerbooth et son taux de 21,2 %.
+(autoentrepreneur.urssaf.fr). **Construit** : `kerbooth-urssaf-reminder.json`,
+un rappel n8n mensuel calculant le CA encaissé du mois précédent à partir
+des factures Kerbooth déjà enregistrées dans l'outil compta
+(`computeUrssafReminder`), au taux de 21,2 %. Envoyé chaque mois quelle
+que soit la périodicité de déclaration réellement choisie (mensuelle ou
+trimestrielle) — un rappel de trop coûte moins cher qu'une échéance
+manquée.
+
+### 4. Signature du contrat AVANT le paiement de l'acompte (revu le 20/09/2026)
+
+Le dossier original prévoyait : dispatch → paiement de l'acompte → envoi
+du contrat à signer → confirmation. **Benoît a demandé l'inverse** : la
+page de signature doit s'afficher avant la page de paiement — le client
+signe d'abord, paie ensuite. `KerboothBookingStatus` reflète ce nouvel
+ordre (`PENDING_SIGNATURE` → `PENDING_PAYMENT` → `CONFIRMED`), et les
+workflows n8n ont été réordonnés en conséquence (voir
+`n8n/workflows/README.md`).
+
+### 5. Échec de prélèvement du solde — construit
+
+`checkSoldeOverdue` (`server/services/kerbooth/alerts.ts`) détecte les
+réservations confirmées dont l'événement est terminé sans facture de
+solde : relance simple du client à partir de J+2, alerte prioritaire à
+Benoît à partir de J+5 (répétée chaque jour tant que non résolu — la
+caution reste la garantie de dernier recours, CGV article 5bis). Workflow :
+`kerbooth-solde-overdue-alert.json`.
+
+### 6. Lien d'annulation en libre-service — EN ATTENTE D'ARBITRAGE
+
+Benoît a demandé un lien d'annulation en libre-service **"donc
+remboursement automatique"**. Or les CGV corrigées le 20/09/2026 (à sa
+demande explicite, critique 2) posent que **l'acompte n'est remboursable
+en aucun cas**. Ces deux demandes se contredisent frontalement — non
+implémenté tant que ce point n'est pas tranché avec Benoît :
+- Soit le lien d'annulation libre-service ne rembourse jamais l'acompte
+  (cohérent avec les CGV telles qu'elles sont aujourd'hui) : il ne fait
+  qu'annuler la réservation et libérer l'unité, sans aucun mouvement
+  d'argent.
+- Soit la politique de remboursement doit être révisée de nouveau (CGV,
+  contrat, politique d'annulation, email de confirmation à corriger une
+  seconde fois) pour prévoir un remboursement automatique sous certaines
+  conditions (délai avant l'événement ?), ce qui annule la simplification
+  actée le 20/09/2026.
+`cancelBooking` (déjà construit) gère déjà l'annulation sans mouvement
+financier — reste à brancher un lien public (page ou email) qui l'appelle,
+une fois la question du remboursement tranchée.
 
 ### 4. n8n reste l'orchestrateur, HubSpot/Stripe/Yousign/LumaBooth inchangés
 
