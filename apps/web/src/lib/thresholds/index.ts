@@ -2,27 +2,32 @@ import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 
 /**
- * Seuils légaux (barème 2024-2025, exercices en euros). À VÉRIFIER chaque
- * année sur impots.gouv.fr avant toute décision : ces montants sont
- * revalorisés régulièrement et ce module ne les met pas à jour automatiquement.
+ * Seuils légaux — barème triennal 2026-2028 (revalorisation confirmée,
+ * corrige le barème 2024-2025 précédemment codé ici). À VÉRIFIER de nouveau
+ * en 2029 sur impots.gouv.fr/BOI-BAREME-000044 avant toute décision : ces
+ * montants sont revalorisés tous les 3 ans et ce module ne les met pas à
+ * jour automatiquement.
  *
  * - Vente de marchandises (Revente Fruits/Légumes) : franchise TVA 85 000 €
- *   (tolérance jusqu'à 93 500 € l'année du dépassement), plafond micro-BIC
- *   188 700 €.
+ *   (tolérance jusqu'à 93 500 € l'année du dépassement, inchangée en 2026),
+ *   plafond micro-BIC **203 100 €** (relevé de 188 700 €).
  * - Prestations de services BIC (Kerbooth 360°) : franchise TVA 37 500 €
- *   (tolérance jusqu'à 41 250 €), plafond micro-BIC 77 700 €.
+ *   (tolérance jusqu'à 41 250 €, inchangée), plafond micro-BIC **83 600 €**
+ *   (relevé de 77 700 €).
  * - Activité mixte dans une même micro-entreprise (les deux ci-dessus) :
- *   plafond global 188 700 €, à condition que la part "services" ne dépasse
- *   pas 77 700 € à l'intérieur de ce total.
+ *   plafond global **203 100 €** (les seuils ne s'additionnent jamais), à
+ *   condition que la part "services" ne dépasse pas 83 600 € à l'intérieur
+ *   de ce total — deux conditions simultanées, pas une somme.
  * - Micro-BA (Maraîchage) : régime distinct, bascule vers le régime réel si
- *   la moyenne des recettes HT sur les 3 dernières années dépasse le seuil
- *   (≈ 91 900 €, à reconfirmer).
+ *   la moyenne des recettes HT sur les 3 dernières années dépasse le seuil,
+ *   désormais **129 200 €** (relevé de 120 000 €, l'ancienne valeur codée
+ *   ici de 91 900 € était déjà erronée avant même la revalorisation 2026).
  */
 export const LEGAL_THRESHOLDS = {
-  VENTE: { franchiseTva: 85_000, franchiseTvaTolerance: 93_500, plafond: 188_700 },
-  SERVICE: { franchiseTva: 37_500, franchiseTvaTolerance: 41_250, plafond: 77_700 },
-  MIXTE_PLAFOND_GLOBAL: 188_700,
-  BA_MOYENNE_TRIENNALE: 91_900,
+  VENTE: { franchiseTva: 85_000, franchiseTvaTolerance: 93_500, plafond: 203_100 },
+  SERVICE: { franchiseTva: 37_500, franchiseTvaTolerance: 41_250, plafond: 83_600 },
+  MIXTE_PLAFOND_GLOBAL: 203_100,
+  BA_MOYENNE_TRIENNALE: 129_200,
 };
 
 /**

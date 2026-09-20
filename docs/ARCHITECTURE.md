@@ -592,6 +592,30 @@ Voir `prisma/schema.prisma`. Résumé des entités :
   copie maintenant aussi `scripts/` dans l'image finale (absent du tracé
   standalone, comme `prisma/`).
 
+## 16 bis. Correction des seuils légaux — barème triennal 2026-2028
+
+- **`LEGAL_THRESHOLDS` (`lib/thresholds/index.ts`) codait le barème
+  2024-2025**, devenu obsolète : les seuils micro-entreprise sont
+  revalorisés tous les 3 ans, et la période 2026-2028 a relevé les
+  plafonds (pas les franchises TVA, elles, inchangées) :
+  - Plafond vente de marchandises : 188 700 € → **203 100 €**
+  - Plafond prestations de services : 77 700 € → **83 600 €**
+  - Plafond global activité mixte : 188 700 € → **203 100 €**
+  - Moyenne triennale micro-BA : 91 900 € → **129 200 €**
+- **La valeur micro-BA (91 900 €) était déjà fausse indépendamment de la
+  revalorisation 2026** — le vrai seuil 2024-2025 était 120 000 €, jamais
+  91 900 € ; ce chiffre semble avoir été une approximation non vérifiée
+  lors de l'écriture initiale (déjà signalée "à reconfirmer" dans le
+  commentaire du code à l'époque).
+- **Détecté en croisant les seuils du dossier Kerbooth 360°** (qui citait
+  203 100 € comme plafond mixte) avec ceux déjà codés ici (188 700 €) —
+  recherche faite pour trancher, confirmant le chiffre du dossier Kerbooth
+  et révélant que la correction allait plus loin (2 autres seuils
+  également obsolètes).
+- Franchises TVA (85 000/93 500 vente, 37 500/41 250 services) confirmées
+  **inchangées** pour 2026 — seuls les plafonds de sortie du régime micro
+  ont été relevés, pas les seuils d'assujettissement à la TVA.
+
 ## 17. Rapprochement bancaire suggéré automatiquement
 
 - **Constat de Benoît en usage réel** : après avoir dû choisir manuellement
