@@ -115,6 +115,60 @@ Des questions ? contact@kerbooth360.fr — Politique complète : kerbooth360.fr/
 
 ---
 
+## 3bis. Encart d'information précontractuelle — page de l'offre, avant paiement (NOUVEAU)
+
+Obligation légale distincte de l'exemption elle-même (voir article 4 des
+CGV ci-dessous) : le client doit être informé de l'absence de droit de
+rétractation **avant d'être engagé par le contrat**, pas seulement dans des
+CGV qu'il n'a pas forcément lues (art. L221-5 du Code de la consommation).
+À afficher sur la page de réservation/devis du site kerbooth360.fr, **avant
+le bouton qui lance la signature du contrat** — jamais seulement en bas de
+page ou dans un lien CGV séparé.
+
+Texte à afficher (encart visible, pas en petits caractères) :
+
+```
+⚠️ Absence de droit de rétractation
+Cette prestation est liée à la date de votre événement (activité de
+loisirs à date déterminée). Conformément à l'article L221-28 12° du Code
+de la consommation, le droit de rétractation ne s'applique donc pas à
+cette réservation : une fois le contrat signé et le paiement effectué,
+aucun remboursement automatique n'est possible en cas d'annulation
+(voir nos CGV, article 5).
+```
+
+Exemple d'intégration HTML (encart + case à cocher obligatoire avant de
+pouvoir cliquer sur "Signer le contrat", quel que soit le générateur de
+site utilisé) :
+
+```html
+<div class="kerbooth-legal-notice" style="border:2px solid #b45309;background:#fffbeb;padding:1rem;border-radius:0.5rem;margin:1rem 0;">
+  <strong>⚠️ Absence de droit de rétractation</strong>
+  <p>
+    Cette prestation est liée à la date de votre événement (activité de
+    loisirs à date déterminée). Conformément à l'article L221-28 12° du
+    Code de la consommation, le droit de rétractation ne s'applique donc
+    pas à cette réservation : une fois le contrat signé et le paiement
+    effectué, aucun remboursement automatique n'est possible en cas
+    d'annulation (voir nos <a href="/cgv">CGV, article 5</a>).
+  </p>
+  <label>
+    <input type="checkbox" name="rétractation_ack" required>
+    Je reconnais avoir pris connaissance de l'absence de droit de
+    rétractation applicable à cette réservation.
+  </label>
+</div>
+```
+
+La case à cocher n'est pas légalement obligatoire en soi, mais donne une
+preuve concrète et horodatée que l'information a bien été présentée avant
+l'engagement — utile en cas de litige, bien plus solide qu'une simple
+mention statique. Si le site est construit avec un formulaire relié à n8n
+(voir `kerbooth-booking-request.json`), cette valeur peut être transmise et
+journalisée avec la demande de réservation.
+
+---
+
 ## 4. Conditions Générales de Vente (CGV) — **CORRIGÉES**
 
 ```
@@ -413,16 +467,14 @@ Kerbooth 360°
 
 - Le SIRET, une fois obtenu (ajout d'activité, cf. feuille de route).
 - L'adresse d'hébergement du site, une fois choisie.
-- **⚠️ À construire sur le site kerbooth360.fr (hors de ce dépôt) — point
-  confirmé le 20/09/2026** : l'absence de droit de rétractation (CGV
-  article 4) doit être affichée de façon visible sur la page de l'offre,
-  **avant** que le client ne s'engage (avant paiement, donc avant ou
-  pendant l'étape de signature du contrat) — l'obligation légale porte sur
-  l'information du consommateur avant qu'il soit engagé, pas sur
-  l'existence de l'exemption elle-même (art. L221-5 et L221-28 12° du Code
-  de la consommation). La mentionner seulement dans les CGV/contrat déjà
-  signés ne suffit pas à couvrir cette obligation d'information
-  précontractuelle.
+- **⚠️ À intégrer sur le site kerbooth360.fr (hors de ce dépôt) — point
+  confirmé le 20/09/2026** : l'encart d'information précontractuelle sur
+  l'absence de droit de rétractation (texte + snippet HTML prêts à
+  l'emploi, voir §3bis ci-dessus) doit être affiché sur la page de
+  réservation, **avant** que le client ne signe le contrat et ne paie —
+  la mentionner seulement dans les CGV/contrat déjà signés ne suffit pas
+  à couvrir cette obligation d'information précontractuelle (art. L221-5
+  et L221-28 12° du Code de la consommation).
 - ⚠️ Ces modèles corrigés couvrent les mentions identifiées comme
   nécessaires ; une relecture par un avocat reste recommandée avant
   publication définitive.
