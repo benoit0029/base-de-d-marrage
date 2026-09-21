@@ -21,15 +21,24 @@ corrections actées avec Benoît le 20/09/2026 :
    de date reste possible sous réserve de disponibilité. Répercuté dans les
    CGV (article 5), le contrat, la politique d'annulation autonome (§8) et
    l'email de confirmation.
+4. **Adresse de contact** (décidé le 21/09/2026) : Benoît reste sur son
+   hébergeur Hostinger existant plutôt que d'ouvrir une messagerie sur
+   `kerbooth360.fr` — le domaine `kerbooth360.fr` (à acheter séparément)
+   ne sert que d'adresse du site vitrine, sans enregistrement MX. Email de
+   contact réel : `kerbooth@kalonia.fr` (mentions légales, politique de
+   confidentialité, affichage événement), remplace le placeholder
+   `contact@kerbooth360.fr` du dossier original. L'adresse du partenaire,
+   sur le même domaine `kalonia.fr`, reste à définir une fois son prénom
+   connu (ex. `kerbooth.[prénom]@kalonia.fr`).
 
 Tous les champs entre crochets [ ] restent à compléter par Benoît (SIRET
 après immatriculation, coordonnées, etc.).
 
 ---
 
-## 1. Mentions légales (site web)
+## 1. Mentions légales (site web) — **email de contact corrigé**
 
-*(Inchangé — pas de correction nécessaire ici.)*
+*(Email de contact mis à jour, voir point 4 ci-dessus — reste sinon inchangé.)*
 
 ```
 Le site kerbooth360.fr est édité conjointement par deux micro-entreprises
@@ -42,7 +51,7 @@ SIRET : [à compléter après immatriculation]
 SIRET : [à compléter après immatriculation]
 
 Adresse : [adresse professionnelle]
-Email : contact@kerbooth360.fr
+Email : kerbooth@kalonia.fr
 Téléphone : [numéro professionnel]
 
 TVA non applicable, article 293 B du Code général des impôts (franchise en base de TVA).
@@ -83,7 +92,7 @@ récupérer ou télécharger tout contenu que vous souhaitez garder avant ce
 moment. Les données de facturation sont conservées 10 ans (obligation
 légale comptable).
 
-Vos droits : vous pouvez à tout moment demander l'accès, la rectification ou la suppression de vos données en écrivant à contact@kerbooth360.fr. Vous pouvez également introduire une réclamation auprès de la CNIL (cnil.fr).
+Vos droits : vous pouvez à tout moment demander l'accès, la rectification ou la suppression de vos données en écrivant à kerbooth@kalonia.fr. Vous pouvez également introduire une réclamation auprès de la CNIL (cnil.fr).
 
 Reconnaissance faciale : non activée par défaut. Si une fonctionnalité de ce type venait à être proposée, elle ne serait utilisée qu'avec votre consentement explicite et séparé.
 
@@ -110,7 +119,7 @@ de récupérer la galerie complète de la soirée.
 Vos vidéos ne seront utilisées à des fins de publication ou de promotion
 qu'avec votre accord explicite.
 
-Des questions ? contact@kerbooth360.fr — Politique complète : kerbooth360.fr/confidentialite
+Des questions ? kerbooth@kalonia.fr — Politique complète : kerbooth360.fr/confidentialite
 ```
 
 ---
