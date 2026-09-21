@@ -25,3 +25,21 @@ compta.example.fr {
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 }
+
+# Site vitrine Kerbooth 360° — page statique servie par le conteneur
+# `kerbooth-site` (nginx, voir docker-compose.yml). Remplacer kerbooth360.fr
+# par le vrai domaine si besoin (déjà le bon nom au moment de l'écriture).
+# DNS à faire chez le registrar (Hostinger) : enregistrement A sur
+# kerbooth360.fr (et www.kerbooth360.fr) pointant vers l'IP du VPS.
+kerbooth360.fr, www.kerbooth360.fr {
+	reverse_proxy kerbooth-site:80
+
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}

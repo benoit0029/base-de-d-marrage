@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kerbooth 360° — Location photobooth 360 à Quimper, Concarneau, Cornouaille</title>
+<meta name="description" content="Location de photobooth 360° en toute autonomie pour mariages, anniversaires, séminaires et événements d'entreprise à Quimper, Concarneau et dans toute la Cornouaille.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F1B2D;
+    --panel:#163654;
+    --coral:#FF5D73;
+    --gold:#F4B942;
+    --sand:#F5EFE6;
+    --slate:#7C8FA6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--sand);
+    color:var(--ink);
+    line-height:1.55;
+  }
+  h1,h2,h3{font-family:'Fraunces',serif;line-height:1.1;}
+  a{color:inherit;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px;}
+
+  /* header */
+  header{
+    position:sticky;top:0;z-index:20;
+    background:rgba(15,27,45,0.92);
+    backdrop-filter:blur(6px);
+  }
+  .nav{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 28px;max-width:1080px;margin:0 auto;
+  }
+  .brand{display:flex;align-items:center;gap:10px;color:var(--sand);font-weight:700;font-size:18px;}
+  .brand svg{height:34px;width:auto;}
+  nav.links{display:flex;gap:28px;font-size:14px;color:var(--slate);}
+  nav.links a:hover{color:var(--sand);}
+  .cta{
+    background:var(--coral);color:var(--ink);
+    padding:10px 20px;border-radius:999px;font-weight:600;font-size:14px;
+    text-decoration:none;white-space:nowrap;
+  }
+  @media(max-width:780px){ nav.links{display:none;} }
+
+  /* hero */
+  .hero{
+    background:radial-gradient(circle at 70% 30%, #1c3a58 0%, var(--ink) 60%);
+    color:var(--sand);
+    padding:100px 28px 120px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero-inner{
+    max-width:1080px;margin:0 auto;
+    display:grid;grid-template-columns:1.1fr 0.9fr;gap:40px;align-items:center;
+  }
+  @media(max-width:860px){ .hero-inner{grid-template-columns:1fr;} .ring-wrap{order:-1;} }
+  .hero h1{font-size:clamp(2.4rem,5vw,3.6rem);font-weight:700;}
+  .hero p.lead{margin-top:22px;font-size:1.15rem;color:#c7d3e0;max-width:46ch;}
+  .hero .ctas{margin-top:34px;display:flex;gap:16px;flex-wrap:wrap;}
+  .btn-ghost{
+    border:1px solid rgba(245,239,230,0.35);color:var(--sand);
+    padding:12px 22px;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600;
+  }
+  .btn-solid{
+    background:var(--coral);color:var(--ink);
+    padding:12px 24px;border-radius:999px;text-decoration:none;font-size:14px;font-weight:700;
+  }
+  .ring-wrap{display:flex;justify-content:center;align-items:center;}
+  .ring{
+    width:260px;height:260px;border-radius:50%;
+    background:conic-gradient(from 0deg, var(--coral), var(--gold), transparent 65%);
+    animation:spin 6s linear infinite;
+    display:flex;align-items:center;justify-content:center;
+    padding:14px;
+  }
+  @media (prefers-reduced-motion: reduce){ .ring{animation:none;} }
+  .ring-core{
+    width:100%;height:100%;border-radius:50%;
+    background:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--sand);font-family:'Fraunces',serif;font-size:1.6rem;font-weight:700;
+    text-align:center;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+
+  section{padding:88px 28px;}
+  .section-head{max-width:620px;margin-bottom:52px;}
+  .section-head .eyebrow{color:var(--coral);font-weight:600;font-size:14px;}
+  .section-head h2{font-size:2rem;margin-top:8px;}
+
+  /* how it works */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;}
+  @media(max-width:780px){ .steps{grid-template-columns:1fr;} }
+  .step .num{
+    font-family:'Fraunces',serif;font-size:2.4rem;color:var(--coral);font-weight:600;
+  }
+  .step h3{margin-top:6px;font-size:1.2rem;}
+  .step p{margin-top:8px;color:#4a5568;font-size:0.98rem;}
+
+  /* pricing */
+  .pricing{background:var(--panel);color:var(--sand);}
+  .pricing .section-head h2{color:var(--sand);}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  @media(max-width:860px){ .cards{grid-template-columns:1fr;} }
+  .card{
+    background:rgba(245,239,230,0.06);
+    border:1px solid rgba(245,239,230,0.15);
+    border-radius:18px;padding:32px 26px;
+  }
+  .card.featured{border-color:var(--gold);background:rgba(244,185,66,0.08);}
+  .card h3{font-size:1.15rem;color:var(--gold);}
+  .card .price{font-family:'Fraunces',serif;font-size:2.2rem;margin:14px 0 4px;}
+  .card .price span{font-size:1rem;color:var(--slate);font-family:'Inter',sans-serif;}
+  .card ul{margin-top:18px;padding-left:18px;font-size:0.94rem;color:#dfe7ef;}
+  .card ul li{margin-bottom:8px;}
+  .note-price{margin-top:24px;font-size:0.85rem;color:var(--slate);max-width:60ch;}
+  .legal-notice{
+    margin-top:20px;max-width:60ch;
+    border:1px solid var(--gold);background:rgba(244,185,66,0.08);
+    border-radius:12px;padding:16px 20px;
+  }
+  .legal-notice strong{color:var(--gold);font-size:0.92rem;}
+  .legal-notice p{margin-top:8px;font-size:0.85rem;color:#dfe7ef;line-height:1.5;}
+
+  /* zone */
+  .zone-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;}
+  .zone-list span{
+    background:#fff;border:1px solid #e3d9c9;border-radius:999px;
+    padding:8px 16px;font-size:0.9rem;
+  }
+
+  /* gallery placeholder */
+  .gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  @media(max-width:780px){ .gallery-grid{grid-template-columns:repeat(2,1fr);} }
+  .ph{
+    aspect-ratio:1/1;border-radius:14px;
+    background:linear-gradient(135deg,#e6dfd2,#d8cdb8);
+    display:flex;align-items:center;justify-content:center;
+    color:#9c8f76;font-size:0.8rem;text-align:center;padding:10px;
+  }
+
+  /* contact */
+  .contact{background:var(--ink);color:var(--sand);}
+  .contact .section-head h2{color:var(--sand);}
+  form{max-width:520px;display:grid;gap:16px;}
+  form input, form textarea{
+    width:100%;padding:13px 16px;border-radius:10px;border:1px solid rgba(245,239,230,0.25);
+    background:rgba(245,239,230,0.05);color:var(--sand);font-family:'Inter',sans-serif;font-size:0.95rem;
+  }
+  form label{font-size:0.85rem;color:var(--slate);margin-bottom:6px;display:block;}
+  form button{
+    justify-self:start;background:var(--coral);color:var(--ink);border:none;
+    padding:14px 28px;border-radius:999px;font-weight:700;font-size:15px;cursor:pointer;
+  }
+
+  footer{
+    padding:36px 28px;text-align:center;font-size:0.82rem;color:var(--slate);
+    background:var(--ink);border-top:1px solid rgba(245,239,230,0.08);
+  }
+  footer a{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <div class="brand">
+      <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs><linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FF5D73"/><stop offset="100%" stop-color="#F4B942"/>
+        </linearGradient></defs>
+        <g transform="translate(100,110)">
+          <path d="M 0,-72 A 72,72 0 1 1 -50.9,50.9" fill="none" stroke="url(#rg)" stroke-width="14" stroke-linecap="round"/>
+          <circle cx="-50.9" cy="50.9" r="10" fill="#F4B942"/>
+        </g>
+      </svg>
+      Kerbooth 360°
+    </div>
+    <nav class="links">
+      <a href="#comment">Comment ça marche</a>
+      <a href="#formules">Formules</a>
+      <a href="#entreprise">Entreprise</a>
+      <a href="#zone">Zone d'intervention</a>
+      <a href="#reservation">Réservation</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <h1>Faites tourner la tête à vos invités.</h1>
+      <p class="lead">Location de photobooth 360° pour mariages, anniversaires et événements d'entreprise, à Quimper, Concarneau et dans toute la Cornouaille — livré, installé, et à vous de jouer. Une vidéo slow-motion immersive, prête à être partagée en quelques secondes.</p>
+      <div class="ctas">
+        <a class="btn-solid" href="#formules">Voir les formules</a>
+      </div>
+    </div>
+    <div class="ring-wrap">
+      <div class="ring"><div class="ring-core">360°</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="comment">
+  <div class="section-head">
+    <div class="eyebrow">Le déroulé</div>
+    <h2>Comment ça marche</h2>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="num">01</div>
+      <h3>Vous réservez votre date</h3>
+      <p>Un échange rapide pour caler l'horaire, le lieu et la formule adaptée à votre événement.</p>
+    </div>
+    <div class="step">
+      <div class="num">02</div>
+      <h3>On installe, vous êtes autonomes</h3>
+      <p>Livraison et installation avant le début de votre créneau, récupération à la fin — vous et vos invités profitez du photobooth en toute liberté.</p>
+    </div>
+    <div class="step">
+      <div class="num">03</div>
+      <h3>Chacun repart avec sa vidéo</h3>
+      <p>Envoi immédiat par email, SMS ou QR code à chaque invité, et une galerie complète de la soirée pour vous.</p>
+    </div>
+  </div>
+</section>
+
+<section class="pricing" id="formules">
+  <div class="section-head">
+    <div class="eyebrow">Tarifs</div>
+    <h2>Des formules simples</h2>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3>Essentiel</h3>
+      <div class="price">250€</div>
+      <ul>
+        <li>Location 1 journée</li>
+        <li>Livraison, installation et récupération incluses</li>
+        <li>Envoi immédiat par email, SMS ou QR code</li>
+        <li>Galerie vidéo de l'événement offerte</li>
+      </ul>
+      <a href="#reservation" class="btn-solid" style="display:inline-block;margin-top:14px;">Réservation →</a>
+    </div>
+    <div class="card featured">
+      <h3>Populaire</h3>
+      <div class="price">500€</div>
+      <ul>
+        <li>Location weekend (2 jours)</li>
+        <li>Livraison, installation et récupération incluses</li>
+        <li>Envoi immédiat par email, SMS ou QR code</li>
+        <li>Galerie vidéo de l'événement offerte</li>
+      </ul>
+      <a href="#reservation" class="btn-solid" style="display:inline-block;margin-top:14px;">Réservation →</a>
+    </div>
+    <div class="card">
+      <h3>Entreprise</h3>
+      <div class="price">Sur devis</div>
+      <ul>
+        <li>Facturation avec mentions légales complètes</li>
+        <li>Chaque demande professionnelle est différente (durée, logo, nombre de jours, lieu) — pas de tarif automatique ici, on construit le devis ensemble.</li>
+      </ul>
+      <a href="#entreprise" class="btn-ghost" style="display:inline-block;margin-top:14px;">Nous contacter →</a>
+    </div>
+  </div>
+  <p class="note-price">Livraison et récupération incluses dans la zone Quimper/Concarneau/Cornouaille. Un dépôt de garantie de 1 500 € par chèque est demandé à la livraison, intégralement restitué au retour du matériel.</p>
+  <div class="legal-notice">
+    <strong>⚠️ Absence de droit de rétractation</strong>
+    <p>Cette prestation est liée à la date de votre événement (activité de loisirs à date déterminée). Conformément à l'article L221-28 12° du Code de la consommation, le droit de rétractation ne s'applique donc pas à cette réservation : une fois le contrat signé et le paiement effectué, aucun remboursement automatique n'est possible en cas d'annulation (voir nos CGV, article 5).</p>
+  </div>
+</section>
+
+<section id="entreprise" style="background:var(--panel);color:var(--sand);">
+  <div class="section-head">
+    <div class="eyebrow" style="color:var(--gold);">Professionnels</div>
+    <h2 style="color:var(--sand);">Entreprise, camping, salon — parlons de votre projet</h2>
+  </div>
+  <p style="max-width:60ch;color:#dfe7ef;">Chaque demande professionnelle est différente (durée, logo, nombre de jours, lieu) — pas de tarif automatique ici, on construit le devis ensemble.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:28px;">
+    <div>
+      <h3 style="color:var(--gold);font-size:1rem;">Par téléphone</h3>
+      <p style="font-size:1.3rem;font-family:'Fraunces',serif;">[Numéro à compléter]</p>
+      <p style="color:#dfe7ef;font-size:0.9rem;">Du lundi au vendredi, 9h-18h</p>
+    </div>
+    <div>
+      <h3 style="color:var(--gold);font-size:1rem;">Par email</h3>
+      <form action="mailto:kerbooth@kalonia.fr" method="POST" enctype="text/plain">
+        <div style="margin-bottom:10px;"><input type="text" name="Structure" placeholder="Nom de votre structure" required></div>
+        <div style="margin-bottom:10px;"><input type="text" name="Contact" placeholder="Votre nom" required></div>
+        <div style="margin-bottom:10px;"><input type="email" name="Email" placeholder="Votre email" required></div>
+        <div style="margin-bottom:10px;"><input type="date" name="DateSouhaitee" placeholder="Date souhaitée"></div>
+        <div style="margin-bottom:10px;"><textarea name="Besoin" rows="3" placeholder="Décrivez votre besoin (événement, dates, lieu...)" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(245,239,230,0.25);background:rgba(245,239,230,0.05);color:var(--sand);"></textarea></div>
+        <button type="submit" class="btn-solid">Envoyer ma demande</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="zone">
+  <div class="section-head">
+    <div class="eyebrow">Où nous intervenons</div>
+    <h2>Quimper, Concarneau et la Cornouaille</h2>
+  </div>
+  <p>Livraison et installation dans tout le sud Finistère, autour de Quimper et Concarneau :</p>
+  <div class="zone-list">
+    <span>Quimper</span><span>Concarneau</span><span>Rosporden</span><span>Fouesnant</span>
+    <span>Pont-l'Abbé</span><span>Douarnenez</span><span>Châteaulin</span><span>Quimperlé</span><span>Pont-Aven</span>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <div class="eyebrow">Aperçu</div>
+    <h2>Galerie</h2>
+  </div>
+  <div class="gallery-grid">
+    <div class="ph">Photo de votre 1ère prestation</div>
+    <div class="ph">Photo de votre 1ère prestation</div>
+    <div class="ph">Photo de votre 1ère prestation</div>
+    <div class="ph">Photo de votre 1ère prestation</div>
+  </div>
+</section>
+
+<section class="contact" id="reservation">
+  <div class="section-head">
+    <div class="eyebrow">Réservation</div>
+    <h2>Calendrier de disponibilité en temps réel</h2>
+  </div>
+  <div style="background:rgba(245,239,230,0.06);border:1px dashed rgba(245,239,230,0.3);border-radius:14px;padding:32px;max-width:520px;">
+    <p style="color:#dfe7ef;">Le calendrier de réservation en ligne sera connecté ici une fois les comptes de réservation en place.</p>
+    <p style="color:var(--slate);font-size:0.9rem;">En attendant, écris-nous directement pour vérifier une date :</p>
+    <a href="mailto:kerbooth@kalonia.fr" class="btn-solid" style="display:inline-block;margin-top:10px;">kerbooth@kalonia.fr</a>
+  </div>
+</section>
+
+<footer>
+  Kerbooth 360° — Quimper, Finistère · [Prénom NOM 1 - SIRET à compléter] · [Prénom NOM 2 - SIRET à compléter]<br>
+  <a href="#">Mentions légales</a> · <a href="#">CGV</a> · <a href="#">Politique de confidentialité</a>
+  <p style="margin-top:10px;">Ces pages seront complétées dès l'obtention des 2 SIRET — voir la feuille de route.</p>
+</footer>
+
+</body>
+</html>

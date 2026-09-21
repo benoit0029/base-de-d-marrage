@@ -36,6 +36,18 @@ services:
       - default
       - caddy_net
 
+  kerbooth-site:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./kerbooth360/site:/usr/share/nginx/html:ro
+    networks:
+      - caddy_net
+    # Site vitrine statique kerbooth360.fr (voir kerbooth360/site/index.html) —
+    # simple fichier HTML, pas besoin d'un vrai conteneur applicatif tant
+    # que la réservation en ligne n'est pas branchée. Servi uniquement via
+    # Caddy (caddy_net), jamais de port publié directement.
+
 # Utilisation :
 #   cp .env.example .env                 # POSTGRES_* pour ce fichier
 #   cp .env.example apps/web/.env        # variables applicatives (voir docs/DEPLOYMENT.md)
