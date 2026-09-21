@@ -40,6 +40,13 @@ vérification manuelle des points ci-dessous.
    - `SMTP_FROM` — adresse d'expédition des notifications
    - `NOTIFICATIONS_TO_EMAIL` — adresse de l'exploitant qui reçoit les
      rappels/alertes
+   - `YOUSIGN_API_KEY` — clé API Yousign (nœud "Envoyer le contrat à
+     signer", `kerbooth-booking-request.json`) — contrairement à Stripe
+     (credential n8n dédiée, `nodeCredentialType: stripeApi`), Yousign est
+     appelé en `httpRequest` générique avec cette clé injectée dans l'en-tête
+     `Authorization: Bearer {{ $env.YOUSIGN_API_KEY }}`, donc c'est bien une
+     variable d'environnement du conteneur n8n, pas une credential à créer
+     dans l'interface.
 
 ## Contenu
 
