@@ -77,7 +77,11 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ name: \"Contrat Kerbooth 360° — \" + $json.body.id, delivery_mode: \"email\", timezone: \"Europe/Paris\", external_id: $json.body.id }) }}",
-        "options": {}
+        "options": {
+          "response": {
+            "response": { "neverError": true, "fullResponse": true }
+          }
+        }
       },
       "id": "a1a1a1a1-0001-4000-8000-000000000007",
       "name": "Créer la demande de signature (Yousign)",
@@ -110,7 +114,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/documents",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.body.id }}/documents",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
@@ -123,7 +127,11 @@
             { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" }
           ]
         },
-        "options": {}
+        "options": {
+          "response": {
+            "response": { "neverError": true, "fullResponse": true }
+          }
+        }
       },
       "id": "a1a1a1a1-0001-4000-8000-000000000009",
       "name": "Attacher le contrat PDF (Yousign)",
@@ -135,15 +143,19 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/signers",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.body.id }}/signers",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ info: { first_name: $node[\"Créer la réservation (dispatch)\"].json.body.clientName.split(\" \")[0], last_name: $node[\"Créer la réservation (dispatch)\"].json.body.clientName.split(\" \").slice(1).join(\" \") || \"-\", email: $node[\"Créer la réservation (dispatch)\"].json.body.clientEmail, locale: \"fr\" }, signature_level: \"electronic_signature\", signature_authentication_mode: \"no_otp\", fields: [{ document_id: $json.id, type: \"signature\", page: 1, x: 335, y: 700 }] }) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ info: { first_name: $node[\"Créer la réservation (dispatch)\"].json.body.clientName.split(\" \")[0], last_name: $node[\"Créer la réservation (dispatch)\"].json.body.clientName.split(\" \").slice(1).join(\" \") || \"-\", email: $node[\"Créer la réservation (dispatch)\"].json.body.clientEmail, locale: \"fr\" }, signature_level: \"electronic_signature\", signature_authentication_mode: \"no_otp\", fields: [{ document_id: $json.body.id, type: \"signature\", page: 1, x: 335, y: 700 }] }) }}",
+        "options": {
+          "response": {
+            "response": { "neverError": true, "fullResponse": true }
+          }
+        }
       },
       "id": "a1a1a1a1-0001-4000-8000-00000000000a",
       "name": "Ajouter le client comme signataire (Yousign)",
@@ -155,12 +167,16 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/activate",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.body.id }}/activate",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
         },
-        "options": {}
+        "options": {
+          "response": {
+            "response": { "neverError": true, "fullResponse": true }
+          }
+        }
       },
       "id": "a1a1a1a1-0001-4000-8000-00000000000b",
       "name": "Activer et envoyer la demande (Yousign)",
@@ -172,7 +188,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { status: \"ok\", bookingId: $node[\"Créer la réservation (dispatch)\"].json.body.id, unit: $node[\"Créer la réservation (dispatch)\"].json.body.unitId, signatureUrl: $node[\"Ajouter le client comme signataire (Yousign)\"].json.signature_link } }}",
+        "responseBody": "={{ { status: \"ok\", bookingId: $node[\"Créer la réservation (dispatch)\"].json.body.id, unit: $node[\"Créer la réservation (dispatch)\"].json.body.unitId, signatureUrl: $node[\"Ajouter le client comme signataire (Yousign)\"].json.body.signature_link } }}",
         "options": {}
       },
       "id": "a1a1a1a1-0001-4000-8000-000000000005",
