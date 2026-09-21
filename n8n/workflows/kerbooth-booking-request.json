@@ -74,26 +74,112 @@
         "headerParameters": {
           "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: \"Contrat Kerbooth 360° — \" + $json.body.id, delivery_mode: \"email\", timezone: \"Europe/Paris\", external_id: $json.body.id }) }}",
         "options": {}
       },
       "id": "a1a1a1a1-0001-4000-8000-000000000007",
-      "name": "Envoyer le contrat à signer (Yousign)",
+      "name": "Créer la demande de signature (Yousign)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [900, 160],
-      "notes": "À COMPLÉTER : corps de la requête Yousign (document du contrat rempli avec les infos de la réservation renvoyées par le nœud précédent, signataire = le client). Poser external_id = bookingId pour que le webhook signature_request.done (workflow kerbooth-yousign-contract-signed) puisse retrouver la réservation. Signature AVANT paiement (revu le 20/09/2026) : la réponse de ce nœud doit fournir l'URL de signature à renvoyer au client, voir nœud suivant."
+      "notes": "Crée la demande de signature en brouillon (external_id = bookingId, pour que le webhook signature_request.done — workflow kerbooth-yousign-contract-signed — retrouve la réservation). ⚠️ À VÉRIFIER contre l'API réelle : noms de champs corrects à la date de rédaction (v3), mais n'a pas pu être testé faute d'accès à un compte Yousign — ajuster selon les erreurs réelles à la première exécution."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/bookings/{{ $node[\"Créer la réservation (dispatch)\"].json.body.id }}/contract-pdf",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" }]
+        },
+        "options": {
+          "response": {
+            "response": { "responseFormat": "file" }
+          }
+        }
+      },
+      "id": "a1a1a1a1-0001-4000-8000-000000000008",
+      "name": "Télécharger le PDF du contrat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 160],
+      "notes": "Récupère le contrat généré par l'outil compta (server/services/kerboothContractPdf.ts) en données binaires, pour l'attacher à la demande de signature au nœud suivant."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/documents",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "nature", "value": "signable_document" },
+            { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1a1a1a1-0001-4000-8000-000000000009",
+      "name": "Attacher le contrat PDF (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 160],
+      "notes": "Upload multipart du PDF téléchargé au nœud précédent. ⚠️ À VÉRIFIER : le nom du champ binaire attendu par n8n dépend du nom donné par le nœud HTTP Request précédent (souvent \"data\" par défaut) — ajuster \"inputDataFieldName\" si besoin."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/signers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ info: { first_name: $node[\"Créer la réservation (dispatch)\"].json.body.clientName.split(\" \")[0], last_name: $node[\"Créer la réservation (dispatch)\"].json.body.clientName.split(\" \").slice(1).join(\" \") || \"-\", email: $node[\"Créer la réservation (dispatch)\"].json.body.clientEmail, locale: \"fr\" }, signature_level: \"electronic_signature\", signature_authentication_mode: \"no_otp\", fields: [{ document_id: $json.id, type: \"signature\", page: 1, x: 335, y: 700 }] }) }}",
+        "options": {}
+      },
+      "id": "a1a1a1a1-0001-4000-8000-00000000000a",
+      "name": "Ajouter le client comme signataire (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 160],
+      "notes": "⚠️ Découpage prénom/nom approximatif (premier mot = prénom, reste = nom) faute d'avoir ces deux champs séparés dans la réservation — imparfait pour les noms composés, à corriger manuellement dans Yousign si besoin pour un client donné. Position du champ signature (x=335, y=700) approximative, calée sur l'emplacement \"Le Locataire\" du PDF (lib/pdf/ContractDocument.tsx) — à ajuster visuellement après un premier test réel, l'aperçu Yousign permet de vérifier/glisser le champ."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/activate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
+        },
+        "options": {}
+      },
+      "id": "a1a1a1a1-0001-4000-8000-00000000000b",
+      "name": "Activer et envoyer la demande (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 160],
+      "notes": "Envoie réellement l'email de signature au client — tant que ce nœud n'est pas appelé, la demande reste en brouillon côté Yousign."
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { status: \"ok\", bookingId: $json.body.id, unit: $json.body.unitId, signatureUrl: $node[\"Envoyer le contrat à signer (Yousign)\"].json.signature_link } }}",
+        "responseBody": "={{ { status: \"ok\", bookingId: $node[\"Créer la réservation (dispatch)\"].json.body.id, unit: $node[\"Créer la réservation (dispatch)\"].json.body.unitId, signatureUrl: $node[\"Ajouter le client comme signataire (Yousign)\"].json.signature_link } }}",
         "options": {}
       },
       "id": "a1a1a1a1-0001-4000-8000-000000000005",
       "name": "Répondre : lien de signature",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1120, 160]
+      "position": [2000, 160]
     },
     {
       "parameters": {
@@ -118,11 +204,23 @@
     },
     "Unité trouvée ?": {
       "main": [
-        [{ "node": "Envoyer le contrat à signer (Yousign)", "type": "main", "index": 0 }],
+        [{ "node": "Créer la demande de signature (Yousign)", "type": "main", "index": 0 }],
         [{ "node": "Répondre : complet à cette date", "type": "main", "index": 0 }]
       ]
     },
-    "Envoyer le contrat à signer (Yousign)": {
+    "Créer la demande de signature (Yousign)": {
+      "main": [[{ "node": "Télécharger le PDF du contrat", "type": "main", "index": 0 }]]
+    },
+    "Télécharger le PDF du contrat": {
+      "main": [[{ "node": "Attacher le contrat PDF (Yousign)", "type": "main", "index": 0 }]]
+    },
+    "Attacher le contrat PDF (Yousign)": {
+      "main": [[{ "node": "Ajouter le client comme signataire (Yousign)", "type": "main", "index": 0 }]]
+    },
+    "Ajouter le client comme signataire (Yousign)": {
+      "main": [[{ "node": "Activer et envoyer la demande (Yousign)", "type": "main", "index": 0 }]]
+    },
+    "Activer et envoyer la demande (Yousign)": {
       "main": [[{ "node": "Répondre : lien de signature", "type": "main", "index": 0 }]]
     }
   },
