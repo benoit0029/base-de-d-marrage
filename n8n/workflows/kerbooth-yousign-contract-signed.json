@@ -45,6 +45,20 @@
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "stripeApi",
         "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "mode", "value": "payment" },
+            { "name": "success_url", "value": "https://kerbooth360.fr/?paiement=confirme" },
+            { "name": "cancel_url", "value": "https://kerbooth360.fr/?paiement=annule" },
+            { "name": "customer_email", "value": "={{ $json.clientEmail }}" },
+            { "name": "line_items[0][price_data][currency]", "value": "eur" },
+            { "name": "line_items[0][price_data][unit_amount]", "value": "={{ Math.round($json.totalAmount * 100) }}" },
+            { "name": "line_items[0][price_data][product_data][name]", "value": "=Location Kerbooth 360° — {{ $json.formula }}" },
+            { "name": "line_items[0][quantity]", "value": "1" },
+            { "name": "metadata[bookingId]", "value": "={{ $json.id }}" }
+          ]
+        },
         "options": {}
       },
       "id": "e1e1e1e1-0003-4000-8000-000000000003",
@@ -52,15 +66,15 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [680, 300],
-      "notes": "À COMPLÉTER : mode='payment', amount=totalAmount de la réservation (paiement direct en une fois, plus d'acompte/solde séparés — revu le 20/09/2026), metadata.bookingId=bookingId (pour que le webhook checkout.session.completed, workflow kerbooth-stripe-payment-received, retrouve la réservation)."
+      "notes": "Body construit dynamiquement à partir de la réservation renvoyée par le nœud précédent (paiement direct en une fois, plus d'acompte/solde séparés — revu le 20/09/2026) : montant total en centimes, email client, bookingId en métadonnée (pour que le webhook checkout.session.completed, workflow kerbooth-stripe-payment-received, retrouve la réservation). success_url/cancel_url pointent vers la page vitrine kerbooth360.fr — à remplacer par de vraies pages de confirmation/annulation si construites plus tard."
     },
     {
       "parameters": {
         "fromEmail": "={{ $env.SMTP_FROM }}",
-        "toEmail": "={{ $json.body.clientEmail }}",
+        "toEmail": "={{ $node[\"Passer la réservation en attente de paiement\"].json.clientEmail }}",
         "subject": "Kerbooth 360° — Contrat signé, dernière étape avant votre réservation",
         "emailFormat": "text",
-        "text": "Votre contrat de location est signé. Il ne reste plus qu'à régler le paiement pour confirmer définitivement votre réservation : {{ $json.url }}",
+        "text": "=Votre contrat de location est signé. Il ne reste plus qu'à régler le paiement pour confirmer définitivement votre réservation : {{ $json.url }}",
         "options": {}
       },
       "id": "e1e1e1e1-0003-4000-8000-000000000004",
