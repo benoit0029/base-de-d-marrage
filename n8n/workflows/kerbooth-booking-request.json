@@ -69,7 +69,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.yousign.com/v3/signature_requests",
+        "url": "https://api-sandbox.yousign.com/v3/signature_requests",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
@@ -110,7 +110,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/documents",
+        "url": "=https://api-sandbox.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/documents",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
@@ -135,7 +135,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/signers",
+        "url": "=https://api-sandbox.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/signers",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
@@ -155,7 +155,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/activate",
+        "url": "=https://api-sandbox.yousign.com/v3/signature_requests/{{ $node[\"Créer la demande de signature (Yousign)\"].json.id }}/activate",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}" }]
