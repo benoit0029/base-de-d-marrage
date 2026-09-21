@@ -29,6 +29,9 @@ export interface CreateBookingInput {
   clientPhone?: string;
   eventDateStart: Date;
   eventDateEnd: Date;
+  // Adresse de livraison/installation — obligatoire, figure dans le
+  // contrat (article 1, voir documents-types-kerbooth360.md §5).
+  eventLocation: string;
   formula: KerboothFormula;
   // Obligatoires pour ENTREPRISE uniquement (négocié manuellement, voir
   // documents-types-kerbooth360.md §6) ; ignorés sinon.
@@ -43,6 +46,10 @@ export interface CreateBookingInput {
  * kerbooth360/architecture-technique-kerbooth360.md).
  */
 export async function createBooking(input: CreateBookingInput): Promise<KerboothBooking> {
+  if (!input.eventLocation.trim()) {
+    throw new KerboothBookingInputError("eventLocation est obligatoire.");
+  }
+
   const tenantId = await getDefaultTenantId();
 
   let totalAmount: number;
@@ -76,6 +83,7 @@ export async function createBooking(input: CreateBookingInput): Promise<Kerbooth
       clientPhone: input.clientPhone,
       eventDateStart: input.eventDateStart,
       eventDateEnd: input.eventDateEnd,
+      eventLocation: input.eventLocation,
       formula: input.formula,
       durationDays,
       totalAmount,

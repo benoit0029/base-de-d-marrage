@@ -694,7 +694,7 @@ enum KerboothBookingStatus {
   PENDING_SIGNATURE // créée, contrat pas encore signé
   PENDING_PAYMENT // contrat signé, paiement pas encore reçu
   CONFIRMED // payée intégralement, réservation ferme
-  CANCELLED // annulée — remboursée seulement si dans le délai de courtoisie (voir CGV article 5)
+  CANCELLED // annulée — jamais de remboursement automatique (voir CGV article 5)
 }
 
 // Une réservation cliente. `unitId` posé par le dispatch automatique (voir
@@ -712,6 +712,9 @@ model KerboothBooking {
   clientPhone    String?
   eventDateStart DateTime
   eventDateEnd   DateTime
+  // Adresse de livraison/installation — obligatoire au contrat (article 1,
+  // voir kerbooth360/documents/documents-types-kerbooth360.md §5).
+  eventLocation  String  @default("")
   formula        KerboothFormula
   durationDays   Int
   status         KerboothBookingStatus @default(PENDING_SIGNATURE)

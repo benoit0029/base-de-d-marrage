@@ -23,14 +23,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Corps JSON invalide" }, { status: 400 });
   }
 
-  const { clientName, clientEmail, clientPhone, eventDateStart, eventDateEnd, formula, totalAmount, durationDays } =
-    body as Record<string, unknown>;
+  const {
+    clientName,
+    clientEmail,
+    clientPhone,
+    eventDateStart,
+    eventDateEnd,
+    eventLocation,
+    formula,
+    totalAmount,
+    durationDays,
+  } = body as Record<string, unknown>;
 
   if (typeof clientName !== "string" || !clientName.trim()) {
     return NextResponse.json({ error: "clientName obligatoire" }, { status: 400 });
   }
   if (typeof eventDateStart !== "string" || typeof eventDateEnd !== "string") {
     return NextResponse.json({ error: "eventDateStart/eventDateEnd obligatoires (ISO 8601)" }, { status: 400 });
+  }
+  if (typeof eventLocation !== "string" || !eventLocation.trim()) {
+    return NextResponse.json({ error: "eventLocation obligatoire" }, { status: 400 });
   }
   if (typeof formula !== "string" || !VALID_FORMULAS.has(formula)) {
     return NextResponse.json({ error: "formula invalide (ESSENTIEL, POPULAIRE ou ENTREPRISE)" }, { status: 400 });
@@ -43,6 +55,7 @@ export async function POST(req: NextRequest) {
       clientPhone: typeof clientPhone === "string" ? clientPhone : undefined,
       eventDateStart: new Date(eventDateStart),
       eventDateEnd: new Date(eventDateEnd),
+      eventLocation,
       formula: formula as "ESSENTIEL" | "POPULAIRE" | "ENTREPRISE",
       totalAmount: typeof totalAmount === "number" ? totalAmount : undefined,
       durationDays: typeof durationDays === "number" ? durationDays : undefined,

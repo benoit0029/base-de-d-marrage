@@ -4,6 +4,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { InvoiceDocument, type InvoicePdfData } from "@/lib/pdf/InvoiceDocument";
 import { ClosingReportDocument, type ClosingReportData } from "@/lib/pdf/ClosingReportDocument";
 import { ClosureRecapDocument, type ClosureRecapData } from "@/lib/pdf/ClosureRecapDocument";
+import { ContractDocument, type ContractPdfData } from "@/lib/pdf/ContractDocument";
 
 const mimeByExt: Record<string, string> = {
   ".png": "image/png",
@@ -40,4 +41,8 @@ export async function renderClosingReportPdf(data: ClosingReportData): Promise<B
 
 export async function renderClosureRecapPdf(data: ClosureRecapData): Promise<Buffer> {
   return renderToBuffer(ClosureRecapDocument(data));
+}
+
+export async function renderContractPdf(data: ContractPdfData): Promise<Buffer> {
+  return renderToBuffer(ContractDocument(data));
 }
