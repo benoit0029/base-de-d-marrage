@@ -151,15 +151,17 @@
   .contact{background:var(--ink);color:var(--sand);}
   .contact .section-head h2{color:var(--sand);}
   form{max-width:520px;display:grid;gap:16px;}
-  form input, form textarea{
+  form input, form textarea, form select{
     width:100%;padding:13px 16px;border-radius:10px;border:1px solid rgba(245,239,230,0.25);
     background:rgba(245,239,230,0.05);color:var(--sand);font-family:'Inter',sans-serif;font-size:0.95rem;
   }
+  form select option{background:var(--ink);color:var(--sand);}
   form label{font-size:0.85rem;color:var(--slate);margin-bottom:6px;display:block;}
   form button{
     justify-self:start;background:var(--coral);color:var(--ink);border:none;
     padding:14px 28px;border-radius:999px;font-weight:700;font-size:15px;cursor:pointer;
   }
+  form button:disabled{opacity:0.6;cursor:not-allowed;}
 
   footer{
     padding:36px 28px;text-align:center;font-size:0.82rem;color:var(--slate);
@@ -332,14 +334,126 @@
 <section class="contact" id="reservation">
   <div class="section-head">
     <div class="eyebrow">Réservation</div>
-    <h2>Calendrier de disponibilité en temps réel</h2>
+    <h2>Réservez votre date en ligne</h2>
   </div>
-  <div style="background:rgba(245,239,230,0.06);border:1px dashed rgba(245,239,230,0.3);border-radius:14px;padding:32px;max-width:520px;">
-    <p style="color:#dfe7ef;">Le calendrier de réservation en ligne sera connecté ici une fois les comptes de réservation en place.</p>
-    <p style="color:var(--slate);font-size:0.9rem;">En attendant, écris-nous directement pour vérifier une date :</p>
-    <a href="mailto:kerbooth@kalonia.fr" class="btn-solid" style="display:inline-block;margin-top:10px;">kerbooth@kalonia.fr</a>
-  </div>
+  <form id="booking-form">
+    <div>
+      <label for="b-name">Nom complet</label>
+      <input type="text" id="b-name" name="clientName" required>
+    </div>
+    <div>
+      <label for="b-email">Email</label>
+      <input type="email" id="b-email" name="clientEmail" required>
+    </div>
+    <div>
+      <label for="b-phone">Téléphone (optionnel)</label>
+      <input type="tel" id="b-phone" name="clientPhone">
+    </div>
+    <div>
+      <label for="b-formula">Formule</label>
+      <select id="b-formula" name="formula" required>
+        <option value="ESSENTIEL">Essentiel — 250€ (1 jour)</option>
+        <option value="POPULAIRE">Populaire — 500€ (weekend, 2 jours)</option>
+      </select>
+    </div>
+    <div>
+      <label for="b-date">Date de l'événement</label>
+      <input type="date" id="b-date" name="eventDateStart" required>
+    </div>
+    <div>
+      <label for="b-location">Lieu de l'événement (adresse de livraison)</label>
+      <input type="text" id="b-location" name="eventLocation" required placeholder="Adresse complète">
+    </div>
+    <button type="submit" id="b-submit">Réserver et signer le contrat</button>
+    <p id="b-status" style="font-size:0.9rem;color:var(--slate);margin:0;"></p>
+  </form>
+  <p style="color:var(--slate);font-size:0.85rem;margin-top:18px;max-width:520px;">Un email de signature électronique du contrat vous sera envoyé dès la validation de votre demande. Le paiement se fait en ligne une fois le contrat signé. Une question avant de réserver ? <a href="mailto:kerbooth@kalonia.fr" style="text-decoration:underline;">kerbooth@kalonia.fr</a></p>
 </section>
+
+<script>
+(function () {
+  var form = document.getElementById("booking-form");
+  if (!form) return;
+
+  var statusEl = document.getElementById("b-status");
+  var submitBtn = document.getElementById("b-submit");
+  var dateInput = document.getElementById("b-date");
+  var WEBHOOK_URL = "https://kalonia.fr/webhook/kerbooth-booking-request";
+  var DURATION_DAYS = { ESSENTIEL: 1, POPULAIRE: 2 };
+
+  var today = new Date();
+  dateInput.min = today.toISOString().slice(0, 10);
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    statusEl.style.color = "var(--slate)";
+    statusEl.textContent = "Envoi en cours...";
+    submitBtn.disabled = true;
+
+    var formula = form.formula.value;
+    var startDate = new Date(form.eventDateStart.value + "T00:00:00");
+    var endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + DURATION_DAYS[formula]);
+
+    var payload = {
+      clientName: form.clientName.value.trim(),
+      clientEmail: form.clientEmail.value.trim(),
+      clientPhone: form.clientPhone.value.trim(),
+      eventDateStart: startDate.toISOString(),
+      eventDateEnd: endDate.toISOString(),
+      eventLocation: form.eventLocation.value.trim(),
+      formula: formula
+    };
+
+    fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          return { res: res, data: data };
+        });
+      })
+      .then(function (result) {
+        var res = result.res;
+        var data = result.data;
+
+        if (res.status === 409 || data.status === "complet") {
+          statusEl.style.color = "var(--coral)";
+          statusEl.textContent = "Complet à cette date — écrivez-nous à kerbooth@kalonia.fr pour vérifier une date alternative.";
+          submitBtn.disabled = false;
+          return;
+        }
+
+        if (res.ok && data.status === "ok") {
+          form.style.display = "none";
+          statusEl.style.color = "#9ee6a8";
+          statusEl.textContent = "Réservation enregistrée ! Un email de signature électronique du contrat vous a été envoyé.";
+          if (data.signatureUrl) {
+            var link = document.createElement("a");
+            link.href = data.signatureUrl;
+            link.textContent = "Ou cliquez ici pour signer directement le contrat →";
+            link.className = "btn-solid";
+            link.style.display = "inline-block";
+            link.style.marginTop = "14px";
+            statusEl.insertAdjacentElement("afterend", link);
+          }
+          return;
+        }
+
+        statusEl.style.color = "var(--coral)";
+        statusEl.textContent = "Une erreur est survenue. Merci de nous écrire à kerbooth@kalonia.fr avec vos disponibilités.";
+        submitBtn.disabled = false;
+      })
+      .catch(function () {
+        statusEl.style.color = "var(--coral)";
+        statusEl.textContent = "Impossible de contacter le serveur de réservation. Merci de nous écrire à kerbooth@kalonia.fr.";
+        submitBtn.disabled = false;
+      });
+  });
+})();
+</script>
 
 <footer>
   Kerbooth 360° — Quimper, Finistère · [Prénom NOM 1 - SIRET à compléter] · [Prénom NOM 2 - SIRET à compléter]<br>
