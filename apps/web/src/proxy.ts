@@ -6,7 +6,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 // base (compte déjà créé ? 2FA activée ?) vit dans les pages /login et
 // /setup (Server Components, runtime Node), pas ici.
 const PUBLIC_PATHS = ["/login", "/setup", "/2fa"];
-const PUBLIC_API_PREFIXES = ["/api/agents/", "/api/reports/"]; // authentifiés par jeton partagé, pas par session
+const PUBLIC_API_PREFIXES = ["/api/agents/", "/api/reports/", "/api/kerbooth/"]; // authentifiés par jeton partagé, pas par session
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
