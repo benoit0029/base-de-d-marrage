@@ -16,10 +16,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
+  // Stripe Checkout ne renseigne "customer" que si un compte client est créé
+  // (pas notre cas — paiement unique, pas d'abonnement ni de second
+  // prélèvement à mémoriser) : souvent null, purement informatif, jamais
+  // bloquant.
   const stripeCustomerId = typeof body.stripeCustomerId === "string" ? body.stripeCustomerId : null;
-  if (!stripeCustomerId) {
-    return NextResponse.json({ error: "stripeCustomerId obligatoire" }, { status: 400 });
-  }
   const paidAt = typeof body.paidAt === "string" ? new Date(body.paidAt) : new Date();
 
   try {

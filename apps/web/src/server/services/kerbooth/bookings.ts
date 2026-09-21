@@ -132,7 +132,7 @@ export async function confirmContractSigned(
  */
 export async function markPaymentReceived(
   bookingId: string,
-  input: { stripeCustomerId: string; paidAt: Date }
+  input: { stripeCustomerId: string | null; paidAt: Date }
 ): Promise<KerboothBooking> {
   const booking = await getBookingOrThrow(bookingId);
   if (booking.status !== "PENDING_PAYMENT") {
