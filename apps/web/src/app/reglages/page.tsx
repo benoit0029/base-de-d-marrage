@@ -55,12 +55,12 @@ export default async function Page() {
           Identité de la micro-entreprise
         </h2>
         <CompanySettingsForm
+          key={company?.updatedAt?.toISOString() ?? "new"}
           initial={{
             legalName: company?.legalName ?? "",
             address: company?.address ?? "",
             siren: company?.siren ?? "",
             vatNumber: company?.vatNumber ?? "",
-            contactEmail: company?.contactEmail ?? "",
           }}
         />
       </section>

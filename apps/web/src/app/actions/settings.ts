@@ -16,7 +16,6 @@ const companySchema = z.object({
   address: z.string().min(1, "Adresse obligatoire"),
   siren: z.string().min(1, "SIREN obligatoire"),
   vatNumber: z.string().optional(),
-  contactEmail: z.string().email().optional().or(z.literal("")),
 });
 
 export async function submitCompanySettings(
@@ -28,17 +27,13 @@ export async function submitCompanySettings(
     address: formData.get("address"),
     siren: formData.get("siren"),
     vatNumber: formData.get("vatNumber") || undefined,
-    contactEmail: formData.get("contactEmail") || undefined,
   });
 
   if (!parsed.success) {
     return { status: "error", message: parsed.error.issues[0]?.message ?? "Champs invalides" };
   }
 
-  await saveCompanySettings({
-    ...parsed.data,
-    contactEmail: parsed.data.contactEmail || undefined,
-  });
+  await saveCompanySettings(parsed.data);
   revalidatePath("/reglages");
   return { status: "success", message: "Identité enregistrée." };
 }
