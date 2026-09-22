@@ -44,7 +44,7 @@
         "toEmail": "={{ $json.clientEmail }}",
         "subject": "Kerbooth 360° — Réservation confirmée, votre facture",
         "emailFormat": "text",
-        "text": "=Votre réservation Kerbooth 360° est confirmée, merci !\n\nVotre facture : {{ $env.APP_URL }}/api/invoices/{{ $json.invoiceId }}/pdf",
+        "text": "=Votre réservation Kerbooth 360° est confirmée pour le {{ new Date($json.eventDateStart).toLocaleDateString('fr-FR') }}, merci !\n\nVotre facture : {{ $env.APP_URL }}/api/invoices/{{ $json.invoiceId }}/pdf",
         "options": {}
       },
       "id": "c1c1c1c1-0002-4000-8000-000000000003",
