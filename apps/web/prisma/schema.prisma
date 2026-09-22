@@ -724,6 +724,11 @@ model KerboothBooking {
   // simples chaînes, jamais de FK vers un système tiers (Stripe/Yousign).
   stripeCustomerId String?
   yousignRequestId String?
+  // client_secret de la session Stripe Checkout embarquée (ui_mode:
+  // "embedded") — lu par le site via l'endpoint de statut le temps que le
+  // client reste sur la page après la signature (voir déclencheur 4bis,
+  // parcours embarqué signature+paiement sur le site).
+  stripeCheckoutClientSecret String?
 
   // Facture créée dans l'outil compta (voir server/services/invoices) —
   // référence souple, pas de relation Prisma formelle : une facture reste

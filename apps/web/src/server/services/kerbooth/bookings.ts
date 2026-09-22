@@ -188,6 +188,20 @@ export async function cancelBooking(bookingId: string, now = new Date()): Promis
   });
 }
 
+/**
+ * Enregistre le client_secret de la session Stripe Checkout embarquée
+ * (ui_mode: "embedded"), créée par n8n juste après la signature du contrat —
+ * lu ensuite par le site via l'endpoint de statut pendant que le client
+ * reste sur la page (parcours embarqué signature+paiement).
+ */
+export async function setStripeCheckoutClientSecret(bookingId: string, clientSecret: string) {
+  await getBookingOrThrow(bookingId);
+  return prisma.kerboothBooking.update({
+    where: { id: bookingId },
+    data: { stripeCheckoutClientSecret: clientSecret },
+  });
+}
+
 export async function getBooking(id: string) {
   return prisma.kerboothBooking.findUnique({ where: { id }, include: { unit: true } });
 }
