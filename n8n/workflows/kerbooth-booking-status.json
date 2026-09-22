@@ -1,0 +1,64 @@
+{
+  "name": "Kerbooth 360° — Statut de réservation (polling site)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "kerbooth-booking-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c1c1c1c1-0004-4000-8000-000000000001",
+      "name": "Réception de la requête (site)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "kerbooth-booking-status",
+      "notes": "Appelé directement par le navigateur du client (fetch en polling toutes les 2-3s) pendant qu'il patiente sur la page de réservation, entre la signature et la disponibilité du paiement Stripe. Attend un paramètre de requête ?id=<bookingId>."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/bookings/{{ $json.query.id }}/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" }]
+        },
+        "options": {
+          "response": {
+            "response": { "neverError": true, "fullResponse": true }
+          }
+        }
+      },
+      "id": "c1c1c1c1-0004-4000-8000-000000000002",
+      "name": "Lire le statut (app compta)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "notes": "Le jeton INGEST_API_TOKEN reste côté serveur n8n — jamais exposé au navigateur, contrairement à un appel direct à l'app compta depuis le site."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: $json.body.status, stripeCheckoutClientSecret: $json.body.stripeCheckoutClientSecret } }}",
+        "options": {}
+      },
+      "id": "c1c1c1c1-0004-4000-8000-000000000003",
+      "name": "Répondre au site",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Réception de la requête (site)": {
+      "main": [[{ "node": "Lire le statut (app compta)", "type": "main", "index": 0 }]]
+    },
+    "Lire le statut (app compta)": {
+      "main": [[{ "node": "Répondre au site", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "d1d1d1d1-0004-4000-8000-000000000001"
+}
