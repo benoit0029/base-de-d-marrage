@@ -211,9 +211,21 @@
     <button type="submit" id="b-submit">Réserver et signer le contrat</button>
     <p id="b-status" style="font-size:0.9rem;color:var(--slate);margin:0;"></p>
   </form>
-  <p style="color:var(--slate);font-size:0.85rem;margin-top:18px;max-width:520px;">Un email de signature électronique du contrat vous sera envoyé dès la validation de votre demande. Le paiement se fait en ligne une fois le contrat signé. Une question avant de réserver ? <a href="mailto:kerbooth@kalonia.fr" style="text-decoration:underline;">kerbooth@kalonia.fr</a></p>
+
+  <div id="signature-embed" class="embed-step">
+    <p class="embed-hint">Signez votre contrat directement ci-dessous — aucun email à aller chercher, ça se passe ici.</p>
+    <iframe id="signature-iframe" class="embed-frame" title="Signature du contrat Kerbooth 360°"></iframe>
+  </div>
+
+  <div id="payment-embed" class="embed-step">
+    <p class="embed-hint">Contrat signé ! Il ne reste plus qu'à régler pour confirmer définitivement votre réservation :</p>
+    <div id="stripe-checkout-container"></div>
+  </div>
+
+  <p style="color:var(--slate);font-size:0.85rem;margin-top:18px;max-width:520px;">Le paiement se fait en ligne une fois le contrat signé. Une question avant de réserver ? <a href="mailto:kerbooth@kalonia.fr" style="text-decoration:underline;">kerbooth@kalonia.fr</a></p>
 </section>
 
+<script src="https://js.stripe.com/v3/"></script>
 <script>
 (function () {
   var form = document.getElementById("booking-form");
@@ -222,11 +234,65 @@
   var statusEl = document.getElementById("b-status");
   var submitBtn = document.getElementById("b-submit");
   var dateInput = document.getElementById("b-date");
+  var signatureBox = document.getElementById("signature-embed");
+  var signatureIframe = document.getElementById("signature-iframe");
+  var paymentBox = document.getElementById("payment-embed");
+
   var WEBHOOK_URL = "https://kalonia.fr/webhook/kerbooth-booking-request";
+  var STATUS_URL = "https://kalonia.fr/webhook/kerbooth-booking-status";
+  var STRIPE_PUBLIC_KEY = "pk_test_51UHzFvIfHYg2udM8AhhQznMvQxrBZ7926iNQSDK8mp2DsTQSxZqu5wKn6Ed3qLS3FxQkiB4qxbbpW6ofHSgod3OX00pK218Pu1";
   var DURATION_DAYS = { ESSENTIEL: 1, POPULAIRE: 2 };
+  var POLL_INTERVAL_MS = 2500;
+  var pollTimer = null;
 
   var today = new Date();
   dateInput.min = today.toISOString().slice(0, 10);
+
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  function showPaymentStep(clientSecret) {
+    signatureBox.style.display = "none";
+    paymentBox.style.display = "block";
+    var stripe = Stripe(STRIPE_PUBLIC_KEY);
+    stripe.initEmbeddedCheckout({ clientSecret: clientSecret }).then(function (checkout) {
+      checkout.mount("#stripe-checkout-container");
+    });
+  }
+
+  function startPollingForPayment(bookingId) {
+    pollTimer = setInterval(function () {
+      fetch(STATUS_URL + "?id=" + encodeURIComponent(bookingId))
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data && data.stripeCheckoutClientSecret) {
+            stopPolling();
+            showPaymentStep(data.stripeCheckoutClientSecret);
+          }
+        })
+        .catch(function () { /* on retente au prochain intervalle */ });
+    }, POLL_INTERVAL_MS);
+  }
+
+  function showSignatureStep(signatureUrl, bookingId) {
+    form.style.display = "none";
+    statusEl.style.color = "#9ee6a8";
+    statusEl.textContent = "Réservation enregistrée !";
+    signatureBox.style.display = "block";
+    signatureIframe.src = signatureUrl;
+
+    window.addEventListener("message", function handler(e) {
+      if (e.data && e.data.event === "success") {
+        window.removeEventListener("message", handler);
+        statusEl.textContent = "Contrat signé ! Préparation du paiement...";
+        startPollingForPayment(bookingId);
+      }
+    });
+  }
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -271,17 +337,12 @@
         }
 
         if (res.ok && data.status === "ok") {
-          form.style.display = "none";
-          statusEl.style.color = "#9ee6a8";
-          statusEl.textContent = "Réservation enregistrée ! Un email de signature électronique du contrat vous a été envoyé.";
           if (data.signatureUrl) {
-            var link = document.createElement("a");
-            link.href = data.signatureUrl;
-            link.textContent = "Ou cliquez ici pour signer directement le contrat →";
-            link.className = "btn-solid";
-            link.style.display = "inline-block";
-            link.style.marginTop = "14px";
-            statusEl.insertAdjacentElement("afterend", link);
+            showSignatureStep(data.signatureUrl, data.bookingId);
+          } else {
+            form.style.display = "none";
+            statusEl.style.color = "#9ee6a8";
+            statusEl.textContent = "Réservation enregistrée ! Un email de signature électronique du contrat vous a été envoyé.";
           }
           return;
         }
