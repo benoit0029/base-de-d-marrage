@@ -89,6 +89,16 @@ export async function softDeleteBankTransaction(id: string, userId: string | nul
   ]);
 }
 
+// Beaucoup de banques françaises exportent leurs relevés CSV en
+// Windows-1252/ISO-8859-1 plutôt qu'en UTF-8 : décodés en UTF-8, les
+// en-têtes accentués ("Libellé", "Débit", "Crédit") deviennent illisibles
+// (caractère de remplacement U+FFFD), les colonnes ne sont plus reconnues et
+// l'import échoue silencieusement — d'où ce repli automatique.
+function decodeBankStatementFile(fileBuffer: Buffer): string {
+  const utf8 = fileBuffer.toString("utf-8");
+  return utf8.includes("�") ? fileBuffer.toString("latin1") : utf8;
+}
+
 export type ImportStatementResult =
   | { status: "imported"; count: number; skippedDuplicateLines: number }
   | { status: "duplicate_file"; matchedFileHash: string };
@@ -123,7 +133,7 @@ export async function importBankStatementCsv(
 
   let lines;
   try {
-    lines = parseBankStatementCsv(fileBuffer.toString("utf-8"));
+    lines = parseBankStatementCsv(decodeBankStatementFile(fileBuffer));
   } catch (err) {
     if (err instanceof BankStatementParseError) {
       throw new BankTransactionError(err.message);
