@@ -266,7 +266,7 @@
 
   function startPollingForPayment(bookingId) {
     pollTimer = setInterval(function () {
-      fetch(STATUS_URL + "?id=" + encodeURIComponent(bookingId))
+      fetch(STATUS_URL + "?id=" + encodeURIComponent(bookingId) + "&_=" + Date.now(), { cache: "no-store" })
         .then(function (res) { return res.json(); })
         .then(function (data) {
           if (data && data.stripeCheckoutClientSecret) {
