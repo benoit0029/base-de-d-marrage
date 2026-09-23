@@ -7,8 +7,48 @@ import {
   CashJournalAlreadyValidatedError,
   CashJournalError,
 } from "@/server/services/cashJournal";
+import { extractCashJournalAmount } from "@/lib/mistral/agents";
+import { MistralApiError, MistralConfigError } from "@/lib/mistral/client";
 import { CASH_JOURNAL_DAILY_THRESHOLD } from "@/lib/thresholds";
 import type { Activity } from "@prisma/client";
+
+export interface CashJournalPhotoReadResult {
+  status: "ok" | "error";
+  cashAmount: number | null;
+  checkAmount: number | null;
+  message?: string;
+}
+
+/**
+ * Lit automatiquement la recette du jour sur la photo de comptage de caisse,
+ * pour pré-remplir le formulaire (voir CashJournalForm) — l'exploitant garde
+ * la main pour corriger avant d'enregistrer. Ne touche à aucune donnée, pure
+ * lecture : aucun risque à l'appeler à chaque changement de photo.
+ */
+export async function extractCashJournalPhotoAmount(
+  formData: FormData
+): Promise<CashJournalPhotoReadResult> {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    return { status: "error", cashAmount: null, checkAmount: null, message: "Aucune photo reçue." };
+  }
+
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { cashAmount, checkAmount } = await extractCashJournalAmount(buffer, file.type || "image/jpeg");
+    return { status: "ok", cashAmount, checkAmount };
+  } catch (err) {
+    if (err instanceof MistralConfigError || err instanceof MistralApiError) {
+      return {
+        status: "error",
+        cashAmount: null,
+        checkAmount: null,
+        message: "Lecture automatique indisponible — saisis le montant manuellement.",
+      };
+    }
+    throw err;
+  }
+}
 
 export interface CashJournalFormState {
   status: "idle" | "success" | "error";

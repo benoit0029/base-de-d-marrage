@@ -55,10 +55,17 @@ function SuggestedMatchConfirm({ transaction }: { transaction: FakeBankTransacti
   function handleConfirm() {
     setError(null);
     startTransition(async () => {
+      // "cashJournalGroup" : plusieurs jours de vente cumulés dans le même
+      // dépôt — on envoie la liste plutôt qu'un id unique (voir la route,
+      // qui rapproche chaque jour un par un contre ce dépôt).
+      const body =
+        suggestion!.type === "cashJournalGroup"
+          ? { targetType: "cashJournal", targetIds: suggestion!.ids }
+          : { targetType: suggestion!.type, targetId: suggestion!.id };
       const res = await fetch(`/api/bank-transactions/${transaction.id}/reconcile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetType: suggestion!.type, targetId: suggestion!.id }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         setError("Échec du rapprochement.");
@@ -88,6 +95,89 @@ function SuggestedMatchConfirm({ transaction }: { transaction: FakeBankTransacti
           Choisir un autre
         </button>
       </div>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </div>
+  );
+}
+
+// Un dépôt déjà rapproché à une vente directe peut recevoir d'autres jours
+// (dépôt hebdomadaire regroupant plusieurs jours) : contrairement à une
+// Dépense/Facture (strictement 1↔1), une saisie de caisse supplémentaire
+// peut toujours être ajoutée au même dépôt — voir CashJournalEntry.bankTransactionId.
+function AddCashJournalDayButton({ transaction }: { transaction: FakeBankTransaction }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [candidates, setCandidates] = useState<FakeCashJournalEntry[] | null>(null);
+  const [selected, setSelected] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  async function openPicker() {
+    setOpen(true);
+    if (candidates) return;
+    setLoading(true);
+    const res = await fetch(`/api/bank-transactions/${transaction.id}/candidates`);
+    const data: Candidates = await res.json();
+    setCandidates(data.cashJournalEntries.filter((c) => !transaction.reconciledCashJournalIds.includes(c.id)));
+    setLoading(false);
+  }
+
+  function handleConfirm() {
+    if (!selected) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await fetch(`/api/bank-transactions/${transaction.id}/reconcile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetType: "cashJournal", targetId: selected }),
+      });
+      if (!res.ok) {
+        setError("Échec du rapprochement.");
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={openPicker} className="text-xs text-slate-500 underline">
+        + Ajouter un autre jour
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {loading ? (
+        <span className="text-xs text-slate-400">Chargement…</span>
+      ) : !candidates || candidates.length === 0 ? (
+        <span className="text-xs text-slate-400">Aucun autre jour disponible dans la fenêtre.</span>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+          >
+            <option value="">Choisir…</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {formatDate(c.date)} — {formatEuro(c.totalTtc)}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!selected || isPending}
+            className="rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 disabled:opacity-50"
+          >
+            {isPending ? "…" : "Ajouter"}
+          </button>
+        </div>
+      )}
       {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );
@@ -242,14 +332,19 @@ export default function BankTransactionsTable({
               <td className="px-4 py-2.5 text-right font-medium">{formatEuro(tx.amount)}</td>
               <td className="px-4 py-2.5">
                 {tx.reconciled ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-emerald-700">✓ {tx.reconciledWith}</span>
-                    {locked ? (
-                      <span title="Exercice clôturé" className="text-xs text-slate-400">
-                        🔒
-                      </span>
-                    ) : (
-                      <UnreconcileButton transactionId={tx.id} />
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-emerald-700">✓ {tx.reconciledWith}</span>
+                      {locked ? (
+                        <span title="Exercice clôturé" className="text-xs text-slate-400">
+                          🔒
+                        </span>
+                      ) : (
+                        <UnreconcileButton transactionId={tx.id} />
+                      )}
+                    </div>
+                    {!locked && tx.reconciledCashJournalIds.length > 0 && (
+                      <AddCashJournalDayButton transaction={tx} />
                     )}
                   </div>
                 ) : (

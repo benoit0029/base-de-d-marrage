@@ -92,11 +92,10 @@ export interface FakeSimpleImport {
 // Rapprochement suggéré automatiquement (montant identique, unique candidat
 // dans la fenêtre de date) — voir suggestReconciliationMatch. `null` :
 // aucune suggestion fiable, retombe sur la sélection manuelle.
-export interface FakeSuggestedMatch {
-  type: "entry" | "invoice" | "cashJournal";
-  id: string;
-  label: string;
-}
+export type FakeSuggestedMatch =
+  | { type: "entry" | "invoice" | "cashJournal"; id: string; label: string }
+  // Plusieurs jours de vente directe cumulés dans un même dépôt hebdomadaire.
+  | { type: "cashJournalGroup"; ids: string[]; label: string };
 
 export interface FakeBankTransaction {
   id: string;
@@ -106,6 +105,10 @@ export interface FakeBankTransaction {
   direction: "DEBIT" | "CREDIT";
   reconciled: boolean;
   reconciledWith: string | null; // libellé de la pièce rapprochée, pour affichage
+  // Vide si le rapprochement n'est pas de type vente directe. Sinon, permet
+  // d'ajouter d'autres jours au même dépôt même après un premier rapprochement
+  // (voir BankTransactionsTable, "+ Ajouter un autre jour").
+  reconciledCashJournalIds: string[];
   status: EntryStatus;
   suggestedMatch?: FakeSuggestedMatch | null;
 }

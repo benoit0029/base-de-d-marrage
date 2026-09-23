@@ -261,7 +261,14 @@ model CashJournalEntry {
   cashAmount       Decimal     @db.Decimal(12, 2) @default(0)
   checkAmount      Decimal     @db.Decimal(12, 2) @default(0) // Maraîchage uniquement
   cardAmount       Decimal     @db.Decimal(12, 2) @default(0) // Maraîchage uniquement
-  depositSlipUrl   String? // photo du bordereau de dépôt (espèces/chèques)
+  // Photo prise CHAQUE jour de vente (comptage de caisse manuscrit ou ticket
+  // Z) — PAS le bordereau de dépôt bancaire, qui est hebdomadaire et ne
+  // permettrait pas de respecter l'obligation d'enregistrement jour par jour
+  // (BOI-BIC-DECLA-30-10). Sert de justificatif ET de source pour la lecture
+  // automatique du montant (voir extractCashJournalAmount) : l'exploitant
+  // n'y note jamais le fond de caisse fixe (30 €), qui n'entre donc jamais
+  // dans le montant lu.
+  depositSlipUrl   String?
   cardStatementUrl String? // capture d'écran app bancaire Up2Pay (Maraîchage, part CB)
   // Ventes unitaires > 76 € saisies à part, jamais agrégées ci-dessus.
   // Tableau JSON de { amountTtc: number, paymentMethod: string, description?: string }.
@@ -274,13 +281,18 @@ model CashJournalEntry {
   // Suppression douce une fois validée (voir Entry.deletedAt).
   deletedAt DateTime?
 
-  // Rapprochement bancaire (une saisie de caisse ↔ un crédit du relevé
-  // importé — typiquement le dépôt en banque des espèces/chèques du jour).
-  bankTransactionId String?          @unique
+  // Rapprochement bancaire (une ou plusieurs saisies de caisse ↔ un crédit du
+  // relevé importé). PAS unique côté saisie de caisse, contrairement à
+  // Entry/Invoice : un dépôt en banque est souvent hebdomadaire et regroupe
+  // plusieurs jours de vente — plusieurs CashJournalEntry peuvent donc
+  // pointer vers le même BankTransaction (voir suggestReconciliationMatch,
+  // groupe de jours cumulés).
+  bankTransactionId String?
   bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
 
   @@unique([tenantId, activity, date])
   @@index([tenantId, activity, status])
+  @@index([bankTransactionId])
 }
 
 // ---------------------------------------------------------------------------
@@ -615,9 +627,12 @@ model BankTransaction {
   deletedAt DateTime? // suppression douce (ligne déjà validée)
   createdAt DateTime  @default(now())
 
-  entry            Entry?
-  invoice          Invoice?
-  cashJournalEntry CashJournalEntry?
+  entry             Entry?
+  invoice           Invoice?
+  // Plusieurs saisies de caisse (dépôt hebdomadaire regroupant plusieurs
+  // jours de vente) peuvent pointer vers le même BankTransaction — voir
+  // CashJournalEntry.bankTransactionId.
+  cashJournalEntries CashJournalEntry[]
 
   @@index([tenantId, activity, direction, date])
 }

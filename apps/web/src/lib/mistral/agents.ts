@@ -64,6 +64,41 @@ export async function extractDocumentFields(
 }
 
 // ---------------------------------------------------------------------------
+// Agent de lecture de recette : lit le montant du jour sur une photo de
+// comptage de caisse (manuscrit ou ticket Z), pour pré-remplir la saisie du
+// jour du journal de caisse (vente directe) sans ressaisie manuelle — voir
+// server/actions/cashJournal.ts. L'exploitant n'y note jamais le fond de
+// caisse fixe (30 €), qui n'a donc pas besoin d'être isolé ici.
+// ---------------------------------------------------------------------------
+
+const cashJournalAmountSchema = z.object({
+  cashAmount: z.number().nullable(),
+  checkAmount: z.number().nullable(),
+});
+
+export type CashJournalAmountExtraction = z.infer<typeof cashJournalAmountSchema>;
+
+export async function extractCashJournalAmount(
+  buffer: Buffer,
+  mimeType: string
+): Promise<CashJournalAmountExtraction> {
+  const ocr = await ocrExtract(buffer, mimeType);
+
+  const raw = await chatJson({
+    system:
+      "Tu lis une photo de comptage de caisse (manuscrit ou ticket de caisse imprimé) pour la " +
+      "recette d'UNE SEULE journée de vente directe (marché, vente à la ferme). Réponds " +
+      'uniquement en JSON avec les clés "cashAmount" (montant en espèces de la recette du jour, ' +
+      'nombre ou null si absent/illisible) et "checkAmount" (montant en chèques du jour, nombre ' +
+      "ou null si absent/non applicable). N'invente aucun montant : si tu ne peux pas lire un " +
+      "chiffre avec certitude, réponds null pour ce champ plutôt que de deviner.",
+    user: ocr.fullText.slice(0, 2000),
+  });
+
+  return cashJournalAmountSchema.parse(raw);
+}
+
+// ---------------------------------------------------------------------------
 // Agent de classement/ventilation : détermine l'activité et le type d'écriture.
 // ---------------------------------------------------------------------------
 

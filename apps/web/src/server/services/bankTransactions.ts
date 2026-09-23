@@ -17,7 +17,7 @@ export async function listBankTransactions(activity: Activity) {
   return prisma.bankTransaction.findMany({
     where: { tenantId, activity, deletedAt: null },
     orderBy: { date: "desc" },
-    include: { entry: true, invoice: true, cashJournalEntry: true },
+    include: { entry: true, invoice: true, cashJournalEntries: { select: { id: true } } },
   });
 }
 
@@ -315,11 +315,14 @@ export async function listReconciliationCandidates(
   return { entries: [], invoices, cashJournalEntries };
 }
 
-export interface SuggestedMatch {
-  type: ReconcileTargetType;
-  id: string;
-  label: string;
-}
+export type SuggestedMatch =
+  | { type: "entry" | "invoice" | "cashJournal"; id: string; label: string }
+  // Un dépôt hebdomadaire regroupe souvent plusieurs jours de vente directe
+  // non encore pointés : proposé seulement si une seule combinaison de jours
+  // consécutifs correspond exactement au montant du dépôt (voir
+  // suggestCashJournalGroupMatch), même logique de prudence que les
+  // correspondances simples ci-dessous.
+  | { type: "cashJournalGroup"; ids: string[]; label: string };
 
 function cashJournalTotal(entry: {
   cashAmount: unknown;
@@ -360,7 +363,7 @@ export async function suggestReconciliationMatch(
     return { type: "entry", id: matches[0].id, label: `Dépense — ${matches[0].counterpartyName}` };
   }
 
-  const matches: SuggestedMatch[] = [
+  const singleMatches: SuggestedMatch[] = [
     ...candidates.invoices
       .filter((i) => Number(i.totalTtc) === transaction.amount)
       .map((i) => ({ type: "invoice" as const, id: i.id, label: `Facture ${i.number}` })),
@@ -368,7 +371,69 @@ export async function suggestReconciliationMatch(
       .filter((c) => cashJournalTotal(c) === transaction.amount)
       .map((c) => ({ type: "cashJournal" as const, id: c.id, label: "Vente directe (caisse)" })),
   ];
-  return matches.length === 1 ? matches[0] : null;
+  if (singleMatches.length > 0) {
+    return singleMatches.length === 1 ? singleMatches[0] : null;
+  }
+
+  return suggestCashJournalGroupMatch(candidates.cashJournalEntries, transaction.amount);
+}
+
+// Un dépôt hebdomadaire regroupe rarement plus d'une poignée de jours de
+// vente, et jamais des jours très éloignés dans le temps — bornes purement
+// défensives contre une combinatoire ou un rapprochement absurdes, pas des
+// règles métier strictes.
+const MAX_CASH_JOURNAL_GROUP_SIZE = 10;
+const MAX_CASH_JOURNAL_GROUP_SPAN_DAYS = 31;
+
+/**
+ * Cherche, parmi les saisies de caisse non pointées (triées par date), une
+ * suite de jours CONSÉCUTIFS (pas de trou) dont la somme correspond
+ * exactement au montant du dépôt — cas réel d'un exploitant qui dépose en
+ * banque une fois par semaine plusieurs jours de vente cumulés. Comme pour
+ * suggestReconciliationMatch, ne propose une suggestion que si une seule
+ * combinaison correspond : sinon, retour à la sélection manuelle plutôt que
+ * de risquer un rapprochement faux.
+ */
+function suggestCashJournalGroupMatch(
+  entries: {
+    id: string;
+    date: Date;
+    cashAmount: unknown;
+    checkAmount: unknown;
+    cardAmount: unknown;
+    exceptionalSales: unknown;
+  }[],
+  targetAmount: number
+): SuggestedMatch | null {
+  const sorted = [...entries].sort((a, b) => a.date.getTime() - b.date.getTime());
+  const found: { ids: string[]; dates: Date[] }[] = [];
+
+  for (let start = 0; start < sorted.length; start++) {
+    let sum = 0;
+    const ids: string[] = [];
+    const dates: Date[] = [];
+    for (let end = start; end < Math.min(sorted.length, start + MAX_CASH_JOURNAL_GROUP_SIZE); end++) {
+      const spanDays = (sorted[end].date.getTime() - sorted[start].date.getTime()) / 86_400_000;
+      if (spanDays > MAX_CASH_JOURNAL_GROUP_SPAN_DAYS) break;
+      sum += cashJournalTotal(sorted[end]);
+      ids.push(sorted[end].id);
+      dates.push(sorted[end].date);
+      // Les groupes d'un seul jour sont déjà couverts par les correspondances
+      // simples appelantes — ne considérer ici que 2 jours ou plus.
+      if (ids.length >= 2 && Math.abs(sum - targetAmount) < 0.005) {
+        found.push({ ids: [...ids], dates: [...dates] });
+      }
+    }
+  }
+
+  if (found.length !== 1) return null;
+  const { ids, dates } = found[0];
+  const dateLabels = dates.map((d) => d.toLocaleDateString("fr-FR")).join(", ");
+  return {
+    type: "cashJournalGroup",
+    ids,
+    label: `Vente directe (caisse) — ${ids.length} jours cumulés (${dateLabels})`,
+  };
 }
 
 /**

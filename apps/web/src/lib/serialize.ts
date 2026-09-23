@@ -146,17 +146,20 @@ export function toTvaInstallmentView(item: TvaInstallment): FakeTvaInstallment {
 type BankTransactionWithMatches = BankTransaction & {
   entry: { counterpartyName: string } | null;
   invoice: { number: string } | null;
-  cashJournalEntry: { id: string } | null;
+  cashJournalEntries: { id: string }[];
 };
 
 export function toBankTransactionView(tx: BankTransactionWithMatches): FakeBankTransaction {
+  const cashJournalCount = tx.cashJournalEntries.length;
   const reconciledWith = tx.entry
     ? `Dépense — ${tx.entry.counterpartyName}`
     : tx.invoice
       ? `Facture ${tx.invoice.number}`
-      : tx.cashJournalEntry
-        ? "Vente directe (caisse)"
-        : null;
+      : cashJournalCount > 1
+        ? `Vente directe (caisse) — ${cashJournalCount} jours cumulés`
+        : cashJournalCount === 1
+          ? "Vente directe (caisse)"
+          : null;
 
   return {
     id: tx.id,
@@ -166,6 +169,7 @@ export function toBankTransactionView(tx: BankTransactionWithMatches): FakeBankT
     direction: tx.direction,
     reconciled: reconciledWith !== null,
     reconciledWith,
+    reconciledCashJournalIds: tx.cashJournalEntries.map((c) => c.id),
     status: genericStatusMap[tx.status],
   };
 }

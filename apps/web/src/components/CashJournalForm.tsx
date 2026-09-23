@@ -1,7 +1,12 @@
 "use client";
 
+import { useEffect, useState, useTransition } from "react";
 import { useActionState } from "react";
-import { submitCashJournalEntry, type CashJournalFormState } from "@/app/actions/cashJournal";
+import {
+  submitCashJournalEntry,
+  extractCashJournalPhotoAmount,
+  type CashJournalFormState,
+} from "@/app/actions/cashJournal";
 import type { Activity } from "@prisma/client";
 
 const initialState: CashJournalFormState = { status: "idle", message: "" };
@@ -11,6 +16,49 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
   const isMaraichage = activity === "BA_MARAICHAGE";
   const boundAction = submitCashJournalEntry.bind(null, activity);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
+
+  // Lecture automatique du montant sur la photo du jour (voir
+  // extractCashJournalPhotoAmount) : pré-remplit les champs ci-dessous, que
+  // l'exploitant garde la main pour corriger avant d'enregistrer.
+  const [cashAmount, setCashAmount] = useState("");
+  const [checkAmount, setCheckAmount] = useState("");
+  const [readNotice, setReadNotice] = useState<string | null>(null);
+  const [isReadPending, startReadTransition] = useTransition();
+
+  // Les champs montants sont désormais contrôlés (pré-remplissage par
+  // lecture automatique) : le reset natif du formulaire après un envoi
+  // réussi ne les efface plus tout seul, on le refait ici.
+  useEffect(() => {
+    if (state.status === "success") {
+      setCashAmount("");
+      setCheckAmount("");
+      setReadNotice(null);
+    }
+  }, [state]);
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReadNotice(null);
+    const photoData = new FormData();
+    photoData.set("photo", file);
+    startReadTransition(async () => {
+      const result = await extractCashJournalPhotoAmount(photoData);
+      if (result.status === "error") {
+        setReadNotice(result.message ?? "Lecture automatique impossible — saisis le montant toi-même.");
+        return;
+      }
+      if (result.cashAmount !== null) setCashAmount(String(result.cashAmount).replace(".", ","));
+      if (isMaraichage && result.checkAmount !== null) {
+        setCheckAmount(String(result.checkAmount).replace(".", ","));
+      }
+      if (result.cashAmount === null && result.checkAmount === null) {
+        setReadNotice("Aucun montant lu sur la photo — vérifie ou saisis-le toi-même.");
+      } else {
+        setReadNotice("Montant lu automatiquement — vérifie avant d'enregistrer.");
+      }
+    });
+  }
 
   return (
     <form action={formAction} className="space-y-4 rounded-lg border bg-white p-4">
@@ -45,6 +93,8 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
             inputMode="decimal"
             name="cashAmount"
             placeholder="0,00"
+            value={cashAmount}
+            onChange={(e) => setCashAmount(e.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
           />
         </label>
@@ -57,6 +107,8 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
                 inputMode="decimal"
                 name="checkAmount"
                 placeholder="0,00"
+                value={checkAmount}
+                onChange={(e) => setCheckAmount(e.target.value)}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
               />
             </label>
@@ -76,14 +128,23 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
 
       <div className={`grid gap-3 ${isMaraichage ? "sm:grid-cols-2" : "sm:grid-cols-1 sm:max-w-xs"}`}>
         <label className="text-sm">
-          <span className="text-slate-600">Justificatif — photo du bordereau de dépôt</span>
+          <span className="text-slate-600">
+            Photo du jour — comptage de caisse (pas le bordereau de dépôt en banque)
+          </span>
           <input
             type="file"
             name="depositSlip"
             accept="image/*,application/pdf"
             capture="environment"
+            onChange={handlePhotoChange}
             className="mt-1 w-full text-sm text-slate-500"
           />
+          {isReadPending && (
+            <span className="mt-1 block text-xs text-slate-400">Lecture automatique du montant…</span>
+          )}
+          {readNotice && !isReadPending && (
+            <span className="mt-1 block text-xs text-amber-700">{readNotice}</span>
+          )}
         </label>
         {isMaraichage && (
           <label className="text-sm">

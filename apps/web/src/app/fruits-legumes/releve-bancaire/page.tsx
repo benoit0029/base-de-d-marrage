@@ -22,7 +22,7 @@ export default async function Page({
     listClosedYears(),
   ]);
 
-  const unreconciled = transactions.filter((t) => !t.entry && !t.invoice && !t.cashJournalEntry);
+  const unreconciled = transactions.filter((t) => !t.entry && !t.invoice && t.cashJournalEntries.length === 0);
   const suggestions = await suggestReconciliationMatches(
     "BIC_FRUITS_LEGUMES",
     unreconciled.map((t) => ({ id: t.id, direction: t.direction, date: t.date, amount: Number(t.amount) }))

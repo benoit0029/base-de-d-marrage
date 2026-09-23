@@ -26,7 +26,7 @@ export default async function Page({
   // unique) pour chaque ligne pas encore pointée — évite d'avoir à ouvrir
   // "Rapprocher" pour découvrir s'il y a une correspondance, voir
   // docs/ARCHITECTURE.md.
-  const unreconciled = transactions.filter((t) => !t.entry && !t.invoice && !t.cashJournalEntry);
+  const unreconciled = transactions.filter((t) => !t.entry && !t.invoice && t.cashJournalEntries.length === 0);
   const suggestions = await suggestReconciliationMatches(
     "BA_MARAICHAGE",
     unreconciled.map((t) => ({ id: t.id, direction: t.direction, date: t.date, amount: Number(t.amount) }))
