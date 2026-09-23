@@ -82,7 +82,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
             <p className="mt-1">Motif : {detection.reason}.</p>
             {detectionDiffers && (
               <p className="mt-1">
-                À confirmer ci-dessous, après avoir obtenu ton numéro de TVA auprès du service des impôts (SIE).
+                À confirmer ci-dessous, après avoir obtenu ton numéro de TVA auprès du service des impôts (SIE) et
+                fait valider cette date par Cerfrance : la règle de calcul appliquée par l&apos;appli n&apos;a pas pu
+                être vérifiée sur un texte officiel.
               </p>
             )}
           </div>
