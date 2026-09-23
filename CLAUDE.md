@@ -4,6 +4,8 @@
 - Répondre en français, simplement, sans jargon technique inutile.
 - Discuter et faire valider avant de construire une fonctionnalité nouvelle ou de toucher à la fiscalité.
 - Toute affirmation fiscale ou juridique : dire clairement si elle est vérifiée sur une source officielle, sourcée par des sites secondaires, ou non vérifiée — et renvoyer vers Cerfrance quand ce n'est pas certain.
+- Ne jamais modifier un texte juridique du site kerbooth360.fr (CGV, politique de confidentialité, mentions légales) sans avoir d'abord montré le nouveau texte à Benoît et obtenu son accord.
+- Quand une même erreur revient deux fois, ajouter ici une consigne courte et vérifiable qui l'empêche, et le signaler à Benoît.
 
 ## Redéploiement
 À chaque fois qu'un changement doit être déployé, donner les trois commandes habituelles, une par bloc (le terminal de Benoît colle mal les commandes sur plusieurs lignes) :
