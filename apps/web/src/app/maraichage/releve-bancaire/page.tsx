@@ -1,8 +1,13 @@
-import { listBankTransactions, suggestReconciliationMatches } from "@/server/services/bankTransactions";
+import {
+  listBankTransactions,
+  suggestReconciliationMatches,
+  listBankStatementImports,
+} from "@/server/services/bankTransactions";
 import { listClosedYears } from "@/server/services/fiscalYearClosure";
 import { toBankTransactionView } from "@/lib/serialize";
 import { filterByYear, yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import BankStatementImportForm from "@/components/BankStatementImportForm";
+import BankStatementImportsList from "@/components/BankStatementImportsList";
 import BankTransactionsTable from "@/components/BankTransactionsTable";
 import YearFilter from "@/components/YearFilter";
 
@@ -17,9 +22,10 @@ export default async function Page({
   const { year: yearParam } = await searchParams;
   const year = yearParam ? Number(yearParam) : null;
 
-  const [transactions, closedYears] = await Promise.all([
+  const [transactions, closedYears, imports] = await Promise.all([
     listBankTransactions("BA_MARAICHAGE"),
     listClosedYears(),
+    listBankStatementImports("BA_MARAICHAGE"),
   ]);
 
   // Rapprochement suggéré automatiquement (montant identique, candidat
@@ -41,6 +47,15 @@ export default async function Page({
   return (
     <div className="space-y-4">
       <BankStatementImportForm activity="BA_MARAICHAGE" />
+      <BankStatementImportsList
+        activity="BA_MARAICHAGE"
+        imports={imports.map((i) => ({
+          fileHash: i.fileHash,
+          count: i.count,
+          minDate: i.minDate.toISOString(),
+          maxDate: i.maxDate.toISOString(),
+        }))}
+      />
       <div className="flex justify-end">
         <YearFilter closedYears={closedYears} />
       </div>

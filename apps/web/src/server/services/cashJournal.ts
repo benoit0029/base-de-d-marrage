@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { assertDateNotInClosedYear } from "@/server/services/fiscalYearClosure";
+import { resetBankTransactionValidationIfOrphaned } from "@/server/services/bankTransactions";
 import type { Activity, CashJournalEntry } from "@prisma/client";
 
 export interface ExceptionalSale {
@@ -126,6 +127,7 @@ export async function deleteCashJournalEntry(id: string): Promise<void> {
     );
   }
   await prisma.cashJournalEntry.delete({ where: { id } });
+  await resetBankTransactionValidationIfOrphaned(entry.bankTransactionId);
 }
 
 /** « Supprimer la ligne » : masque définitivement une saisie déjà validée, sans l'effacer (contrôle fiscal). */
@@ -155,4 +157,5 @@ export async function softDeleteCashJournalEntry(id: string, userId: string | nu
       },
     }),
   ]);
+  await resetBankTransactionValidationIfOrphaned(entry.bankTransactionId);
 }

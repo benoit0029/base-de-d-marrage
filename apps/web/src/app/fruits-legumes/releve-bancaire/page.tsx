@@ -1,8 +1,13 @@
-import { listBankTransactions, suggestReconciliationMatches } from "@/server/services/bankTransactions";
+import {
+  listBankTransactions,
+  suggestReconciliationMatches,
+  listBankStatementImports,
+} from "@/server/services/bankTransactions";
 import { listClosedYears } from "@/server/services/fiscalYearClosure";
 import { toBankTransactionView } from "@/lib/serialize";
 import { filterByYear, yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import BankStatementImportForm from "@/components/BankStatementImportForm";
+import BankStatementImportsList from "@/components/BankStatementImportsList";
 import BankTransactionsTable from "@/components/BankTransactionsTable";
 import YearFilter from "@/components/YearFilter";
 
@@ -17,9 +22,10 @@ export default async function Page({
   const { year: yearParam } = await searchParams;
   const year = yearParam ? Number(yearParam) : null;
 
-  const [transactions, closedYears] = await Promise.all([
+  const [transactions, closedYears, imports] = await Promise.all([
     listBankTransactions("BIC_FRUITS_LEGUMES"),
     listClosedYears(),
+    listBankStatementImports("BIC_FRUITS_LEGUMES"),
   ]);
 
   const unreconciled = transactions.filter((t) => !t.entry && !t.invoice && t.cashJournalEntries.length === 0);
@@ -37,6 +43,15 @@ export default async function Page({
   return (
     <div className="space-y-4">
       <BankStatementImportForm activity="BIC_FRUITS_LEGUMES" />
+      <BankStatementImportsList
+        activity="BIC_FRUITS_LEGUMES"
+        imports={imports.map((i) => ({
+          fileHash: i.fileHash,
+          count: i.count,
+          minDate: i.minDate.toISOString(),
+          maxDate: i.maxDate.toISOString(),
+        }))}
+      />
       <div className="flex justify-end">
         <YearFilter closedYears={closedYears} />
       </div>

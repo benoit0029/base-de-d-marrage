@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { assertDateNotInClosedYear } from "@/server/services/fiscalYearClosure";
+import { resetBankTransactionValidationIfOrphaned } from "@/server/services/bankTransactions";
 import type { Activity, Entry } from "@prisma/client";
 
 export async function listEntries(activity: Activity) {
@@ -66,6 +67,7 @@ export async function deleteEntry(entryId: string): Promise<void> {
     );
   }
   await prisma.entry.delete({ where: { id: entryId } });
+  await resetBankTransactionValidationIfOrphaned(entry.bankTransactionId);
 }
 
 /**
@@ -99,6 +101,7 @@ export async function softDeleteEntry(entryId: string, userId: string | null): P
       },
     }),
   ]);
+  await resetBankTransactionValidationIfOrphaned(entry.bankTransactionId);
 }
 
 /**

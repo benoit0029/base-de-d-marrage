@@ -21,6 +21,43 @@ export async function listBankTransactions(activity: Activity) {
   });
 }
 
+export interface BankStatementImportSummary {
+  fileHash: string;
+  count: number;
+  minDate: Date;
+  maxDate: Date;
+}
+
+/**
+ * Regroupe les lignes importées par fichier d'origine (même empreinte,
+ * voir importBankStatementCsv) — pour offrir un "Supprimer ce relevé" en un
+ * clic plutôt que de forcer une suppression ligne par ligne après un import
+ * de test ou une erreur de fichier.
+ */
+export async function listBankStatementImports(activity: Activity): Promise<BankStatementImportSummary[]> {
+  const tenantId = await getDefaultTenantId();
+  const rows = await prisma.bankTransaction.findMany({
+    where: { tenantId, activity, deletedAt: null, sourceFileHash: { not: null } },
+    select: { sourceFileHash: true, date: true },
+  });
+
+  const groups = new Map<string, BankStatementImportSummary>();
+  for (const row of rows) {
+    const fileHash = row.sourceFileHash;
+    if (!fileHash) continue;
+    const existing = groups.get(fileHash);
+    if (!existing) {
+      groups.set(fileHash, { fileHash, count: 1, minDate: row.date, maxDate: row.date });
+    } else {
+      existing.count++;
+      if (row.date < existing.minDate) existing.minDate = row.date;
+      if (row.date > existing.maxDate) existing.maxDate = row.date;
+    }
+  }
+
+  return Array.from(groups.values()).sort((a, b) => b.maxDate.getTime() - a.maxDate.getTime());
+}
+
 /**
  * Confirme une ligne importée en attente (même règle transversale que les
  * autres registres — voir docs/ARCHITECTURE.md).
@@ -87,6 +124,50 @@ export async function softDeleteBankTransaction(id: string, userId: string | nul
       },
     }),
   ]);
+}
+
+export interface DeleteImportResult {
+  deleted: number; // lignes en attente, supprimées réellement
+  softDeleted: number; // lignes déjà validées, masquées (contrôle fiscal)
+  blocked: number; // lignes refusées (ex. exercice clôturé) — laissées telles quelles
+}
+
+/**
+ * Supprime en un clic toutes les lignes d'un même relevé importé (même
+ * empreinte de fichier, voir importBankStatementCsv/listBankStatementImports)
+ * — pour ne pas avoir à cliquer ligne par ligne après un import de test ou
+ * un mauvais fichier. Réutilise exactement les mêmes règles que la
+ * suppression individuelle (PENDING supprimée réellement, VALIDATED masquée
+ * en soft-delete) ; une ligne qu'une règle refuse (exercice clôturé) est
+ * comptée à part plutôt que de faire échouer tout le lot.
+ */
+export async function deleteBankStatementImport(
+  activity: Activity,
+  fileHash: string,
+  userId: string | null
+): Promise<DeleteImportResult> {
+  const tenantId = await getDefaultTenantId();
+  const rows = await prisma.bankTransaction.findMany({
+    where: { tenantId, activity, sourceFileHash: fileHash, deletedAt: null },
+    select: { id: true, status: true },
+  });
+
+  const result: DeleteImportResult = { deleted: 0, softDeleted: 0, blocked: 0 };
+  for (const row of rows) {
+    try {
+      if (row.status === "VALIDATED") {
+        await softDeleteBankTransaction(row.id, userId);
+        result.softDeleted++;
+      } else {
+        await deleteBankTransaction(row.id);
+        result.deleted++;
+      }
+    } catch {
+      result.blocked++;
+    }
+  }
+
+  return result;
 }
 
 // Beaucoup de banques françaises exportent leurs relevés CSV en
@@ -213,6 +294,26 @@ export async function reconcileBankTransaction(
   }
 }
 
+/**
+ * Repasse un relevé bancaire "Validé" en attente de validation quand son
+ * rapprochement disparaît — que ce soit par annulation explicite
+ * (unreconcileBankTransaction) ou parce que la pièce en face a été
+ * supprimée (voir deleteEntry/softDeleteEntry, deleteCashJournalEntry/
+ * softDeleteCashJournalEntry). Un relevé marqué "Validé" sans plus aucune
+ * pièce derrière serait trompeur en cas de contrôle — mieux vaut le faire
+ * revalider. Sans effet si le relevé n'était pas VALIDATED (cas courant :
+ * suppression d'une pièce PENDING rapprochée à un relevé lui-même PENDING).
+ */
+export async function resetBankTransactionValidationIfOrphaned(
+  bankTransactionId: string | null | undefined
+): Promise<void> {
+  if (!bankTransactionId) return;
+  await prisma.bankTransaction.updateMany({
+    where: { id: bankTransactionId, status: "VALIDATED" },
+    data: { status: "PENDING", validatedById: null, validatedAt: null },
+  });
+}
+
 // Annule un rapprochement, y compris la date de paiement/encaissement posée
 // automatiquement lors du rapprochement — pour la ressaisir proprement si
 // besoin. Cas rare non géré : une paidAt saisie manuellement avant un
@@ -238,6 +339,10 @@ export async function unreconcileBankTransaction(bankTransactionId: string) {
     prisma.cashJournalEntry.updateMany({
       where: { bankTransactionId },
       data: { bankTransactionId: null },
+    }),
+    prisma.bankTransaction.updateMany({
+      where: { id: bankTransactionId, status: "VALIDATED" },
+      data: { status: "PENDING", validatedById: null, validatedAt: null },
     }),
   ]);
 }
