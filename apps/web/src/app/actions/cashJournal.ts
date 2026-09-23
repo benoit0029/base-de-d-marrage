@@ -17,6 +17,7 @@ export interface CashJournalPhotoReadResult {
   date: string | null;
   cashAmount: number | null;
   checkAmount: number | null;
+  plantSalesAmount: number | null;
   message?: string;
 }
 
@@ -34,13 +35,29 @@ export async function extractCashJournalPhotoAmount(
 ): Promise<CashJournalPhotoReadResult> {
   const file = formData.get("photo");
   if (!(file instanceof File) || file.size === 0) {
-    return { status: "error", date: null, cashAmount: null, checkAmount: null, message: "Aucune photo reçue." };
+    return {
+      status: "error",
+      date: null,
+      cashAmount: null,
+      checkAmount: null,
+      plantSalesAmount: null,
+      message: "Aucune photo reçue.",
+    };
   }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { date, cashAmount, checkAmount } = await extractCashJournalAmount(buffer, file.type || "image/jpeg");
-    return { status: "ok", date: date && ISO_DATE_RE.test(date) ? date : null, cashAmount, checkAmount };
+    const { date, cashAmount, checkAmount, plantSalesAmount } = await extractCashJournalAmount(
+      buffer,
+      file.type || "image/jpeg"
+    );
+    return {
+      status: "ok",
+      date: date && ISO_DATE_RE.test(date) ? date : null,
+      cashAmount,
+      checkAmount,
+      plantSalesAmount,
+    };
   } catch (err) {
     if (err instanceof MistralConfigError || err instanceof MistralApiError) {
       return {
@@ -48,6 +65,7 @@ export async function extractCashJournalPhotoAmount(
         date: null,
         cashAmount: null,
         checkAmount: null,
+        plantSalesAmount: null,
         message: "Lecture automatique indisponible — saisis le montant manuellement.",
       };
     }
@@ -146,7 +164,8 @@ export async function submitCashJournalEntry(
   const cashAmount = parseAmount(formData.get("cashAmount"));
   const checkAmount = isMaraichage ? parseAmount(formData.get("checkAmount")) : 0;
   const cardAmount = isMaraichage ? parseAmount(formData.get("cardAmount")) : 0;
-  if ([cashAmount, checkAmount, cardAmount].some((n) => Number.isNaN(n) || n < 0)) {
+  const plantSalesAmount = isMaraichage ? parseAmount(formData.get("plantSalesAmount")) : 0;
+  if ([cashAmount, checkAmount, cardAmount, plantSalesAmount].some((n) => Number.isNaN(n) || n < 0)) {
     return { status: "error", message: "Montant invalide." };
   }
 
@@ -181,6 +200,7 @@ export async function submitCashJournalEntry(
       cashAmount,
       checkAmount,
       cardAmount,
+      plantSalesAmount,
       depositSlipUrl,
       cardStatementUrl,
       exceptionalSales,

@@ -30,6 +30,7 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
   const [cashAmount, setCashAmount] = useState("");
   const [checkAmount, setCheckAmount] = useState("");
   const [cardAmount, setCardAmount] = useState("");
+  const [plantSalesAmount, setPlantSalesAmount] = useState("");
   const [readNotice, setReadNotice] = useState<string | null>(null);
   const [cardReadNotice, setCardReadNotice] = useState<string | null>(null);
   const [isReadPending, startReadTransition] = useTransition();
@@ -44,6 +45,7 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
       setCashAmount("");
       setCheckAmount("");
       setCardAmount("");
+      setPlantSalesAmount("");
       setReadNotice(null);
       setCardReadNotice(null);
     }
@@ -68,6 +70,9 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
       if (result.cashAmount !== null) setCashAmount(String(result.cashAmount).replace(".", ","));
       if (isMaraichage && result.checkAmount !== null) {
         setCheckAmount(String(result.checkAmount).replace(".", ","));
+      }
+      if (isMaraichage && result.plantSalesAmount !== null) {
+        setPlantSalesAmount(String(result.plantSalesAmount).replace(".", ","));
       }
       const notices: string[] = [];
       if (result.date !== null) notices.push(`date de vente lue : ${formatFrDate(result.date)}`);
@@ -171,6 +176,26 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
           </>
         )}
       </div>
+
+      {isMaraichage && (
+        <label className="block text-sm sm:max-w-xs">
+          <span className="text-slate-600">
+            Dont vente de plants (10 %){" "}
+            <span className="text-xs text-slate-400">
+              — part déjà incluse ci-dessus, pas un montant en plus
+            </span>
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            name="plantSalesAmount"
+            placeholder="0,00"
+            value={plantSalesAmount}
+            onChange={(e) => setPlantSalesAmount(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+      )}
 
       <div className={`grid gap-3 ${isMaraichage ? "sm:grid-cols-2" : "sm:grid-cols-1 sm:max-w-xs"}`}>
         <label className="text-sm">

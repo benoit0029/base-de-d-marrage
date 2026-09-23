@@ -29,6 +29,9 @@ export interface CreateCashJournalEntryInput {
   cashAmount: number;
   checkAmount?: number;
   cardAmount?: number;
+  // Part DÉJÀ INCLUSE dans cashAmount+checkAmount+cardAmount vendue à 10%
+  // (plants) plutôt qu'à 5,5% (fruits/légumes) — Maraîchage uniquement.
+  plantSalesAmount?: number;
   depositSlipUrl?: string;
   cardStatementUrl?: string;
   exceptionalSales?: ExceptionalSale[];
@@ -54,6 +57,13 @@ export async function createCashJournalEntry(
   const tenantId = await getDefaultTenantId();
   const cashOnly = activity === "BIC_FRUITS_LEGUMES";
 
+  const dayTotal = input.cashAmount + (input.checkAmount ?? 0) + (input.cardAmount ?? 0);
+  if (!cashOnly && (input.plantSalesAmount ?? 0) > dayTotal) {
+    throw new CashJournalError(
+      "La part \"vente de plants\" ne peut pas dépasser le total du jour (espèces + chèques + CB) : c'est une part DE ce total, pas un montant en plus."
+    );
+  }
+
   const existing = await prisma.cashJournalEntry.findUnique({
     where: { tenantId_activity_date: { tenantId, activity, date: input.date } },
   });
@@ -70,6 +80,7 @@ export async function createCashJournalEntry(
     cashAmount: input.cashAmount,
     checkAmount: cashOnly ? 0 : input.checkAmount ?? 0,
     cardAmount: cashOnly ? 0 : input.cardAmount ?? 0,
+    plantSalesAmount: cashOnly ? 0 : input.plantSalesAmount ?? 0,
     depositSlipUrl: input.depositSlipUrl,
     cardStatementUrl: cashOnly ? undefined : input.cardStatementUrl,
     exceptionalSales: input.exceptionalSales?.length

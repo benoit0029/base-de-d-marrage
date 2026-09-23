@@ -1,6 +1,6 @@
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
-import { currentYearRange, sumInvoicedTotal, sumCashJournalTotal } from "@/lib/thresholds";
+import { currentYearRange, sumInvoicedTotal } from "@/lib/thresholds";
 
 export interface TvaRegisterRow {
   period: string; // ex. "2026-T3"
@@ -130,21 +130,27 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
 // obligatoire l'année suivante — un seul geste annuel (le CA12A) suffit.
 export const TVA_INSTALLMENT_THRESHOLD = 1000;
 
+// Taux réduit (fruits/légumes) et taux normal agricole (vente de plants) —
+// vente directe Maraîchage, voir CashJournalEntry.plantSalesAmount. À
+// revérifier si la gamme de produits vendus change (ex. produits transformés
+// à un autre taux).
+const VAT_RATE_REDUCED = 0.055;
+const VAT_RATE_STANDARD = 0.10;
+
+// Extrait la TVA d'un montant TTC à un taux donné : TVA = TTC × taux / (1 + taux).
+function vatFromTtc(ttc: number, rate: number): number {
+  return ttc * (rate / (1 + rate));
+}
+
 export interface AnnualTvaDeclaration {
   year: number;
-  // Base de la TVA collectée : factures Maraîchage payées dans l'année
-  // uniquement. ⚠️ Limitation connue, à confirmer avec la MSA/Cerfrance :
-  // les ventes directes du journal de caisse (CashJournalEntry) ne portent
-  // aujourd'hui aucune information de TVA (montants saisis sans distinction
-  // HT/TTC, voir sumCashJournalTotal dans lib/thresholds) et ne sont donc
-  // PAS incluses ici — si ces ventes directes sont elles aussi soumises à la
-  // TVA au même titre que les factures, ce montant sous-estime la TVA
-  // réellement due. Confirmer avant de déposer le formulaire réel.
-  caHtFacture: number;
+  caHtFacture: number; // CA HT facturé de l'année (base TVA collectée sur factures)
   // Base de la taxe ADAR : CA facturé + vente directe (la taxe porte sur le
   // chiffre d'affaires total, pas seulement sur la part facturée).
   caTotalPourAdar: number;
-  collected: number;
+  collectedFactures: number; // TVA collectée sur factures
+  collectedVenteDirecte: number; // TVA collectée sur vente directe (5,5% + 10%, voir plantSalesAmount)
+  collected: number; // collectedFactures + collectedVenteDirecte
   deductibleAutres: number; // achats/autres biens et services (Entry ACHAT)
   deductibleImmobilisations: number; // Entry IMMOBILISATION
   deductibleTotal: number;
@@ -180,20 +186,70 @@ function ca12aDeadline(recetteYear: number): Date {
 }
 
 /**
+ * TVA collectée sur vente directe (Maraîchage), en distinguant les deux taux
+ * mélangés dans un même total encaissé : la part "vente de plants"
+ * (plantSalesAmount, 10%) et le reste (fruits/légumes, 5,5%). Les ventes
+ * exceptionnelles (> 76 €, saisies à part) sont comptées au taux réduit par
+ * défaut — simplification à corriger si elles concernent aussi des plants.
+ */
+async function computeCashJournalVat(year: number): Promise<{ caTotal: number; collected: number }> {
+  const tenantId = await getDefaultTenantId();
+  const { start, end } = currentYearRange(year);
+
+  const entries = await prisma.cashJournalEntry.findMany({
+    where: {
+      tenantId,
+      activity: "BA_MARAICHAGE",
+      status: "VALIDATED",
+      deletedAt: null,
+      date: { gte: start, lte: end },
+    },
+    select: { cashAmount: true, checkAmount: true, cardAmount: true, exceptionalSales: true, plantSalesAmount: true },
+  });
+
+  let caTotal = 0;
+  let standardRateTtc = 0; // vente de plants, 10%
+  let reducedRateTtc = 0; // fruits/légumes (+ ventes exceptionnelles), 5,5%
+
+  for (const e of entries) {
+    const exceptional = Array.isArray(e.exceptionalSales)
+      ? e.exceptionalSales.reduce((s: number, sale) => {
+          const amount =
+            sale && typeof sale === "object" && "amountTtc" in sale
+              ? Number((sale as { amountTtc: unknown }).amountTtc)
+              : 0;
+          return s + (Number.isFinite(amount) ? amount : 0);
+        }, 0)
+      : 0;
+
+    const dayTotal = Number(e.cashAmount) + Number(e.checkAmount) + Number(e.cardAmount) + exceptional;
+    const plants = Number(e.plantSalesAmount ?? 0);
+
+    caTotal += dayTotal;
+    standardRateTtc += plants;
+    reducedRateTtc += dayTotal - plants;
+  }
+
+  const collected = vatFromTtc(reducedRateTtc, VAT_RATE_REDUCED) + vatFromTtc(standardRateTtc, VAT_RATE_STANDARD);
+  return { caTotal, collected };
+}
+
+/**
  * Calcule la déclaration annuelle de régularisation TVA (CA12A) de
- * l'exercice `year`, entièrement à partir des factures/dépenses déjà
- * saisies et validées — jamais de ressaisie manuelle des montants annuels.
- * Les acomptes trimestriels déjà versés dans l'année (onglet Acompte TVA)
- * sont déduits du solde théorique pour donner le montant réellement dû.
+ * l'exercice `year`, entièrement à partir des factures/dépenses/ventes
+ * directes déjà saisies et validées — jamais de ressaisie manuelle des
+ * montants annuels. Les acomptes trimestriels déjà versés dans l'année
+ * (onglet Acompte TVA) sont déduits du solde théorique pour donner le
+ * montant réellement dû.
  */
 export async function computeAnnualTvaDeclaration(year: number): Promise<AnnualTvaDeclaration> {
   const tenantId = await getDefaultTenantId();
   const { start, end } = currentYearRange(year);
 
-  const [caHtFacture, caCashJournal, collectedAgg, deductibleAutresAgg, deductibleImmoAgg, acomptesAgg] =
+  const [caHtFacture, cashJournalVat, collectedAgg, deductibleAutresAgg, deductibleImmoAgg, acomptesAgg] =
     await Promise.all([
       sumInvoicedTotal("BA_MARAICHAGE", start, end),
-      sumCashJournalTotal("BA_MARAICHAGE", start, end),
+      computeCashJournalVat(year),
       prisma.invoice.aggregate({
         where: {
           tenantId,
@@ -232,8 +288,10 @@ export async function computeAnnualTvaDeclaration(year: number): Promise<AnnualT
       }),
     ]);
 
-  const caTotalPourAdar = caHtFacture + caCashJournal;
-  const collected = Number(collectedAgg._sum.totalVat ?? 0);
+  const caTotalPourAdar = caHtFacture + cashJournalVat.caTotal;
+  const collectedFactures = Number(collectedAgg._sum.totalVat ?? 0);
+  const collectedVenteDirecte = cashJournalVat.collected;
+  const collected = collectedFactures + collectedVenteDirecte;
   const deductibleAutres = Number(deductibleAutresAgg._sum.amountVat ?? 0);
   const deductibleImmobilisations = Number(deductibleImmoAgg._sum.amountVat ?? 0);
   const deductibleTotal = deductibleAutres + deductibleImmobilisations;
@@ -246,6 +304,8 @@ export async function computeAnnualTvaDeclaration(year: number): Promise<AnnualT
     year,
     caHtFacture,
     caTotalPourAdar,
+    collectedFactures,
+    collectedVenteDirecte,
     collected,
     deductibleAutres,
     deductibleImmobilisations,

@@ -81,6 +81,10 @@ const cashJournalAmountSchema = z.object({
   date: z.string().nullable(), // format ISO 8601 (YYYY-MM-DD) ou null si absente
   cashAmount: z.number().nullable(),
   checkAmount: z.number().nullable(),
+  // Part DÉJÀ INCLUSE dans cashAmount/checkAmount (pas un montant en plus)
+  // correspondant à de la vente de plants (Maraîchage, taxée à 10% plutôt
+  // que 5,5% pour les fruits/légumes) — voir CashJournalEntry.plantSalesAmount.
+  plantSalesAmount: z.number().nullable(),
 });
 
 export type CashJournalAmountExtraction = z.infer<typeof cashJournalAmountSchema>;
@@ -99,8 +103,10 @@ export async function extractCashJournalAmount(
       'uniquement en JSON avec les clés "date" (date de la VENTE écrite sur la photo, au format ' +
       'YYYY-MM-DD, ou null si aucune date n\'y est notée — ne mets JAMAIS la date d\'aujourd\'hui ' +
       'par défaut, laisse null si tu ne la vois pas), "cashAmount" (montant en espèces de la ' +
-      'recette du jour, nombre ou null si absent/illisible) et "checkAmount" (montant en chèques ' +
-      "du jour, nombre ou null si absent/non applicable). Si une date est écrite sans année " +
+      'recette du jour, nombre ou null si absent/illisible), "checkAmount" (montant en chèques ' +
+      'du jour, nombre ou null si absent/non applicable) et "plantSalesAmount" (part de vente de ' +
+      "plants DÉJÀ INCLUSE dans cashAmount/checkAmount, PAS un montant en plus — nombre ou null si " +
+      "aucune vente de plants n'est mentionnée ce jour-là). Si une date est écrite sans année " +
       `(ex. "25/07"), déduis l'année à partir d'aujourd'hui (${today}) : année en cours, sauf si ` +
       "cela donnerait une date dans le futur, auquel cas année précédente. N'invente aucun montant " +
       "ni aucune date : si tu ne peux pas lire un champ avec certitude, réponds null pour ce champ " +

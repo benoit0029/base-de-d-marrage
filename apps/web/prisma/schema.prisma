@@ -261,6 +261,12 @@ model CashJournalEntry {
   cashAmount       Decimal     @db.Decimal(12, 2) @default(0)
   checkAmount      Decimal     @db.Decimal(12, 2) @default(0) // Maraîchage uniquement
   cardAmount       Decimal     @db.Decimal(12, 2) @default(0) // Maraîchage uniquement
+  // Part DÉJÀ INCLUSE dans cashAmount+checkAmount+cardAmount (pas un montant
+  // en plus) correspondant à de la vente de plants, taxée à 10 % — le reste
+  // du total du jour est considéré vendu à 5,5 % (fruits/légumes). Maraîchage
+  // uniquement ; sert au calcul de la TVA collectée sur vente directe (voir
+  // lib/tva, déclaration CA12A/3517-AGR-SD).
+  plantSalesAmount Decimal     @db.Decimal(12, 2) @default(0)
   // Photo prise CHAQUE jour de vente (comptage de caisse manuscrit ou ticket
   // Z) — PAS le bordereau de dépôt bancaire, qui est hebdomadaire et ne
   // permettrait pas de respecter l'obligation d'enregistrement jour par jour

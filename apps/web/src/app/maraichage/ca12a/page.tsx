@@ -61,8 +61,15 @@ export default async function Page({
             <dd className="text-sm font-medium">{formatEuro(d.caHtFacture)}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-slate-400">TVA collectée</dt>
-            <dd className="text-sm font-medium">{formatEuro(d.collected)}</dd>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">
+              TVA collectée <span className="normal-case text-slate-400">(factures + vente directe)</span>
+            </dt>
+            <dd className="text-sm font-medium">
+              {formatEuro(d.collected)}
+              <span className="ml-1 text-xs font-normal text-slate-400">
+                dont {formatEuro(d.collectedFactures)} factures + {formatEuro(d.collectedVenteDirecte)} vente directe
+              </span>
+            </dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-slate-400">TVA déductible — achats/services</dt>
@@ -94,14 +101,16 @@ export default async function Page({
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        <p className="font-medium">⚠️ Limitation connue — à confirmer avec la MSA/Cerfrance</p>
+        <p className="font-medium">⚠️ Limitation restante — à confirmer avec la MSA/Cerfrance</p>
         <p className="mt-1">
-          La TVA collectée ci-dessus ne compte que les factures. Les ventes
-          directes (journal de caisse) ne portent aujourd&apos;hui aucune
-          information de TVA dans l&apos;appli et ne sont donc pas incluses —
-          si ces ventes sont elles aussi soumises à la TVA, ce montant sous-
-          estime la TVA réellement due. La taxe ADAR, elle, est bien calculée
-          sur le chiffre d&apos;affaires total (factures + vente directe).
+          La TVA de la vente directe distingue les deux taux (5,5 % fruits/
+          légumes, 10 % plants) via la case &laquo; Dont vente de plants
+          &raquo; de la saisie du jour. Seules les ventes exceptionnelles
+          ({">"} 76 €, saisies à part) sont comptées par défaut au taux réduit
+          de 5,5 % — à corriger si l&apos;une d&apos;elles concerne aussi des
+          plants. Si tes factures utilisent plusieurs taux de TVA, vérifie
+          aussi leur répartition (lignes 04, 5a, 5c) avant de reporter les
+          montants sur le formulaire officiel.
         </p>
       </div>
 
