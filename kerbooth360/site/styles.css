@@ -1,3 +1,14 @@
+/* Polices hébergées sur le site (plus aucun appel à Google Fonts : l'adresse
+   IP des visiteurs n'est plus transmise à Google). Fraunces et Inter,
+   licence SIL Open Font License 1.1, sous-ensemble "latin" (français inclus). */
+@font-face{
+  font-family:'Fraunces';font-style:normal;font-weight:400 700;font-display:swap;
+  src:url(assets/fonts/fraunces-latin.woff2) format('woff2');
+}
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;
+  src:url(assets/fonts/inter-latin.woff2) format('woff2');
+}
 :root{
   --ink:#0F1B2D;
   --panel:#163654;
@@ -190,3 +201,5 @@ footer{
   background:var(--ink);border-top:1px solid rgba(245,239,230,0.08);
 }
 footer a{text-decoration:underline;}
+.form-privacy{font-size:0.8rem;color:var(--slate);margin:10px 0 0;max-width:60ch;line-height:1.4;}
+.form-privacy a{text-decoration:underline;color:inherit;}
