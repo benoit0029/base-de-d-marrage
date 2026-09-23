@@ -49,7 +49,7 @@
         "bodyParameters": {
           "parameters": [
             { "name": "mode", "value": "payment" },
-            { "name": "ui_mode", "value": "embedded" },
+            { "name": "ui_mode", "value": "embedded_page" },
             { "name": "return_url", "value": "https://kerbooth360.fr/?paiement=confirme" },
             { "name": "customer_email", "value": "={{ $json.clientEmail }}" },
             { "name": "line_items[0][price_data][currency]", "value": "eur" },
@@ -70,7 +70,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [680, 300],
-      "notes": "ui_mode \"embedded\" (revu le 22/09/2026, parcours embarqué) : le client paie directement sur kerbooth360.fr au lieu d'être redirigé vers checkout.stripe.com — le site récupère le client_secret via l'endpoint de statut (workflow kerbooth-booking-status) pendant qu'il patiente sur la page après signature. return_url ne sert que de repli pour les moyens de paiement qui exigent une redirection (pas la carte bancaire en usage normal). Body construit dynamiquement à partir de la réservation renvoyée par le nœud précédent (paiement direct en une fois, plus d'acompte/solde séparés) : montant total en centimes, email client, bookingId en métadonnée (pour que le webhook checkout.session.completed, workflow kerbooth-stripe-payment-received, retrouve la réservation)."
+      "notes": "ui_mode \"embedded_page\" (revu le 22/09/2026, parcours embarqué ; ex-\"embedded\", renommé par Stripe en mars 2026) : le client paie directement sur kerbooth360.fr au lieu d'être redirigé vers checkout.stripe.com — le site récupère le client_secret via l'endpoint de statut (workflow kerbooth-booking-status) pendant qu'il patiente sur la page après signature. return_url ne sert que de repli pour les moyens de paiement qui exigent une redirection (pas la carte bancaire en usage normal). Body construit dynamiquement à partir de la réservation renvoyée par le nœud précédent (paiement direct en une fois, plus d'acompte/solde séparés) : montant total en centimes, email client, bookingId en métadonnée (pour que le webhook checkout.session.completed, workflow kerbooth-stripe-payment-received, retrouve la réservation)."
     },
     {
       "parameters": {
@@ -109,7 +109,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [1120, 300],
-      "notes": "Email de repli uniquement (revu le 22/09/2026, parcours embarqué) : plus de lien de paiement cliquable, ui_mode \"embedded\" ne fournit pas d'URL Stripe hébergée. Le parcours normal reste sur la page kerbooth360.fr, cet email couvre juste le cas où le client aurait fermé l'onglet."
+      "notes": "Email de repli uniquement (revu le 22/09/2026, parcours embarqué) : plus de lien de paiement cliquable, ui_mode \"embedded_page\" ne fournit pas d'URL Stripe hébergée. Le parcours normal reste sur la page kerbooth360.fr, cet email couvre juste le cas où le client aurait fermé l'onglet."
     }
   ],
   "connections": {
