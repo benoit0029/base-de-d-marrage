@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { generateInvoiceNumber } from "@/lib/invoicing/numbering";
-import { isVatApplicable } from "@/lib/invoicing/vatPolicy";
+import { isVatApplicableOn } from "@/lib/invoicing/vatPolicy";
 import { upsertClient } from "@/server/services/clients";
 import { ensureProduct } from "@/server/services/products";
 import type { Activity, InvoiceType } from "@prisma/client";
@@ -57,6 +57,11 @@ export interface InvoiceLineInput {
   quantity: number;
   unitPrice: number;
   vatRate: number;
+  // Montant TTC déjà encaissé pour cette ligne (ex. paiement Stripe Kerbooth) :
+  // si fourni et que la TVA s'applique, HT = TTC / (1 + taux) arrondi et
+  // TVA = TTC − HT, pour que la facture retombe au centime près sur
+  // l'encaissement (unitPrice est alors ignoré). Sans TVA, TTC = HT.
+  paidTtc?: number;
 }
 
 export interface CreateInvoiceInput {
@@ -77,8 +82,9 @@ export class InvoicingError extends Error {}
 
 /**
  * Crée une facture ou un devis avec numérotation automatique. La TVA est
- * appliquée uniquement pour le maraîchage (voir lib/invoicing/vatPolicy) :
- * pour les deux activités micro-BIC sous franchise en base, tout taux de TVA
+ * appliquée au maraîchage, et aux activités micro-BIC seulement à partir de
+ * leur date de sortie de franchise confirmée (voir lib/invoicing/vatPolicy),
+ * appréciée à la date de la facture : sous franchise, tout taux de TVA
  * soumis par erreur est ignoré (forcé à 0) plutôt que fait confiance côté
  * client, pour ne jamais émettre une facture non conforme.
  */
@@ -88,10 +94,15 @@ export async function createInvoice(input: CreateInvoiceInput) {
   }
 
   const tenantId = await getDefaultTenantId();
-  const vatApplicable = isVatApplicable(input.activity);
+  const vatApplicable = await isVatApplicableOn(input.activity, input.issueDate);
 
-  const lines = input.lines.map((line) => {
+  const lines = input.lines.map(({ paidTtc, ...line }) => {
     const vatRate = vatApplicable ? line.vatRate : 0;
+    if (paidTtc !== undefined) {
+      const lineTotal = round2(paidTtc / (1 + vatRate / 100));
+      const lineVat = round2(paidTtc - lineTotal);
+      return { ...line, unitPrice: round2(lineTotal / line.quantity), vatRate, lineTotal, lineVat };
+    }
     const lineTotal = round2(line.quantity * line.unitPrice);
     const lineVat = round2(lineTotal * (vatRate / 100));
     return { ...line, vatRate, lineTotal, lineVat };

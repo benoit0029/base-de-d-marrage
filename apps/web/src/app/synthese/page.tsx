@@ -1,11 +1,21 @@
+import Link from "next/link";
 import ThresholdBar from "@/components/ThresholdBar";
 import { computeBaThreshold, computeBicThresholds } from "@/lib/thresholds";
+import { detectBicVatLiability, getBicVatSettings } from "@/lib/tva/bic";
 import { formatEuro } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [bic, ba] = await Promise.all([computeBicThresholds(), computeBaThreshold()]);
+  const [bic, ba, vatSettings, vatDetection] = await Promise.all([
+    computeBicThresholds(),
+    computeBaThreshold(),
+    getBicVatSettings(),
+    detectBicVatLiability(),
+  ]);
+  const vatToConfirm =
+    vatDetection.status !== "franchise" &&
+    (!vatSettings.liableFrom || vatSettings.liableFrom.getTime() > vatDetection.effectiveDate.getTime());
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
@@ -48,6 +58,20 @@ export default async function Page() {
         <ThresholdBar threshold={bic.plafondGlobalMixte} />
       </div>
 
+      <Link
+        href="/synthese/tva"
+        className={`block rounded-lg border p-4 ${vatToConfirm ? "border-red-200 bg-red-50" : "bg-white"}`}
+      >
+        <p className="text-sm font-medium text-slate-700">TVA de la micro-BIC →</p>
+        <p className="mt-1 text-sm text-slate-500">
+          {vatSettings.liableFrom
+            ? `Assujetti depuis le ${vatSettings.liableFrom.toLocaleDateString("fr-FR")} — déclaration CA12 (3517-S-SD).`
+            : vatToConfirm
+              ? "Sortie de franchise détectée : à confirmer."
+              : "Franchise en base — bascule automatique détectée en cas de dépassement de seuil."}
+        </p>
+      </Link>
+
       <div className="rounded-lg border bg-white p-4">
         <p className="text-sm font-medium text-slate-700">
           Micro-BA — Maraîchage (pour information)
@@ -74,7 +98,7 @@ export default async function Page() {
       </div>
 
       <p className="text-xs text-slate-400">
-        Seuils indicatifs (barème 2024-2025) — à vérifier sur impots.gouv.fr
+        Seuils indicatifs (barème 2026-2028) — à vérifier sur impots.gouv.fr
         avant toute décision, notamment en fin d&apos;exercice.
       </p>
     </div>

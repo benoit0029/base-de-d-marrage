@@ -4,7 +4,7 @@ import { getPaConnection } from "@/server/services/pa";
 import { listClients } from "@/server/services/clients";
 import { listProducts } from "@/server/services/products";
 import { toInvoiceView, toClientView, toProductView } from "@/lib/serialize";
-import { isVatApplicable } from "@/lib/invoicing/vatPolicy";
+import { isVatApplicableOn } from "@/lib/invoicing/vatPolicy";
 import InvoicesTable from "@/components/InvoicesTable";
 import InvoiceForm from "@/components/invoicing/InvoiceForm";
 import ClientRepository from "@/components/invoicing/ClientRepository";
@@ -22,6 +22,7 @@ export default async function Page() {
   ]);
   const invoicingEnabled =
     activitySettings.find((s) => s.activity === "BIC_FRUITS_LEGUMES")?.invoicingEnabled ?? false;
+  const vatApplicable = await isVatApplicableOn("BIC_FRUITS_LEGUMES", new Date());
 
   return (
     <div className="space-y-3">
@@ -29,7 +30,7 @@ export default async function Page() {
         <>
           <InvoiceForm
             activity="BIC_FRUITS_LEGUMES"
-            vatApplicable={isVatApplicable("BIC_FRUITS_LEGUMES")}
+            vatApplicable={vatApplicable}
             accentColorHex="#c9762c"
             clients={clients.map(toClientView)}
             products={products.map(toProductView)}
@@ -38,7 +39,7 @@ export default async function Page() {
           <ProductCatalog
             activity="BIC_FRUITS_LEGUMES"
             products={products.map(toProductView)}
-            vatApplicable={isVatApplicable("BIC_FRUITS_LEGUMES")}
+            vatApplicable={vatApplicable}
           />
         </>
       ) : (

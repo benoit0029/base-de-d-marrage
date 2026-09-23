@@ -138,7 +138,7 @@ const VAT_RATE_REDUCED = 0.055;
 const VAT_RATE_STANDARD = 0.10;
 
 // Extrait la TVA d'un montant TTC à un taux donné : TVA = TTC × taux / (1 + taux).
-function vatFromTtc(ttc: number, rate: number): number {
+export function vatFromTtc(ttc: number, rate: number): number {
   return ttc * (rate / (1 + rate));
 }
 
@@ -174,7 +174,7 @@ function computeAdar(caTotal: number): number {
 // pas des jours fériés (souvent nombreux début mai : 1er mai lui-même, 8
 // mai, Ascension certaines années) — à vérifier chaque année sur
 // impots.gouv.fr avant de considérer cette date comme définitive.
-function ca12aDeadline(recetteYear: number): Date {
+export function ca12aDeadline(recetteYear: number): Date {
   const d = new Date(recetteYear + 1, 4, 1); // 1er mai de l'année suivante
   let businessDays = 0;
   while (businessDays < 2) {

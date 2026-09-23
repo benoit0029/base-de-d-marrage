@@ -66,6 +66,15 @@ model CompanySettings {
   siren         String
   vatNumber     String? // TVA intracommunautaire
   contactEmail  String? // valeur par défaut, reprise par activité si non précisée (voir ActivitySettings.contactEmail)
+  // Fin de la franchise en base de TVA de la micro-BIC (Revente + Kerbooth,
+  // une seule micro-entreprise) : null = franchise, factures "TVA non
+  // applicable, art. 293 B". Détectée automatiquement par l'appli (voir
+  // lib/tva/bic), mais seulement enregistrée après confirmation par
+  // l'exploitant, en même temps que son numéro de TVA (vatNumber ci-dessus).
+  bicVatLiableFrom DateTime?
+  // Choix fait au moment de la bascule pour Kerbooth : "INCLUDED" = le prix
+  // client ne change pas (TVA prise sur la marge), "ADDED" = prix + 20 %.
+  bicVatPricing    String?
   updatedAt     DateTime @updatedAt
 }
 

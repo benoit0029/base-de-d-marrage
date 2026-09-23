@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { findAvailableUnit } from "@/server/services/kerbooth/dispatch";
 import { createInvoice, markInvoicePaid } from "@/server/services/invoices";
+import { BIC_VAT_RATE_SERVICES, getBicVatSettings, isBicLiableOn } from "@/lib/tva/bic";
 import type { KerboothBooking, KerboothFormula } from "@prisma/client";
 
 export class NoAvailableUnitError extends Error {}
@@ -67,6 +68,13 @@ export async function createBooking(input: CreateBookingInput): Promise<Kerbooth
     const defaults = FORMULA_DEFAULTS[input.formula];
     totalAmount = defaults.totalAmount;
     durationDays = defaults.durationDays;
+    // Après sortie de franchise, avec le choix "prix + 20 %" : le client paie
+    // le tarif de base majoré de la TVA. Avec "prix inchangé", le tarif reste
+    // le même et la TVA est extraite à la facturation (voir markPaymentReceived).
+    const vat = await getBicVatSettings();
+    if (vat.pricing === "ADDED" && isBicLiableOn(vat, new Date())) {
+      totalAmount = Math.round(totalAmount * (1 + BIC_VAT_RATE_SERVICES) * 100) / 100;
+    }
   }
 
   const unit = await findAvailableUnit(tenantId, input.eventDateStart, input.eventDateEnd);
@@ -141,6 +149,12 @@ export async function markPaymentReceived(
     );
   }
 
+  // Le montant payé (booking.totalAmount) est toujours TTC : après sortie de
+  // franchise, la facture en extrait la TVA à 20 % (paidTtc, voir
+  // createInvoice) pour retomber au centime près sur l'encaissement Stripe ;
+  // sous franchise, HT = TTC, sans TVA.
+  const paid = Number(booking.totalAmount);
+  const liable = isBicLiableOn(await getBicVatSettings(), input.paidAt);
   const invoice = await createInvoice({
     activity: "BIC_PHOTOBOOTH",
     type: "FACTURE",
@@ -150,8 +164,9 @@ export async function markPaymentReceived(
       {
         description: `Location Kerbooth 360° — ${FORMULA_LABEL[booking.formula]} du ${booking.eventDateStart.toLocaleDateString("fr-FR")}`,
         quantity: 1,
-        unitPrice: Number(booking.totalAmount),
-        vatRate: 0,
+        unitPrice: paid,
+        paidTtc: paid,
+        vatRate: liable ? BIC_VAT_RATE_SERVICES * 100 : 0,
       },
     ],
   });

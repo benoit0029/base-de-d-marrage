@@ -50,17 +50,23 @@ les seuils et les déclarations.
 - Idéalement juste avant de commencer la vraie saisie (1er jour d'activité
   réelle ou 1er janvier).
 
-## 3. Bascule automatique de la TVA micro-BIC (Revente + Kerbooth)
+## 3. Sortie de franchise TVA micro-BIC (Revente + Kerbooth) — CONSTRUIT
 
-**Pourquoi** : les deux activités micro-BIC sont en franchise de TVA tant
-que le CA reste sous les seuils. Aujourd'hui, l'appli **alerte** en cas de
-dépassement, mais continue d'émettre des factures "TVA non applicable,
-art. 293 B" — qui deviendraient non conformes après le dépassement.
+**Ce qui est en place** (page Synthèse micro-BIC → "TVA de la micro-BIC") :
+- détection automatique sur l'année précédente ET l'année en cours
+  (seuil de base dépassé l'an dernier → TVA depuis le 1er janvier ; dépassé
+  cette année → au 1er janvier suivant ; seuil majoré dépassé → dès
+  l'opération qui le franchit), avec alerte n8n ;
+- bascule seulement après **ta confirmation** : date d'effet, numéro de TVA
+  (à demander au SIE), choix du prix Kerbooth (inchangé ou +20 %) ;
+- factures Kerbooth avec TVA 20 % extraite du montant payé (au centime
+  près), TVA 5,5 % sur la Revente, déclaration annuelle CA12 (3517-S-SD)
+  préparée automatiquement, acomptes semestriels calculés.
 
-**Statut** : en cours de conception — voir la discussion du 23/09/2026.
-Déjà corrigé : le seuil de 85 000 € est désormais comparé au CA global
-de la micro-entreprise (Revente + Kerbooth), comme le prévoit l'art. 293 B
-pour une activité mixte.
+**Le jour où ça arrive** : obtenir le numéro de TVA, confirmer sur la page,
+retirer la mention "TVA non applicable, art. 293 B" des CGV du site (et
+mettre à jour les prix si tu choisis +20 %), faire valider la première
+déclaration par Cerfrance.
 
 ## 4. Passer Kerbooth en mode réel (Stripe + Yousign)
 

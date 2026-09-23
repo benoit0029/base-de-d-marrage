@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { computeBaThreshold, computeBicThresholds, levelFor } from "@/lib/thresholds";
 import { computeAnnualTvaDeclaration, TVA_INSTALLMENT_THRESHOLD } from "@/lib/tva";
+import { detectBicVatLiability, getBicVatSettings } from "@/lib/tva/bic";
 
 const DEDUP_WINDOW_HOURS = 24;
 
@@ -103,7 +104,7 @@ export async function checkThresholdAlerts() {
   const tenantId = await getDefaultTenantId();
   const currentYear = new Date().getFullYear();
 
-  const [bic, ba, tvaInstallmentsEnabled, currentYearTva, notified] = await Promise.all([
+  const [bic, ba, tvaInstallmentsEnabled, currentYearTva, bicVatDetection, bicVatSettings, notified] = await Promise.all([
     computeBicThresholds(),
     computeBaThreshold(),
     prisma.activitySettings
@@ -113,8 +114,18 @@ export async function checkThresholdAlerts() {
       })
       .then((s) => s?.tvaInstallmentsEnabled ?? true),
     computeAnnualTvaDeclaration(currentYear),
+    detectBicVatLiability(),
+    getBicVatSettings(),
     alreadyNotifiedIds("THRESHOLD_ALERT", tenantId),
   ]);
+
+  // Sortie de franchise micro-BIC détectée mais pas encore confirmée (ou
+  // confirmée à une date plus tardive que celle qui s'impose) : la
+  // facturation continuerait sans TVA — voir lib/tva/bic et /synthese/tva.
+  const bicVatToConfirm =
+    bicVatDetection.status !== "franchise" &&
+    (!bicVatSettings.liableFrom ||
+      bicVatSettings.liableFrom.getTime() > bicVatDetection.effectiveDate.getTime());
 
   const checks = [
     { key: "franchise-vente", ...bic.franchiseVente },
@@ -132,6 +143,17 @@ export async function checkThresholdAlerts() {
             caCumule: currentYearTva.netVat,
             seuil: TVA_INSTALLMENT_THRESHOLD,
             level: levelFor(currentYearTva.netVat, TVA_INSTALLMENT_THRESHOLD),
+          },
+        ]
+      : []),
+    ...(bicVatToConfirm
+      ? [
+          {
+            key: "tva-bic-bascule",
+            label: `Sortie de franchise TVA micro-BIC à confirmer (${bicVatDetection.reason}) — TVA due à partir du ${bicVatDetection.effectiveDate.toLocaleDateString("fr-FR")}, voir Synthèse micro-BIC → TVA`,
+            caCumule: bicVatDetection.ca,
+            seuil: bicVatDetection.seuil,
+            level: "depassement" as const,
           },
         ]
       : []),

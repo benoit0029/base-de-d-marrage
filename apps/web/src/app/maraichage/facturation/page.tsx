@@ -3,7 +3,7 @@ import { getPaConnection } from "@/server/services/pa";
 import { listClients } from "@/server/services/clients";
 import { listProducts } from "@/server/services/products";
 import { toInvoiceView, toClientView, toProductView } from "@/lib/serialize";
-import { isVatApplicable } from "@/lib/invoicing/vatPolicy";
+import { isVatApplicableOn } from "@/lib/invoicing/vatPolicy";
 import InvoicesTable from "@/components/InvoicesTable";
 import InvoiceForm from "@/components/invoicing/InvoiceForm";
 import ClientRepository from "@/components/invoicing/ClientRepository";
@@ -18,12 +18,13 @@ export default async function Page() {
     listClients("BA_MARAICHAGE"),
     listProducts("BA_MARAICHAGE"),
   ]);
+  const vatApplicable = await isVatApplicableOn("BA_MARAICHAGE", new Date());
 
   return (
     <div className="space-y-4">
       <InvoiceForm
         activity="BA_MARAICHAGE"
-        vatApplicable={isVatApplicable("BA_MARAICHAGE")}
+        vatApplicable={vatApplicable}
         accentColorHex="#2f7d4f"
         clients={clients.map(toClientView)}
         products={products.map(toProductView)}
@@ -38,7 +39,7 @@ export default async function Page() {
       <ProductCatalog
         activity="BA_MARAICHAGE"
         products={products.map(toProductView)}
-        vatApplicable={isVatApplicable("BA_MARAICHAGE")}
+        vatApplicable={vatApplicable}
       />
     </div>
   );
