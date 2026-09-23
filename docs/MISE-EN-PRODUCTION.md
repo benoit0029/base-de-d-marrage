@@ -63,6 +63,16 @@ les seuils et les déclarations.
   près), TVA 5,5 % sur la Revente, déclaration annuelle CA12 (3517-S-SD)
   préparée automatiquement, acomptes semestriels calculés.
 
+**Vérification des règles** (23/09/2026) :
+- confirmés par Benoît : numéro de TVA obligatoire sur les factures, 20 %
+  sur la location Kerbooth, 5,5 % sur les fruits et légumes ;
+- sourcés seulement par des sites secondaires (sites officiels
+  inaccessibles depuis l'outil) : date d'effet de la sortie de franchise,
+  **suppression ou non de la tolérance sur deux années** ;
+- non vérifiés : acomptes semestriels de la CA12 (juillet 55 %, décembre
+  40 %, dispense sous 1 000 €).
+→ À faire valider par Cerfrance avant de confirmer la bascule.
+
 **Le jour où ça arrive** : obtenir le numéro de TVA, confirmer sur la page,
 retirer la mention "TVA non applicable, art. 293 B" des CGV du site (et
 mettre à jour les prix si tu choisis +20 %), faire valider la première
