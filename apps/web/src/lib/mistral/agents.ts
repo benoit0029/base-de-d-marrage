@@ -72,6 +72,13 @@ export async function extractDocumentFields(
 // ---------------------------------------------------------------------------
 
 const cashJournalAmountSchema = z.object({
+  // Date de la VENTE notée sur la photo (pas la date de la photo elle-même)
+  // — l'exploitant peut enregistrer en retard (ex. vente le 25/07, photo/
+  // saisie le 27/07) : sans lecture de cette date, l'appli attribuerait la
+  // recette au jour de la saisie plutôt qu'au jour réel de vente, ce qui
+  // fausserait le livre de recettes (BOI-BIC-DECLA-30-10, obligation
+  // jour par jour).
+  date: z.string().nullable(), // format ISO 8601 (YYYY-MM-DD) ou null si absente
   cashAmount: z.number().nullable(),
   checkAmount: z.number().nullable(),
 });
@@ -83,15 +90,21 @@ export async function extractCashJournalAmount(
   mimeType: string
 ): Promise<CashJournalAmountExtraction> {
   const ocr = await ocrExtract(buffer, mimeType);
+  const today = new Date().toISOString().slice(0, 10);
 
   const raw = await chatJson({
     system:
       "Tu lis une photo de comptage de caisse (manuscrit ou ticket de caisse imprimé) pour la " +
       "recette d'UNE SEULE journée de vente directe (marché, vente à la ferme). Réponds " +
-      'uniquement en JSON avec les clés "cashAmount" (montant en espèces de la recette du jour, ' +
-      'nombre ou null si absent/illisible) et "checkAmount" (montant en chèques du jour, nombre ' +
-      "ou null si absent/non applicable). N'invente aucun montant : si tu ne peux pas lire un " +
-      "chiffre avec certitude, réponds null pour ce champ plutôt que de deviner.",
+      'uniquement en JSON avec les clés "date" (date de la VENTE écrite sur la photo, au format ' +
+      'YYYY-MM-DD, ou null si aucune date n\'y est notée — ne mets JAMAIS la date d\'aujourd\'hui ' +
+      'par défaut, laisse null si tu ne la vois pas), "cashAmount" (montant en espèces de la ' +
+      'recette du jour, nombre ou null si absent/illisible) et "checkAmount" (montant en chèques ' +
+      "du jour, nombre ou null si absent/non applicable). Si une date est écrite sans année " +
+      `(ex. "25/07"), déduis l'année à partir d'aujourd'hui (${today}) : année en cours, sauf si ` +
+      "cela donnerait une date dans le futur, auquel cas année précédente. N'invente aucun montant " +
+      "ni aucune date : si tu ne peux pas lire un champ avec certitude, réponds null pour ce champ " +
+      "plutôt que de deviner.",
     user: ocr.fullText.slice(0, 2000),
   });
 

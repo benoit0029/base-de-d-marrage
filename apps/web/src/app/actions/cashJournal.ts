@@ -14,15 +14,19 @@ import type { Activity } from "@prisma/client";
 
 export interface CashJournalPhotoReadResult {
   status: "ok" | "error";
+  date: string | null;
   cashAmount: number | null;
   checkAmount: number | null;
   message?: string;
 }
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
- * Lit automatiquement la recette du jour sur la photo de comptage de caisse,
- * pour pré-remplir le formulaire (voir CashJournalForm) — l'exploitant garde
- * la main pour corriger avant d'enregistrer. Ne touche à aucune donnée, pure
+ * Lit automatiquement la recette du jour — ET la date de vente si elle est
+ * notée dessus (saisie en retard) — sur la photo de comptage de caisse, pour
+ * pré-remplir le formulaire (voir CashJournalForm) — l'exploitant garde la
+ * main pour corriger avant d'enregistrer. Ne touche à aucune donnée, pure
  * lecture : aucun risque à l'appeler à chaque changement de photo.
  */
 export async function extractCashJournalPhotoAmount(
@@ -30,17 +34,18 @@ export async function extractCashJournalPhotoAmount(
 ): Promise<CashJournalPhotoReadResult> {
   const file = formData.get("photo");
   if (!(file instanceof File) || file.size === 0) {
-    return { status: "error", cashAmount: null, checkAmount: null, message: "Aucune photo reçue." };
+    return { status: "error", date: null, cashAmount: null, checkAmount: null, message: "Aucune photo reçue." };
   }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { cashAmount, checkAmount } = await extractCashJournalAmount(buffer, file.type || "image/jpeg");
-    return { status: "ok", cashAmount, checkAmount };
+    const { date, cashAmount, checkAmount } = await extractCashJournalAmount(buffer, file.type || "image/jpeg");
+    return { status: "ok", date: date && ISO_DATE_RE.test(date) ? date : null, cashAmount, checkAmount };
   } catch (err) {
     if (err instanceof MistralConfigError || err instanceof MistralApiError) {
       return {
         status: "error",
+        date: null,
         cashAmount: null,
         checkAmount: null,
         message: "Lecture automatique indisponible — saisis le montant manuellement.",

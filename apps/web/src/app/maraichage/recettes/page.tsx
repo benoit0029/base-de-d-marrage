@@ -49,7 +49,15 @@ export default async function Page({
   return (
     <div className="space-y-4">
       <CashJournalForm activity="BA_MARAICHAGE" />
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <a
+          href="/api/cash-journal/blank-sheets/BA_MARAICHAGE/pdf"
+          target="_blank"
+          rel="noopener"
+          className="text-sm text-slate-600 underline"
+        >
+          Imprimer des fiches vierges (PDF)
+        </a>
         <YearFilter closedYears={closedYears} />
       </div>
       <div className="rounded-lg border bg-white">

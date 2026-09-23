@@ -13,6 +13,11 @@ import type { Activity } from "@prisma/client";
 const initialState: CashJournalFormState = { status: "idle", message: "" };
 const today = () => new Date().toISOString().slice(0, 10);
 
+function formatFrDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 export default function CashJournalForm({ activity }: { activity: Activity }) {
   const isMaraichage = activity === "BA_MARAICHAGE";
   const boundAction = submitCashJournalEntry.bind(null, activity);
@@ -21,6 +26,7 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
   // Lecture automatique du montant sur la photo du jour (voir
   // extractCashJournalPhotoAmount) : pré-remplit les champs ci-dessous, que
   // l'exploitant garde la main pour corriger avant d'enregistrer.
+  const [dateValue, setDateValue] = useState(today());
   const [cashAmount, setCashAmount] = useState("");
   const [checkAmount, setCheckAmount] = useState("");
   const [cardAmount, setCardAmount] = useState("");
@@ -34,6 +40,7 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
   // réussi ne les efface plus tout seul, on le refait ici.
   useEffect(() => {
     if (state.status === "success") {
+      setDateValue(today());
       setCashAmount("");
       setCheckAmount("");
       setCardAmount("");
@@ -54,15 +61,22 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
         setReadNotice(result.message ?? "Lecture automatique impossible — saisis le montant toi-même.");
         return;
       }
+      // Date de la VENTE lue sur la photo (pas la date d'aujourd'hui) : permet
+      // une saisie en retard (ex. vente le 25/07, photo prise le 27/07) sans
+      // attribuer la recette au mauvais jour — voir extractCashJournalAmount.
+      if (result.date !== null) setDateValue(result.date);
       if (result.cashAmount !== null) setCashAmount(String(result.cashAmount).replace(".", ","));
       if (isMaraichage && result.checkAmount !== null) {
         setCheckAmount(String(result.checkAmount).replace(".", ","));
       }
+      const notices: string[] = [];
+      if (result.date !== null) notices.push(`date de vente lue : ${formatFrDate(result.date)}`);
       if (result.cashAmount === null && result.checkAmount === null) {
-        setReadNotice("Aucun montant lu sur la photo — vérifie ou saisis-le toi-même.");
+        notices.push("aucun montant lu");
       } else {
-        setReadNotice("Montant lu automatiquement — vérifie avant d'enregistrer.");
+        notices.push("montant lu");
       }
+      setReadNotice(`Lecture automatique (${notices.join(", ")}) — vérifie avant d'enregistrer.`);
     });
   }
 
@@ -102,11 +116,14 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
       </div>
 
       <label className="block text-sm">
-        <span className="text-slate-600">Date</span>
+        <span className="text-slate-600">
+          Date <span className="text-xs text-slate-400">(date de la vente, pas forcément aujourd&apos;hui)</span>
+        </span>
         <input
           type="date"
           name="date"
-          defaultValue={today()}
+          value={dateValue}
+          onChange={(e) => setDateValue(e.target.value)}
           required
           className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 sm:w-48"
         />
