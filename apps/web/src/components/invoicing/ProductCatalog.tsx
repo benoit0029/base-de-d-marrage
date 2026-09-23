@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { submitProduct, type ProductFormState } from "@/app/actions/products";
+import { useActionState, useState, useTransition } from "react";
+import { removeProduct, submitProduct, type ProductFormState } from "@/app/actions/products";
 import { formatEuro } from "@/lib/format";
+import { defaultVatRate, formatRate } from "@/lib/invoicing/options";
+import VatRateSelect from "@/components/invoicing/VatRateSelect";
 import type { FakeProduct } from "@/lib/types";
 import type { Activity } from "@prisma/client";
 
@@ -25,6 +27,16 @@ export default function ProductCatalog({
   const [editing, setEditing] = useState<FakeProduct | null>(null);
   const boundAction = submitProduct.bind(null, activity);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const [deleteMessage, setDeleteMessage] = useState<ProductFormState | null>(null);
+  const [deleting, startDelete] = useTransition();
+
+  function handleDelete(p: FakeProduct) {
+    if (!window.confirm(`Retirer « ${p.label} » du catalogue ? Les factures déjà faites ne changent pas.`)) return;
+    startDelete(async () => {
+      setDeleteMessage(await removeProduct(activity, p.id));
+      if (editing?.id === p.id) setEditing(null);
+    });
+  }
 
   return (
     <details className="rounded-lg border bg-white p-4">
@@ -44,6 +56,15 @@ export default function ProductCatalog({
           />
         </label>
         <label className="text-sm">
+          <span className="text-slate-600">Unité (kg, pièce, botte…)</span>
+          <input
+            name="unit"
+            list="unit-suggestions" // suggestions fournies par InvoiceForm, toujours sur la même page
+            defaultValue={editing?.unit ?? ""}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
           <span className="text-slate-600">Prix unitaire HT par défaut (€)</span>
           <input
             type="text"
@@ -57,11 +78,9 @@ export default function ProductCatalog({
         {vatApplicable && (
           <label className="text-sm">
             <span className="text-slate-600">Taux de TVA (%)</span>
-            <input
-              type="text"
-              inputMode="decimal"
+            <VatRateSelect
               name="vatRate"
-              defaultValue={editing ? String(editing.vatRate) : "0"}
+              defaultValue={String(editing ? editing.vatRate : defaultVatRate(activity))}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
             />
           </label>
@@ -91,12 +110,19 @@ export default function ProductCatalog({
         </div>
       </form>
 
+      {deleteMessage && (
+        <p className={`mt-3 text-sm ${deleteMessage.status === "success" ? "text-emerald-700" : "text-red-600"}`}>
+          {deleteMessage.message}
+        </p>
+      )}
+
       {products.length > 0 && (
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-3 py-2">Désignation</th>
+                <th className="px-3 py-2">Unité</th>
                 <th className="px-3 py-2 text-right">Prix unitaire HT</th>
                 {vatApplicable && <th className="px-3 py-2 text-right">TVA</th>}
                 <th className="px-3 py-2" />
@@ -106,15 +132,24 @@ export default function ProductCatalog({
               {products.map((p) => (
                 <tr key={p.id}>
                   <td className="px-3 py-2 font-medium">{p.label}</td>
+                  <td className="px-3 py-2 text-slate-600">{p.unit ?? "—"}</td>
                   <td className="px-3 py-2 text-right">{formatEuro(p.defaultUnitPrice)}</td>
-                  {vatApplicable && <td className="px-3 py-2 text-right">{p.vatRate}%</td>}
-                  <td className="px-3 py-2 text-right">
+                  {vatApplicable && <td className="px-3 py-2 text-right">{formatRate(p.vatRate)}</td>}
+                  <td className="space-x-3 whitespace-nowrap px-3 py-2 text-right">
                     <button
                       type="button"
                       onClick={() => setEditing(p)}
                       className="text-xs font-medium text-slate-600 underline"
                     >
                       Modifier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(p)}
+                      disabled={deleting}
+                      className="text-xs font-medium text-red-600 underline disabled:opacity-50"
+                    >
+                      Supprimer
                     </button>
                   </td>
                 </tr>

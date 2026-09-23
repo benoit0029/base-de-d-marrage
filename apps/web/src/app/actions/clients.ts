@@ -1,7 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { upsertClient, updateClient, ClientNotFoundError } from "@/server/services/clients";
+import {
+  createClient,
+  deleteClient,
+  upsertClient,
+  updateClient,
+  ClientAlreadyExistsError,
+  ClientNotFoundError,
+} from "@/server/services/clients";
+import { toClientView } from "@/lib/serialize";
+import type { FakeClient } from "@/lib/types";
 import type { Activity } from "@prisma/client";
 
 export interface ClientFormState {
@@ -48,4 +57,47 @@ export async function submitClient(
 
   revalidatePath(activityFacturationPath[activity]);
   return { status: "success", message: "Fiche client enregistrée." };
+}
+
+export type QuickCreateClientResult =
+  | { status: "success"; client: FakeClient }
+  | { status: "error"; message: string };
+
+// Création rapide depuis la liste déroulante de la facture : la fiche
+// rejoint le répertoire et remplit aussitôt le client de la facture.
+export async function quickCreateClient(
+  activity: Activity,
+  raw: { name?: string; address?: string; siret?: string; vatNumber?: string }
+): Promise<QuickCreateClientResult> {
+  const name = raw.name?.trim();
+  if (!name) return { status: "error", message: "Nom du client obligatoire." };
+
+  try {
+    const client = await createClient(activity, {
+      name,
+      address: raw.address?.trim() || undefined,
+      siret: raw.siret?.trim() || undefined,
+      vatNumber: raw.vatNumber?.trim() || undefined,
+    });
+    revalidatePath(activityFacturationPath[activity]);
+    return { status: "success", client: toClientView(client) };
+  } catch (err) {
+    if (err instanceof ClientAlreadyExistsError) {
+      return { status: "error", message: "Ce client existe déjà : choisis-le dans la liste." };
+    }
+    throw err;
+  }
+}
+
+export async function removeClient(activity: Activity, id: string): Promise<ClientFormState> {
+  try {
+    await deleteClient(id);
+  } catch (err) {
+    if (err instanceof ClientNotFoundError) {
+      return { status: "error", message: "Client introuvable." };
+    }
+    throw err;
+  }
+  revalidatePath(activityFacturationPath[activity]);
+  return { status: "success", message: "Client retiré du répertoire." };
 }

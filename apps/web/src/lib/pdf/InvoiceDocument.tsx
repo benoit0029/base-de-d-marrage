@@ -12,6 +12,7 @@ export interface InvoicePdfLine {
   unitPrice: number;
   vatRate: number;
   lineTotal: number;
+  unit?: string;
 }
 
 export interface InvoicePdfData {
@@ -163,7 +164,10 @@ export function InvoiceDocument(data: InvoicePdfData) {
           {data.lines.map((line, i) => (
             <View key={i} style={styles.tableRow}>
               <Text style={styles.colDesc}>{line.description}</Text>
-              <Text style={styles.colQty}>{line.quantity}</Text>
+              <Text style={styles.colQty}>
+                {String(line.quantity).replace(".", ",")}
+                {line.unit ? ` ${line.unit}` : ""}
+              </Text>
               <Text style={styles.colUnit}>{euro(line.unitPrice)}</Text>
               <Text style={styles.colVat}>{line.vatRate > 0 ? percent(line.vatRate) : "—"}</Text>
               <Text style={styles.colTotal}>{euro(line.lineTotal)}</Text>

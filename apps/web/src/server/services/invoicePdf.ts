@@ -68,6 +68,7 @@ export async function renderInvoicePdfBuffer(
       unitPrice: Number(l.unitPrice),
       vatRate: Number(l.vatRate),
       lineTotal: Number(l.lineTotal),
+      unit: l.unit ?? undefined,
     })),
     totalHt: Number(invoice.totalHt),
     totalVat: Number(invoice.totalVat),

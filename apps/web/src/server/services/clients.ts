@@ -61,3 +61,38 @@ export async function updateClient(id: string, input: ClientInput) {
     },
   });
 }
+
+export class ClientAlreadyExistsError extends Error {}
+
+/**
+ * Création rapide depuis la liste déroulante de la facture : refuse un nom
+ * déjà au répertoire, à choisir alors dans la liste.
+ */
+export async function createClient(activity: Activity, input: ClientInput) {
+  const tenantId = await getDefaultTenantId();
+  const existing = await prisma.client.findUnique({
+    where: { tenantId_activity_name: { tenantId, activity, name: input.name } },
+  });
+  if (existing) throw new ClientAlreadyExistsError(input.name);
+
+  return prisma.client.create({
+    data: {
+      tenantId,
+      activity,
+      name: input.name,
+      address: input.address,
+      siret: input.siret,
+      vatNumber: input.vatNumber,
+    },
+  });
+}
+
+/**
+ * Retire une fiche du répertoire. Sans effet sur les factures déjà émises,
+ * qui gardent leur propre copie du nom et de l'adresse du client.
+ */
+export async function deleteClient(id: string) {
+  const client = await prisma.client.findUnique({ where: { id } });
+  if (!client) throw new ClientNotFoundError(id);
+  await prisma.client.delete({ where: { id } });
+}

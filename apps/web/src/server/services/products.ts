@@ -11,6 +11,7 @@ export interface ProductInput {
   label: string;
   defaultUnitPrice: number;
   vatRate: number;
+  unit?: string;
 }
 
 /**
@@ -36,6 +37,7 @@ export async function ensureProduct(activity: Activity, input: ProductInput) {
       label: input.label,
       defaultUnitPrice: input.defaultUnitPrice,
       vatRate: input.vatRate,
+      unit: input.unit || null,
     },
   });
 }
@@ -56,10 +58,12 @@ export async function createOrUpdateProductByLabel(activity: Activity, input: Pr
       label: input.label,
       defaultUnitPrice: input.defaultUnitPrice,
       vatRate: input.vatRate,
+      unit: input.unit || null,
     },
     update: {
       defaultUnitPrice: input.defaultUnitPrice,
       vatRate: input.vatRate,
+      unit: input.unit || null,
     },
   });
 }
@@ -76,6 +80,44 @@ export async function updateProduct(id: string, input: ProductInput) {
       label: input.label,
       defaultUnitPrice: input.defaultUnitPrice,
       vatRate: input.vatRate,
+      unit: input.unit || null,
     },
   });
+}
+
+export class ProductAlreadyExistsError extends Error {}
+
+/**
+ * Création rapide depuis la liste déroulante d'une ligne de facture :
+ * refuse un libellé déjà au catalogue (plutôt que d'écraser son prix), pour
+ * que l'utilisateur le choisisse dans la liste ou le modifie délibérément.
+ */
+export async function createProduct(activity: Activity, input: ProductInput) {
+  const tenantId = await getDefaultTenantId();
+  const existing = await prisma.product.findUnique({
+    where: { tenantId_activity_label: { tenantId, activity, label: input.label } },
+  });
+  if (existing) throw new ProductAlreadyExistsError(input.label);
+
+  return prisma.product.create({
+    data: {
+      tenantId,
+      activity,
+      label: input.label,
+      defaultUnitPrice: input.defaultUnitPrice,
+      vatRate: input.vatRate,
+      unit: input.unit || null,
+    },
+  });
+}
+
+/**
+ * Retire une fiche du catalogue. Sans effet sur les factures déjà émises :
+ * leurs lignes gardent leur propre copie de la désignation, du prix et du
+ * taux.
+ */
+export async function deleteProduct(id: string) {
+  const product = await prisma.product.findUnique({ where: { id } });
+  if (!product) throw new ProductNotFoundError(id);
+  await prisma.product.delete({ where: { id } });
 }

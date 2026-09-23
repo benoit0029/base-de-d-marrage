@@ -129,6 +129,7 @@ export function toProductView(product: Product): FakeProduct {
     label: product.label,
     defaultUnitPrice: Number(product.defaultUnitPrice),
     vatRate: Number(product.vatRate),
+    unit: product.unit,
   };
 }
 

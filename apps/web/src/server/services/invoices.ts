@@ -57,6 +57,7 @@ export interface InvoiceLineInput {
   quantity: number;
   unitPrice: number;
   vatRate: number;
+  unit?: string;
   // Montant TTC déjà encaissé pour cette ligne (ex. paiement Stripe Kerbooth) :
   // si fourni et que la TVA s'applique, HT = TTC / (1 + taux) arrondi et
   // TVA = TTC − HT, pour que la facture retombe au centime près sur
@@ -119,7 +120,12 @@ export async function createInvoice(input: CreateInvoiceInput) {
     await upsertClient(input.activity, { name: input.clientName, address: input.clientAddress });
     await Promise.all(
       lines.map((l) =>
-        ensureProduct(input.activity, { label: l.description, defaultUnitPrice: l.unitPrice, vatRate: l.vatRate })
+        ensureProduct(input.activity, {
+          label: l.description,
+          defaultUnitPrice: l.unitPrice,
+          vatRate: l.vatRate,
+          unit: l.unit,
+        })
       )
     );
   } catch {
@@ -153,6 +159,7 @@ export async function createInvoice(input: CreateInvoiceInput) {
               unitPrice: l.unitPrice,
               vatRate: l.vatRate,
               lineTotal: l.lineTotal,
+              unit: l.unit || null,
             })),
           },
         },

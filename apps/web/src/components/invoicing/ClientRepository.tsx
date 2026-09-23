@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { submitClient, type ClientFormState } from "@/app/actions/clients";
+import { useActionState, useState, useTransition } from "react";
+import { removeClient, submitClient, type ClientFormState } from "@/app/actions/clients";
 import type { FakeClient } from "@/lib/types";
 import type { Activity } from "@prisma/client";
 
@@ -21,6 +21,16 @@ export default function ClientRepository({
   const [editing, setEditing] = useState<FakeClient | null>(null);
   const boundAction = submitClient.bind(null, activity);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const [deleteMessage, setDeleteMessage] = useState<ClientFormState | null>(null);
+  const [deleting, startDelete] = useTransition();
+
+  function handleDelete(c: FakeClient) {
+    if (!window.confirm(`Retirer « ${c.name} » du répertoire ? Les factures déjà faites ne changent pas.`)) return;
+    startDelete(async () => {
+      setDeleteMessage(await removeClient(activity, c.id));
+      if (editing?.id === c.id) setEditing(null);
+    });
+  }
 
   return (
     <details className="rounded-lg border bg-white p-4">
@@ -88,6 +98,12 @@ export default function ClientRepository({
         </div>
       </form>
 
+      {deleteMessage && (
+        <p className={`mt-3 text-sm ${deleteMessage.status === "success" ? "text-emerald-700" : "text-red-600"}`}>
+          {deleteMessage.message}
+        </p>
+      )}
+
       {clients.length > 0 && (
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -105,13 +121,21 @@ export default function ClientRepository({
                   <td className="px-3 py-2 font-medium">{c.name}</td>
                   <td className="px-3 py-2 text-slate-600">{c.address ?? "—"}</td>
                   <td className="px-3 py-2 text-slate-600">{c.siret ?? "—"}</td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="space-x-3 whitespace-nowrap px-3 py-2 text-right">
                     <button
                       type="button"
                       onClick={() => setEditing(c)}
                       className="text-xs font-medium text-slate-600 underline"
                     >
                       Modifier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(c)}
+                      disabled={deleting}
+                      className="text-xs font-medium text-red-600 underline disabled:opacity-50"
+                    >
+                      Supprimer
                     </button>
                   </td>
                 </tr>

@@ -17,6 +17,7 @@ const lineSchema = z.object({
   quantity: z.number().positive("Quantité invalide"),
   unitPrice: z.number().nonnegative("Prix unitaire invalide"),
   vatRate: z.number().min(0).max(100),
+  unit: z.string().trim().max(20).optional(),
 });
 
 const createInvoiceSchema = z.object({

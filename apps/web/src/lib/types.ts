@@ -138,4 +138,5 @@ export interface FakeProduct {
   label: string;
   defaultUnitPrice: number;
   vatRate: number;
+  unit: string | null;
 }
