@@ -11,3 +11,9 @@ export function euro(n: number): string {
   const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   return `${negative ? "-" : ""}${grouped},${decimalPart} €`;
 }
+
+// Taux à la française (5,5 %) — même raison que ci-dessus pour l'espace
+// normale plutôt qu'insécable.
+export function percent(n: number): string {
+  return `${String(Math.round(n * 100) / 100).replace(".", ",")} %`;
+}
