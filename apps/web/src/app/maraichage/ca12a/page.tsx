@@ -1,20 +1,121 @@
-import { tvaAnnualDeclarationFixture } from "@/lib/fixtures/maraichage-admin";
-import { formatDate } from "@/lib/format";
-import StatusBadge from "@/components/StatusBadge";
+import Link from "next/link";
+import { computeAnnualTvaDeclaration, TVA_INSTALLMENT_THRESHOLD } from "@/lib/tva";
+import { formatEuro } from "@/lib/format";
 
-export default function Page() {
-  const d = tvaAnnualDeclarationFixture;
+export const dynamic = "force-dynamic";
+
+// Déclaration annuelle de régularisation TVA — régime simplifié agricole
+// (RSA), formulaire officiel Cerfa n°10968 dit 3517-AGR-SD ("CA12A" est une
+// appellation informelle, gardée comme slug d'URL mais plus affichée). Par
+// défaut, l'exercice le plus récent déjà clos (l'année en cours n'est pas
+// encore déclarable).
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const { year: yearParam } = await searchParams;
+  const currentYear = new Date().getFullYear();
+  const year = Number.isInteger(Number(yearParam)) && yearParam ? Number(yearParam) : currentYear - 1;
+
+  const d = await computeAnnualTvaDeclaration(year);
+
   return (
-    <div className="rounded-lg border bg-white p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-700">
-          Déclaration de TVA (Cerfa n°10968 / 3517-AGR-SD) — exercice {d.exercice}
+    <div className="space-y-4">
+      <div className="rounded-lg border bg-white p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-slate-700">
+            Déclaration de TVA (Cerfa n°10968 / 3517-AGR-SD) — exercice {year}
+          </p>
+          <div className="flex items-center gap-2 text-sm">
+            <Link href={`?year=${year - 1}`} className="text-slate-500 underline">
+              ← {year - 1}
+            </Link>
+            {year < currentYear && (
+              <Link href={`?year=${year + 1}`} className="text-slate-500 underline">
+                {year + 1} →
+              </Link>
+            )}
+          </div>
+        </div>
+        <p className="mt-2 text-sm text-slate-500">
+          Date limite de dépôt : {d.deadline.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
         </p>
-        <StatusBadge status={d.statut === "a_preparer" ? "pending" : "validated"} />
       </div>
-      <p className="mt-2 text-sm text-slate-500">
-        Date limite de dépôt : {formatDate(d.dateLimite)}
-      </p>
+
+      <div className="rounded-lg border bg-white p-4">
+        <p className="text-sm font-medium text-slate-700">
+          Chiffres calculés automatiquement depuis les factures et dépenses validées
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Ces montants aident à préremplir le formulaire officiel sur
+          impots.gouv.fr — ils ne le remplacent pas. Si tes factures utilisent
+          plusieurs taux de TVA différents, vérifie la répartition par taux
+          (lignes 04, 5a, 5c) directement sur tes factures avant de reporter
+          les montants.
+        </p>
+
+        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">CA HT facturé</dt>
+            <dd className="text-sm font-medium">{formatEuro(d.caHtFacture)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">TVA collectée</dt>
+            <dd className="text-sm font-medium">{formatEuro(d.collected)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">TVA déductible — achats/services</dt>
+            <dd className="text-sm font-medium">{formatEuro(d.deductibleAutres)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">TVA déductible — immobilisations</dt>
+            <dd className="text-sm font-medium">{formatEuro(d.deductibleImmobilisations)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">TVA nette (collectée − déductible)</dt>
+            <dd className="text-sm font-medium">{formatEuro(d.netVat)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">Taxe ADAR</dt>
+            <dd className="text-sm font-medium">{formatEuro(d.adar)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">Acomptes déjà versés cette année</dt>
+            <dd className="text-sm font-medium">{formatEuro(d.acomptesDejaVerses)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400">
+              {d.soldeAPayer >= 0 ? "Solde à payer" : "Crédit de TVA (remboursable)"}
+            </dt>
+            <dd className="text-base font-semibold">{formatEuro(Math.abs(d.soldeAPayer))}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-medium">⚠️ Limitation connue — à confirmer avec la MSA/Cerfrance</p>
+        <p className="mt-1">
+          La TVA collectée ci-dessus ne compte que les factures. Les ventes
+          directes (journal de caisse) ne portent aujourd&apos;hui aucune
+          information de TVA dans l&apos;appli et ne sont donc pas incluses —
+          si ces ventes sont elles aussi soumises à la TVA, ce montant sous-
+          estime la TVA réellement due. La taxe ADAR, elle, est bien calculée
+          sur le chiffre d&apos;affaires total (factures + vente directe).
+        </p>
+      </div>
+
+      {d.installmentsRequiredNextYear && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-medium">Acomptes trimestriels à prévoir l&apos;année prochaine</p>
+          <p className="mt-1">
+            La TVA nette due au titre de {year} ({formatEuro(d.netVat)}) dépasse
+            le seuil de dispense de {formatEuro(TVA_INSTALLMENT_THRESHOLD)} (article
+            1693 bis du CGI) — 4 acomptes trimestriels seront à verser en{" "}
+            {year + 1}. Pense à activer les acomptes dans Réglages.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
+import { currentYearRange, sumInvoicedTotal, sumCashJournalTotal } from "@/lib/thresholds";
 
 export interface TvaRegisterRow {
   period: string; // ex. "2026-T3"
@@ -117,4 +118,144 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
   }
 
   return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Déclaration annuelle de régularisation (CA12A / Cerfa 3517-AGR-SD) —
+// régime simplifié agricole (RSA), Maraîchage uniquement.
+// ---------------------------------------------------------------------------
+
+// Seuil de dispense des acomptes trimestriels (art. 1693 bis du CGI) : sous
+// ce montant de TVA nette due au titre de l'année, aucun acompte n'est
+// obligatoire l'année suivante — un seul geste annuel (le CA12A) suffit.
+export const TVA_INSTALLMENT_THRESHOLD = 1000;
+
+export interface AnnualTvaDeclaration {
+  year: number;
+  // Base de la TVA collectée : factures Maraîchage payées dans l'année
+  // uniquement. ⚠️ Limitation connue, à confirmer avec la MSA/Cerfrance :
+  // les ventes directes du journal de caisse (CashJournalEntry) ne portent
+  // aujourd'hui aucune information de TVA (montants saisis sans distinction
+  // HT/TTC, voir sumCashJournalTotal dans lib/thresholds) et ne sont donc
+  // PAS incluses ici — si ces ventes directes sont elles aussi soumises à la
+  // TVA au même titre que les factures, ce montant sous-estime la TVA
+  // réellement due. Confirmer avant de déposer le formulaire réel.
+  caHtFacture: number;
+  // Base de la taxe ADAR : CA facturé + vente directe (la taxe porte sur le
+  // chiffre d'affaires total, pas seulement sur la part facturée).
+  caTotalPourAdar: number;
+  collected: number;
+  deductibleAutres: number; // achats/autres biens et services (Entry ACHAT)
+  deductibleImmobilisations: number; // Entry IMMOBILISATION
+  deductibleTotal: number;
+  netVat: number; // collected - deductibleTotal — base du seuil des 1 000 €
+  adar: number;
+  soldeAvantAcomptes: number; // netVat + adar
+  acomptesDejaVerses: number; // TvaInstallment validés de l'année (dueLabel "YYYY-Tn")
+  soldeAPayer: number; // soldeAvantAcomptes - acomptesDejaVerses (négatif = crédit remboursable)
+  deadline: Date;
+  installmentsRequiredNextYear: boolean; // netVat > TVA_INSTALLMENT_THRESHOLD
+}
+
+// Taxe ADAR (développement agricole et rural), formule forfaitaire +
+// proportionnelle au CA — à revérifier chaque année sur le formulaire
+// officiel avant dépôt, ce module ne la met pas à jour automatiquement.
+function computeAdar(caTotal: number): number {
+  return 90 + 0.0019 * caTotal;
+}
+
+// "2e jour ouvré suivant le 1er mai" — ne tient compte que des week-ends,
+// pas des jours fériés (souvent nombreux début mai : 1er mai lui-même, 8
+// mai, Ascension certaines années) — à vérifier chaque année sur
+// impots.gouv.fr avant de considérer cette date comme définitive.
+function ca12aDeadline(recetteYear: number): Date {
+  const d = new Date(recetteYear + 1, 4, 1); // 1er mai de l'année suivante
+  let businessDays = 0;
+  while (businessDays < 2) {
+    d.setDate(d.getDate() + 1);
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) businessDays++;
+  }
+  return d;
+}
+
+/**
+ * Calcule la déclaration annuelle de régularisation TVA (CA12A) de
+ * l'exercice `year`, entièrement à partir des factures/dépenses déjà
+ * saisies et validées — jamais de ressaisie manuelle des montants annuels.
+ * Les acomptes trimestriels déjà versés dans l'année (onglet Acompte TVA)
+ * sont déduits du solde théorique pour donner le montant réellement dû.
+ */
+export async function computeAnnualTvaDeclaration(year: number): Promise<AnnualTvaDeclaration> {
+  const tenantId = await getDefaultTenantId();
+  const { start, end } = currentYearRange(year);
+
+  const [caHtFacture, caCashJournal, collectedAgg, deductibleAutresAgg, deductibleImmoAgg, acomptesAgg] =
+    await Promise.all([
+      sumInvoicedTotal("BA_MARAICHAGE", start, end),
+      sumCashJournalTotal("BA_MARAICHAGE", start, end),
+      prisma.invoice.aggregate({
+        where: {
+          tenantId,
+          activity: "BA_MARAICHAGE",
+          type: "FACTURE",
+          status: { in: ["SENT", "PAID"] },
+          paidAt: { gte: start, lte: end },
+        },
+        _sum: { totalVat: true },
+      }),
+      prisma.entry.aggregate({
+        where: {
+          tenantId,
+          activity: "BA_MARAICHAGE",
+          type: "ACHAT",
+          status: "VALIDATED",
+          deletedAt: null,
+          paidAt: { gte: start, lte: end },
+        },
+        _sum: { amountVat: true },
+      }),
+      prisma.entry.aggregate({
+        where: {
+          tenantId,
+          activity: "BA_MARAICHAGE",
+          type: "IMMOBILISATION",
+          status: "VALIDATED",
+          deletedAt: null,
+          paidAt: { gte: start, lte: end },
+        },
+        _sum: { amountVat: true },
+      }),
+      prisma.tvaInstallment.aggregate({
+        where: { tenantId, status: "VALIDATED", deletedAt: null, dueLabel: { startsWith: `${year}-T` } },
+        _sum: { amountPaid: true },
+      }),
+    ]);
+
+  const caTotalPourAdar = caHtFacture + caCashJournal;
+  const collected = Number(collectedAgg._sum.totalVat ?? 0);
+  const deductibleAutres = Number(deductibleAutresAgg._sum.amountVat ?? 0);
+  const deductibleImmobilisations = Number(deductibleImmoAgg._sum.amountVat ?? 0);
+  const deductibleTotal = deductibleAutres + deductibleImmobilisations;
+  const netVat = collected - deductibleTotal;
+  const adar = computeAdar(caTotalPourAdar);
+  const soldeAvantAcomptes = netVat + adar;
+  const acomptesDejaVerses = Number(acomptesAgg._sum.amountPaid ?? 0);
+
+  return {
+    year,
+    caHtFacture,
+    caTotalPourAdar,
+    collected,
+    deductibleAutres,
+    deductibleImmobilisations,
+    deductibleTotal,
+    netVat,
+    adar,
+    soldeAvantAcomptes,
+    acomptesDejaVerses,
+    soldeAPayer: soldeAvantAcomptes - acomptesDejaVerses,
+    deadline: ca12aDeadline(year),
+    installmentsRequiredNextYear: netVat > TVA_INSTALLMENT_THRESHOLD,
+  };
 }

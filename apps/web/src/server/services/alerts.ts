@@ -1,6 +1,7 @@
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
-import { computeBaThreshold, computeBicThresholds } from "@/lib/thresholds";
+import { computeBaThreshold, computeBicThresholds, levelFor } from "@/lib/thresholds";
+import { computeAnnualTvaDeclaration, TVA_INSTALLMENT_THRESHOLD } from "@/lib/tva";
 
 const DEDUP_WINDOW_HOURS = 24;
 
@@ -100,9 +101,18 @@ export async function checkFailedDocuments() {
 /** Seuils passés en vigilance/dépassement, non notifiés dans les dernières 24h. */
 export async function checkThresholdAlerts() {
   const tenantId = await getDefaultTenantId();
-  const [bic, ba, notified] = await Promise.all([
+  const currentYear = new Date().getFullYear();
+
+  const [bic, ba, tvaInstallmentsEnabled, currentYearTva, notified] = await Promise.all([
     computeBicThresholds(),
     computeBaThreshold(),
+    prisma.activitySettings
+      .findUnique({
+        where: { tenantId_activity: { tenantId, activity: "BA_MARAICHAGE" } },
+        select: { tvaInstallmentsEnabled: true },
+      })
+      .then((s) => s?.tvaInstallmentsEnabled ?? true),
+    computeAnnualTvaDeclaration(currentYear),
     alreadyNotifiedIds("THRESHOLD_ALERT", tenantId),
   ]);
 
@@ -111,6 +121,20 @@ export async function checkThresholdAlerts() {
     { key: "franchise-service", ...bic.franchiseService },
     { key: "plafond-mixte", ...bic.plafondGlobalMixte },
     { key: "ba-moyenne-triennale", ...ba.check },
+    // Bascule du seuil de dispense d'acomptes TVA (art. 1693 bis du CGI,
+    // voir lib/tva) : seulement pertinent tant que les acomptes sont encore
+    // désactivés dans Réglages — une fois activés, plus rien à signaler.
+    ...(!tvaInstallmentsEnabled
+      ? [
+          {
+            key: "tva-acomptes-seuil",
+            label: `Seuil de dispense des acomptes TVA (Maraîchage, ${currentYear})`,
+            caCumule: currentYearTva.netVat,
+            seuil: TVA_INSTALLMENT_THRESHOLD,
+            level: levelFor(currentYearTva.netVat, TVA_INSTALLMENT_THRESHOLD),
+          },
+        ]
+      : []),
   ];
 
   const alerting = checks.filter((c) => c.level !== "ok" && !notified.has(c.key));

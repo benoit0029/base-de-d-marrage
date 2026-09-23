@@ -49,7 +49,7 @@ export interface ThresholdCheck {
   level: AlertLevel;
 }
 
-function levelFor(ca: number, seuil: number, tolerance?: number): AlertLevel {
+export function levelFor(ca: number, seuil: number, tolerance?: number): AlertLevel {
   if (ca > (tolerance ?? seuil)) return "depassement";
   if (ca >= seuil * 0.8) return "vigilance";
   return "ok";
