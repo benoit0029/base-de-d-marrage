@@ -19,8 +19,8 @@ const SHEETS_PER_PAGE = 3;
 const styles = StyleSheet.create({
   page: { padding: 24, fontFamily: "Helvetica" },
   sheet: {
-    height: 230,
-    marginBottom: 10,
+    height: 250,
+    marginBottom: 8,
     padding: 16,
     border: "1pt dashed #94a3b8",
     borderRadius: 6,
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 13, fontWeight: 700, color: "#0f172a" },
   activity: { fontSize: 11, color: "#475569" },
   fieldRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 14 },
-  fieldLabel: { fontSize: 12, width: 120, color: "#1e293b" },
+  fieldLabel: { fontSize: 12, width: 165, color: "#1e293b" },
   fieldLine: { flex: 1, borderBottomWidth: 1, borderBottomColor: "#0f172a", height: 22 },
   footer: { marginTop: 4, fontSize: 8, color: "#64748b" },
 });
@@ -59,10 +59,19 @@ function Sheet({ activityLabel, hasCheck }: { activityLabel: string; hasCheck: b
         </View>
       )}
 
+      {hasCheck && (
+        <View style={styles.fieldRow}>
+          <Text style={styles.fieldLabel}>Dont plants potager 10 % (€)</Text>
+          <View style={styles.fieldLine} />
+        </View>
+      )}
+
       <Text style={styles.footer}>
         Ne pas noter le fond de caisse (30 €) — uniquement la recette du jour.
-        {hasCheck ? " CB : voir la capture Up2Pay, pas sur cette fiche." : ""} Vente unitaire {">"} 76 € : à
-        saisir à part dans l&apos;appli, jamais ici.
+        {hasCheck
+          ? " « Dont plants potager » : part DÉJÀ incluse dans le total du jour (tous paiements confondus), pas un montant en plus — le reste est compté à 5,5 %. CB : voir la capture Up2Pay."
+          : ""}{" "}
+        Vente unitaire {">"} 76 € : à saisir à part dans l&apos;appli, jamais ici.
       </Text>
     </View>
   );
