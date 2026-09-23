@@ -5,10 +5,11 @@ import { formatEuro } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 // Déclaration annuelle de régularisation TVA — régime simplifié agricole
-// (RSA), formulaire officiel Cerfa n°10968 dit 3517-AGR-SD ("CA12A" est une
-// appellation informelle, gardée comme slug d'URL mais plus affichée). Par
-// défaut, l'exercice le plus récent déjà clos (l'année en cours n'est pas
-// encore déclarable).
+// (RSA) : formulaire n°3517-AGR-SD, nommé "CA12A" dans l'espace
+// professionnel impots.gouv.fr au moment du dépôt — les deux noms sont
+// affichés pour que l'exploitant retrouve le même intitulé des deux côtés.
+// Par défaut, l'exercice le plus récent déjà clos (l'année en cours n'est
+// pas encore déclarable).
 export default async function Page({
   searchParams,
 }: {
@@ -25,7 +26,7 @@ export default async function Page({
       <div className="rounded-lg border bg-white p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-slate-700">
-            Déclaration de TVA (Cerfa n°10968 / 3517-AGR-SD) — exercice {year}
+            Déclaration CA12A / 3517-AGR-SD (TVA) — exercice {year}
           </p>
           <div className="flex items-center gap-2 text-sm">
             <Link href={`?year=${year - 1}`} className="text-slate-500 underline">
