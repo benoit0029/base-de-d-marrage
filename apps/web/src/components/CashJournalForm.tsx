@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import {
   submitCashJournalEntry,
   extractCashJournalPhotoAmount,
+  extractCashJournalCardAmount,
   type CashJournalFormState,
 } from "@/app/actions/cashJournal";
 import type { Activity } from "@prisma/client";
@@ -22,8 +23,11 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
   // l'exploitant garde la main pour corriger avant d'enregistrer.
   const [cashAmount, setCashAmount] = useState("");
   const [checkAmount, setCheckAmount] = useState("");
+  const [cardAmount, setCardAmount] = useState("");
   const [readNotice, setReadNotice] = useState<string | null>(null);
+  const [cardReadNotice, setCardReadNotice] = useState<string | null>(null);
   const [isReadPending, startReadTransition] = useTransition();
+  const [isCardReadPending, startCardReadTransition] = useTransition();
 
   // Les champs montants sont désormais contrôlés (pré-remplissage par
   // lecture automatique) : le reset natif du formulaire après un envoi
@@ -32,7 +36,9 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
     if (state.status === "success") {
       setCashAmount("");
       setCheckAmount("");
+      setCardAmount("");
       setReadNotice(null);
+      setCardReadNotice(null);
     }
   }, [state]);
 
@@ -56,6 +62,27 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
         setReadNotice("Aucun montant lu sur la photo — vérifie ou saisis-le toi-même.");
       } else {
         setReadNotice("Montant lu automatiquement — vérifie avant d'enregistrer.");
+      }
+    });
+  }
+
+  function handleCardStatementChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCardReadNotice(null);
+    const photoData = new FormData();
+    photoData.set("photo", file);
+    startCardReadTransition(async () => {
+      const result = await extractCashJournalCardAmount(photoData);
+      if (result.status === "error") {
+        setCardReadNotice(result.message ?? "Lecture automatique impossible — saisis le montant toi-même.");
+        return;
+      }
+      if (result.cardAmount !== null) {
+        setCardAmount(String(result.cardAmount).replace(".", ","));
+        setCardReadNotice("Montant lu automatiquement — vérifie avant d'enregistrer.");
+      } else {
+        setCardReadNotice("Aucun montant lu sur la capture — vérifie ou saisis-le toi-même.");
       }
     });
   }
@@ -119,6 +146,8 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
                 inputMode="decimal"
                 name="cardAmount"
                 placeholder="0,00"
+                value={cardAmount}
+                onChange={(e) => setCardAmount(e.target.value)}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
               />
             </label>
@@ -155,8 +184,15 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
               type="file"
               name="cardStatement"
               accept="image/*,application/pdf"
+              onChange={handleCardStatementChange}
               className="mt-1 w-full text-sm text-slate-500"
             />
+            {isCardReadPending && (
+              <span className="mt-1 block text-xs text-slate-400">Lecture automatique du montant…</span>
+            )}
+            {cardReadNotice && !isCardReadPending && (
+              <span className="mt-1 block text-xs text-amber-700">{cardReadNotice}</span>
+            )}
           </label>
         )}
       </div>

@@ -7,7 +7,7 @@ import {
   CashJournalAlreadyValidatedError,
   CashJournalError,
 } from "@/server/services/cashJournal";
-import { extractCashJournalAmount } from "@/lib/mistral/agents";
+import { extractCashJournalAmount, extractCardStatementAmount } from "@/lib/mistral/agents";
 import { MistralApiError, MistralConfigError } from "@/lib/mistral/client";
 import { CASH_JOURNAL_DAILY_THRESHOLD } from "@/lib/thresholds";
 import type { Activity } from "@prisma/client";
@@ -43,6 +43,41 @@ export async function extractCashJournalPhotoAmount(
         status: "error",
         cashAmount: null,
         checkAmount: null,
+        message: "Lecture automatique indisponible — saisis le montant manuellement.",
+      };
+    }
+    throw err;
+  }
+}
+
+export interface CardStatementReadResult {
+  status: "ok" | "error";
+  cardAmount: number | null;
+  message?: string;
+}
+
+/**
+ * Même principe que ci-dessus pour la part CB (Maraîchage uniquement) : lue
+ * sur la capture d'écran Up2Pay plutôt que sur la photo de comptage de
+ * caisse — deux justificatifs distincts, deux lectures distinctes.
+ */
+export async function extractCashJournalCardAmount(
+  formData: FormData
+): Promise<CardStatementReadResult> {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    return { status: "error", cardAmount: null, message: "Aucune capture reçue." };
+  }
+
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { cardAmount } = await extractCardStatementAmount(buffer, file.type || "image/jpeg");
+    return { status: "ok", cardAmount };
+  } catch (err) {
+    if (err instanceof MistralConfigError || err instanceof MistralApiError) {
+      return {
+        status: "error",
+        cardAmount: null,
         message: "Lecture automatique indisponible — saisis le montant manuellement.",
       };
     }

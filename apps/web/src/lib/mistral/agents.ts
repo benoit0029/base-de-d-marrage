@@ -98,6 +98,34 @@ export async function extractCashJournalAmount(
   return cashJournalAmountSchema.parse(raw);
 }
 
+// Même principe pour la part CB (Maraîchage uniquement) : lue sur la capture
+// d'écran de l'appli bancaire Up2Pay plutôt que sur la photo de comptage de
+// caisse ci-dessus — deux justificatifs, deux sources distinctes.
+const cardStatementAmountSchema = z.object({
+  cardAmount: z.number().nullable(),
+});
+
+export type CardStatementAmountExtraction = z.infer<typeof cardStatementAmountSchema>;
+
+export async function extractCardStatementAmount(
+  buffer: Buffer,
+  mimeType: string
+): Promise<CardStatementAmountExtraction> {
+  const ocr = await ocrExtract(buffer, mimeType);
+
+  const raw = await chatJson({
+    system:
+      "Tu lis une capture d'écran de l'application bancaire Up2Pay (terminal de paiement par " +
+      "carte) pour trouver le total encaissé par carte bancaire sur UNE SEULE journée de vente " +
+      'directe. Réponds uniquement en JSON avec la clé "cardAmount" (montant total CB du jour, ' +
+      "nombre ou null si absent/illisible). N'invente aucun montant : si tu ne peux pas lire un " +
+      "chiffre avec certitude, réponds null plutôt que de deviner.",
+    user: ocr.fullText.slice(0, 2000),
+  });
+
+  return cardStatementAmountSchema.parse(raw);
+}
+
 // ---------------------------------------------------------------------------
 // Agent de classement/ventilation : détermine l'activité et le type d'écriture.
 // ---------------------------------------------------------------------------
