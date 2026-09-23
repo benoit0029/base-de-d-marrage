@@ -197,13 +197,19 @@ export async function computeBicThresholds(year = new Date().getFullYear()): Pro
     caFruitsLegumes,
     caPhotobooth,
     caTotal,
+    // Activité mixte (art. 293 B du CGI) : la franchise ne tient que si le CA
+    // GLOBAL (ventes + services) reste sous le seuil "vente" ET que la part
+    // services reste sous le seuil "services" — le seuil de 85 000 € se
+    // compare donc au CA total, pas au seul CA Fruits/Légumes. Dépasser l'un
+    // OU l'autre fait perdre la franchise à toute la micro-entreprise, donc
+    // aux deux activités à la fois.
     franchiseVente: {
-      label: "Franchise TVA — vente de marchandises (Fruits/Légumes)",
-      caCumule: caFruitsLegumes,
+      label: "Franchise TVA — CA global de la micro-BIC (Fruits/Légumes + Kerbooth)",
+      caCumule: caTotal,
       seuil: LEGAL_THRESHOLDS.VENTE.franchiseTva,
       seuilTolerance: LEGAL_THRESHOLDS.VENTE.franchiseTvaTolerance,
       level: levelFor(
-        caFruitsLegumes,
+        caTotal,
         LEGAL_THRESHOLDS.VENTE.franchiseTva,
         LEGAL_THRESHOLDS.VENTE.franchiseTvaTolerance
       ),
