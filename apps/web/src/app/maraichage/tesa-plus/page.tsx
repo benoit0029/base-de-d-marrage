@@ -44,7 +44,8 @@ export default async function Page({
         showPeriod
         revalidatePaths={["/maraichage/tesa-plus"]}
         title="Importer un document Tesa+"
-        description="Contrat, bulletin de paie, cotisations salariales, certificat de travail, attestation Pôle Emploi, solde de tout compte : tous traités de façon identique, sans calcul automatique."
+        description="Contrat, bulletin de paie, cotisations salariales, certificat de travail, attestation Pôle Emploi, solde de tout compte : choisis le fichier, le type, la date, la période et le montant sont lus automatiquement — à vérifier avant d'importer."
+        readKind="tesa"
       />
       <div className="flex justify-end">
         <YearFilter closedYears={closedYears} />

@@ -42,7 +42,8 @@ export default async function Page({
         showPeriod
         revalidatePaths={["/maraichage/cotisations-non-salarie", "/maraichage/achats"]}
         title="Importer un appel de cotisation MSA (non salarié)"
-        description="Chaque import crée automatiquement une ligne dans le registre des Dépenses, en attente de validation."
+        description="Choisis le fichier : la date, la période et le montant sont lus automatiquement — à vérifier avant d'importer. Chaque import crée une ligne dans le registre des Dépenses, en attente de validation."
+        readKind="cotisation_msa"
       />
       <div className="flex justify-end">
         <YearFilter closedYears={closedYears} />

@@ -146,6 +146,76 @@ export async function extractCardStatementAmount(
 }
 
 // ---------------------------------------------------------------------------
+// Agent de lecture des documents importés hors Dépenses (Tesa+, appel de
+// cotisation MSA, justificatif d'acompte TVA) : pré-remplit date/montant (et
+// selon le cas période, type de document ou échéance) — l'exploitant vérifie
+// avant d'enregistrer, rien n'est enregistré par cet agent.
+// ---------------------------------------------------------------------------
+
+export type ImportedDocumentKind = "tesa" | "cotisation_msa" | "acompte_tva";
+
+export const TESA_DOCUMENT_TYPES = [
+  "TESA_CONTRAT",
+  "TESA_BULLETIN_PAIE",
+  "TESA_COTISATIONS_SALARIALES",
+  "TESA_CERTIFICAT_TRAVAIL",
+  "TESA_ATTESTATION_POLE_EMPLOI",
+  "TESA_SOLDE_TOUT_COMPTE",
+] as const;
+
+const importedDocumentSchema = z.object({
+  date: z.string().nullable(),
+  amount: z.number().nullable(),
+  period: z.string().nullable(),
+  category: z.string().nullable(), // validé contre TESA_DOCUMENT_TYPES par l'appelant
+  dueLabel: z.string().nullable(),
+});
+
+export type ImportedDocumentExtraction = z.infer<typeof importedDocumentSchema>;
+
+const KIND_INSTRUCTIONS: Record<ImportedDocumentKind, string> = {
+  tesa:
+    "Le document est un document TESA+ (MSA) lié à un salarié agricole : contrat, bulletin de paie, " +
+    "récapitulatif de cotisations salariales, certificat de travail, attestation Pôle Emploi/France " +
+    'Travail ou solde de tout compte. "date" = date d\'émission du document ; "amount" = montant ' +
+    "total à payer ou net versé s'il y en a un (null pour un contrat ou un certificat sans montant) ; " +
+    '"period" = mois concerné au format YYYY-MM (ex. mois de paie), ou null ; "category" = l\'une des ' +
+    `valeurs ${TESA_DOCUMENT_TYPES.join(", ")} selon le type de document, ou null si incertain ; ` +
+    '"dueLabel" = null.',
+  cotisation_msa:
+    "Le document est un appel de cotisations sociales MSA de l'exploitant agricole non salarié. " +
+    '"date" = date d\'émission de l\'appel ; "amount" = montant total à payer ; "period" = période ' +
+    "couverte au format YYYY-MM (premier mois de la période si elle en couvre plusieurs), ou null ; " +
+    '"category" = null ; "dueLabel" = null.',
+  acompte_tva:
+    "Le document est un justificatif de paiement de TVA (accusé de paiement impots.gouv.fr, avis de " +
+    'prélèvement ou relevé). "date" = date du paiement ; "amount" = montant payé ; "dueLabel" = ' +
+    'l\'échéance concernée au format "YYYY-Tn" (trimestre, ex. "2026-T3") s\'il s\'agit d\'un acompte ' +
+    'trimestriel, ou "Régularisation annuelle YYYY" s\'il s\'agit du solde de la déclaration annuelle ' +
+    '(CA12A/3517-AGR-SD), ou null si incertain ; "period" = null ; "category" = null.',
+};
+
+export async function extractImportedDocument(
+  buffer: Buffer,
+  mimeType: string,
+  kind: ImportedDocumentKind
+): Promise<ImportedDocumentExtraction> {
+  const ocr = await ocrExtract(buffer, mimeType);
+
+  const raw = await chatJson({
+    system:
+      "Tu lis un document administratif d'une exploitation agricole pour pré-remplir un formulaire. " +
+      KIND_INSTRUCTIONS[kind] +
+      ' Réponds uniquement en JSON avec les clés "date" (YYYY-MM-DD ou null), "amount" (nombre ou ' +
+      'null), "period", "category" et "dueLabel". N\'invente rien : si un champ est absent ou illisible, ' +
+      "réponds null pour ce champ plutôt que de deviner.",
+    user: ocr.fullText.slice(0, 6000),
+  });
+
+  return importedDocumentSchema.parse(raw);
+}
+
+// ---------------------------------------------------------------------------
 // Agent de classement/ventilation : détermine l'activité et le type d'écriture.
 // ---------------------------------------------------------------------------
 
