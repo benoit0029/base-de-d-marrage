@@ -104,6 +104,25 @@ guide de déploiement + mémo juridique) et dans le mémo en ligne "Kerbooth —
 Statut à deux". Point préalable obligatoire : validation du montage par
 Cerfrance/un juriste.
 
+## 6. Facture électronique (Plateforme Agréée, PA)
+
+**Ce qui s'applique à toi** (sources secondaires seulement, sites officiels
+inaccessibles depuis l'outil, à confirmer avec Cerfrance) :
+- **Recevoir** les factures fournisseurs au format électronique : obligatoire
+  depuis le **1er septembre 2026**, pour toutes les entreprises, micro et
+  franchise comprises → s'inscrire dès maintenant sur une PA (Abby a une
+  offre gratuite), sans rien à construire dans l'appli.
+- **Émettre** les factures aux professionnels via une PA, et transmettre
+  les totaux des ventes aux particuliers (**e-reporting**) : à partir du
+  **1er septembre 2027** pour les petites entreprises.
+- L'exclusion des exploitants au remboursement forfaitaire agricole (RFA) ne
+  te concerne pas : tu es au réel simplifié agricole.
+
+**Dans l'appli** : le bouton « Envoyer via Abby » existe, mais la connexion
+a été écrite sans accès à la documentation d'Abby (à vérifier avant le
+premier envoi réel) ; l'e-reporting n'est pas construit. À faire avant
+septembre 2027.
+
 ---
 
 ## Petits points techniques (sans urgence)
