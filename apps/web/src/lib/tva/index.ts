@@ -4,7 +4,8 @@ import { currentYearRange, sumInvoicedTotal } from "@/lib/thresholds";
 
 export interface TvaRegisterRow {
   period: string; // ex. "2026-T3"
-  collected: number;
+  collected: number; // factures + vente directe
+  collectedDirect: number; // dont vente directe (journal de caisse)
   deductible: number;
   net: number;
   // "dispensé" : acomptes trimestriels désactivés dans Réglages (voir
@@ -47,8 +48,8 @@ const QUARTERS_SHOWN = 6; // 1,5 an de recul — suffisant pour suivre l'histori
 
 /**
  * Registre TVA (régime simplifié agricole, Maraîchage uniquement) : calculé
- * automatiquement à partir des factures (TVA collectée) et des Dépenses
- * validées (TVA déductible) — jamais de saisie manuelle de ces montants.
+ * automatiquement à partir des factures et du journal de caisse (TVA
+ * collectée) et des Dépenses validées (TVA déductible) — jamais de saisie manuelle de ces montants.
  * Le statut confronte ce calcul aux acomptes réellement enregistrés
  * (TvaInstallment) pour la même période.
  *
@@ -77,7 +78,7 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
     const { start, end } = quarterRange(year, quarter);
     const label = quarterLabel(year, quarter);
 
-    const [collectedAgg, deductibleAgg, settledInstallment] = await Promise.all([
+    const [collectedAgg, deductibleAgg, settledInstallment, direct] = await Promise.all([
       prisma.invoice.aggregate({
         where: {
           tenantId,
@@ -103,14 +104,19 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
         where: { tenantId, dueLabel: label, status: "VALIDATED", deletedAt: null },
         select: { id: true },
       }),
+      computeCashJournalVatBetween(start, end),
     ]);
 
-    const collected = Number(collectedAgg._sum.totalVat ?? 0);
+    // TVA des ventes directes (journal de caisse) en plus de celle des
+    // factures — même extraction 5,5 % / 10 % plants que la CA12A.
+    const collectedDirect = Math.round(direct.collected * 100) / 100;
+    const collected = Number(collectedAgg._sum.totalVat ?? 0) + collectedDirect;
     const deductible = Number(deductibleAgg._sum.amountVat ?? 0);
 
     rows.push({
       period: label,
       collected,
+      collectedDirect,
       deductible,
       net: collected - deductible,
       status: !installmentsEnabled ? "dispensé" : settledInstallment ? "réglé" : "à traiter",
@@ -160,7 +166,7 @@ export interface AnnualTvaDeclaration {
   acomptesDejaVerses: number; // TvaInstallment validés de l'année (dueLabel "YYYY-Tn")
   soldeAPayer: number; // soldeAvantAcomptes - acomptesDejaVerses (négatif = crédit remboursable)
   deadline: Date;
-  installmentsRequiredNextYear: boolean; // netVat > TVA_INSTALLMENT_THRESHOLD
+  installmentsRequiredNextYear: boolean; // netVat >= TVA_INSTALLMENT_THRESHOLD
 }
 
 // Taxe ADAR (développement agricole et rural), formule forfaitaire +
@@ -193,8 +199,16 @@ export function ca12aDeadline(recetteYear: number): Date {
  * défaut — simplification à corriger si elles concernent aussi des plants.
  */
 export async function computeCashJournalVat(year: number): Promise<{ caTotal: number; collected: number }> {
-  const tenantId = await getDefaultTenantId();
   const { start, end } = currentYearRange(year);
+  return computeCashJournalVatBetween(start, end);
+}
+
+// Même calcul sur une période quelconque (trimestre du Registre TVA).
+export async function computeCashJournalVatBetween(
+  start: Date,
+  end: Date
+): Promise<{ caTotal: number; collected: number }> {
+  const tenantId = await getDefaultTenantId();
 
   const entries = await prisma.cashJournalEntry.findMany({
     where: {
@@ -316,6 +330,6 @@ export async function computeAnnualTvaDeclaration(year: number): Promise<AnnualT
     acomptesDejaVerses,
     soldeAPayer: soldeAvantAcomptes - acomptesDejaVerses,
     deadline: ca12aDeadline(year),
-    installmentsRequiredNextYear: netVat > TVA_INSTALLMENT_THRESHOLD,
+    installmentsRequiredNextYear: netVat >= TVA_INSTALLMENT_THRESHOLD, // dispense seulement sous 1 000 €
   };
 }

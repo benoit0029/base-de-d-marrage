@@ -10,7 +10,7 @@ import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 
 export interface CashJournalSheetData {
   activityLabel: string; // "Maraîchage" ou "Revente Fruits/Légumes"
-  hasCheck: boolean; // Maraîchage : espèces + chèques ; Fruits/Légumes : espèces seules
+  hasCheck: boolean; // Maraîchage : espèces, chèques, CB + répartition 5,5 % / 10 % ; Fruits/Légumes : espèces seules
   count: number; // nombre de fiches à générer, 3 par page
 }
 
@@ -32,7 +32,23 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 12, width: 165, color: "#1e293b" },
   fieldLine: { flex: 1, borderBottomWidth: 1, borderBottomColor: "#0f172a", height: 22 },
   footer: { marginTop: 4, fontSize: 8, color: "#64748b" },
+  // Maraîchage : plus de lignes (CB, total, répartition par taux) dans la
+  // même hauteur de fiche, pour garder 3 fiches par page A4.
+  fieldRowCompact: { flexDirection: "row", alignItems: "baseline", marginBottom: 8 },
+  fieldLineCompact: { flex: 1, borderBottomWidth: 1, borderBottomColor: "#0f172a", height: 19 },
+  splitLabel: { fontSize: 11, width: 136, color: "#1e293b" },
+  splitGap: { width: 16 },
+  totalLabel: { fontSize: 12, width: 165, color: "#0f172a", fontWeight: 700 },
 });
+
+function CompactField({ label, bold = false }: { label: string; bold?: boolean }) {
+  return (
+    <View style={styles.fieldRowCompact}>
+      <Text style={bold ? styles.totalLabel : styles.fieldLabel}>{label}</Text>
+      <View style={styles.fieldLineCompact} />
+    </View>
+  );
+}
 
 function Sheet({ activityLabel, hasCheck }: { activityLabel: string; hasCheck: boolean }) {
   return (
@@ -42,34 +58,38 @@ function Sheet({ activityLabel, hasCheck }: { activityLabel: string; hasCheck: b
         <Text style={styles.activity}>{activityLabel}</Text>
       </View>
 
-      <View style={styles.fieldRow}>
-        <Text style={styles.fieldLabel}>Date de la vente</Text>
-        <View style={styles.fieldLine} />
-      </View>
-
-      <View style={styles.fieldRow}>
-        <Text style={styles.fieldLabel}>Espèces (€)</Text>
-        <View style={styles.fieldLine} />
-      </View>
-
-      {hasCheck && (
-        <View style={styles.fieldRow}>
-          <Text style={styles.fieldLabel}>Chèques (€)</Text>
-          <View style={styles.fieldLine} />
-        </View>
-      )}
-
-      {hasCheck && (
-        <View style={styles.fieldRow}>
-          <Text style={styles.fieldLabel}>Dont plants potager 10 % (€)</Text>
-          <View style={styles.fieldLine} />
-        </View>
+      {hasCheck ? (
+        <>
+          <CompactField label="Date de la vente" />
+          <CompactField label="Espèces (€)" />
+          <CompactField label="Chèques (€)" />
+          <CompactField label="CB (€)" />
+          <CompactField label="Total du jour (€)" bold />
+          <View style={styles.fieldRowCompact}>
+            <Text style={styles.splitLabel}>Fruits/légumes 5,5 % (€)</Text>
+            <View style={styles.fieldLineCompact} />
+            <View style={styles.splitGap} />
+            <Text style={styles.splitLabel}>Plants potagers 10 % (€)</Text>
+            <View style={styles.fieldLineCompact} />
+          </View>
+        </>
+      ) : (
+        <>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Date de la vente</Text>
+            <View style={styles.fieldLine} />
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Espèces (€)</Text>
+            <View style={styles.fieldLine} />
+          </View>
+        </>
       )}
 
       <Text style={styles.footer}>
         Ne pas noter le fond de caisse (30 €) — uniquement la recette du jour.
         {hasCheck
-          ? " « Dont plants potager » : part DÉJÀ incluse dans le total du jour (tous paiements confondus), pas un montant en plus — le reste est compté à 5,5 %. CB : voir la capture Up2Pay."
+          ? " Fruits/légumes 5,5 % + plants potagers 10 % = total du jour (une répartition du même total, pas des montants en plus)."
           : ""}{" "}
         Vente unitaire {">"} 76 € : à saisir à part dans l&apos;appli, jamais ici.
       </Text>

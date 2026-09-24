@@ -60,16 +60,6 @@ export function CashJournalDetail({ entry }: { entry: FakeCashJournalEntry }) {
             Bordereau de dépôt
           </a>
         )}
-        {entry.cardStatementUrl && (
-          <a
-            href={toDocumentHref(entry.cardStatementUrl)}
-            target="_blank"
-            rel="noreferrer"
-            className="block underline"
-          >
-            Capture Up2Pay (CB)
-          </a>
-        )}
       </div>
       {entry.exceptionalSales.length > 0 && (
         <div className="sm:col-span-2">

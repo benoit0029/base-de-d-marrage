@@ -5,13 +5,14 @@ import { useActionState } from "react";
 import {
   submitCashJournalEntry,
   extractCashJournalPhotoAmount,
-  extractCashJournalCardAmount,
   type CashJournalFormState,
 } from "@/app/actions/cashJournal";
 import type { Activity } from "@prisma/client";
 
 const initialState: CashJournalFormState = { status: "idle", message: "" };
 const today = () => new Date().toISOString().slice(0, 10);
+const toNumber = (v: string) => (v.trim() === "" ? 0 : Number(v.replace(",", ".")));
+const fmt = (n: number) => n.toFixed(2).replace(".", ",");
 
 function formatFrDate(isoDate: string): string {
   const [y, m, d] = isoDate.split("-");
@@ -30,11 +31,16 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
   const [cashAmount, setCashAmount] = useState("");
   const [checkAmount, setCheckAmount] = useState("");
   const [cardAmount, setCardAmount] = useState("");
+  const [reducedRateAmount, setReducedRateAmount] = useState("");
   const [plantSalesAmount, setPlantSalesAmount] = useState("");
   const [readNotice, setReadNotice] = useState<string | null>(null);
-  const [cardReadNotice, setCardReadNotice] = useState<string | null>(null);
   const [isReadPending, startReadTransition] = useTransition();
-  const [isCardReadPending, startCardReadTransition] = useTransition();
+
+  // Contrôle en direct (Maraîchage) : 5,5 % + 10 % doivent égaler le total
+  // espèces + chèques + CB, comme sur la fiche du jour.
+  const dayTotal = toNumber(cashAmount) + toNumber(checkAmount) + toNumber(cardAmount);
+  const splitTotal = toNumber(reducedRateAmount) + toNumber(plantSalesAmount);
+  const splitMismatch = reducedRateAmount.trim() !== "" && Math.abs(splitTotal - dayTotal) > 0.01;
 
   // Les champs montants sont désormais contrôlés (pré-remplissage par
   // lecture automatique) : le reset natif du formulaire après un envoi
@@ -45,9 +51,9 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
       setCashAmount("");
       setCheckAmount("");
       setCardAmount("");
+      setReducedRateAmount("");
       setPlantSalesAmount("");
       setReadNotice(null);
-      setCardReadNotice(null);
     }
   }, [state]);
 
@@ -71,38 +77,23 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
       if (isMaraichage && result.checkAmount !== null) {
         setCheckAmount(String(result.checkAmount).replace(".", ","));
       }
+      if (isMaraichage && result.cardAmount !== null) {
+        setCardAmount(String(result.cardAmount).replace(".", ","));
+      }
+      if (isMaraichage && result.reducedRateAmount !== null) {
+        setReducedRateAmount(String(result.reducedRateAmount).replace(".", ","));
+      }
       if (isMaraichage && result.plantSalesAmount !== null) {
         setPlantSalesAmount(String(result.plantSalesAmount).replace(".", ","));
       }
       const notices: string[] = [];
       if (result.date !== null) notices.push(`date de vente lue : ${formatFrDate(result.date)}`);
-      if (result.cashAmount === null && result.checkAmount === null) {
+      if (result.cashAmount === null && result.checkAmount === null && result.cardAmount === null) {
         notices.push("aucun montant lu");
       } else {
         notices.push("montant lu");
       }
       setReadNotice(`Lecture automatique (${notices.join(", ")}) — vérifie avant d'enregistrer.`);
-    });
-  }
-
-  function handleCardStatementChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCardReadNotice(null);
-    const photoData = new FormData();
-    photoData.set("photo", file);
-    startCardReadTransition(async () => {
-      const result = await extractCashJournalCardAmount(photoData);
-      if (result.status === "error") {
-        setCardReadNotice(result.message ?? "Lecture automatique impossible — saisis le montant toi-même.");
-        return;
-      }
-      if (result.cardAmount !== null) {
-        setCardAmount(String(result.cardAmount).replace(".", ","));
-        setCardReadNotice("Montant lu automatiquement — vérifie avant d'enregistrer.");
-      } else {
-        setCardReadNotice("Aucun montant lu sur la capture — vérifie ou saisis-le toi-même.");
-      }
     });
   }
 
@@ -178,66 +169,60 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
       </div>
 
       {isMaraichage && (
-        <label className="block text-sm sm:max-w-xs">
-          <span className="text-slate-600">
-            Dont vente de plants (10 %){" "}
-            <span className="text-xs text-slate-400">
-              — part déjà incluse ci-dessus, pas un montant en plus
-            </span>
-          </span>
-          <input
-            type="text"
-            inputMode="decimal"
-            name="plantSalesAmount"
-            placeholder="0,00"
-            value={plantSalesAmount}
-            onChange={(e) => setPlantSalesAmount(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-        </label>
+        <div className="space-y-1">
+          <p className="text-sm text-slate-600">
+            Répartition du total par taux de TVA{" "}
+            <span className="text-xs text-slate-400">— les deux parts du même total, pas des montants en plus</span>
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 sm:max-w-xl">
+            <label className="text-sm">
+              <span className="text-slate-600">Fruits / légumes 5,5 % (€)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                name="reducedRateAmount"
+                placeholder="0,00"
+                value={reducedRateAmount}
+                onChange={(e) => setReducedRateAmount(e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              />
+            </label>
+            <label className="text-sm">
+              <span className="text-slate-600">Plants potagers 10 % (€)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                name="plantSalesAmount"
+                placeholder="0,00"
+                value={plantSalesAmount}
+                onChange={(e) => setPlantSalesAmount(e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              />
+            </label>
+          </div>
+          {splitMismatch && (
+            <p className="text-xs text-red-600">
+              5,5 % + 10 % = {fmt(splitTotal)} € ≠ total espèces + chèques + CB = {fmt(dayTotal)} €
+            </p>
+          )}
+        </div>
       )}
 
-      <div className={`grid gap-3 ${isMaraichage ? "sm:grid-cols-2" : "sm:grid-cols-1 sm:max-w-xs"}`}>
-        <label className="text-sm">
-          <span className="text-slate-600">
-            Photo du jour — comptage de caisse (pas le bordereau de dépôt en banque)
-          </span>
-          <input
-            type="file"
-            name="depositSlip"
-            accept="image/*,application/pdf"
-            capture="environment"
-            onChange={handlePhotoChange}
-            className="mt-1 w-full text-sm text-slate-500"
-          />
-          {isReadPending && (
-            <span className="mt-1 block text-xs text-slate-400">Lecture automatique du montant…</span>
-          )}
-          {readNotice && !isReadPending && (
-            <span className="mt-1 block text-xs text-amber-700">{readNotice}</span>
-          )}
-        </label>
-        {isMaraichage && (
-          <label className="text-sm">
-            <span className="text-slate-600">
-              Justificatif CB — capture d&apos;écran app bancaire Up2Pay
-            </span>
-            <input
-              type="file"
-              name="cardStatement"
-              accept="image/*,application/pdf"
-              onChange={handleCardStatementChange}
-              className="mt-1 w-full text-sm text-slate-500"
-            />
-            {isCardReadPending && (
-              <span className="mt-1 block text-xs text-slate-400">Lecture automatique du montant…</span>
-            )}
-            {cardReadNotice && !isCardReadPending && (
-              <span className="mt-1 block text-xs text-amber-700">{cardReadNotice}</span>
-            )}
-          </label>
-        )}
-      </div>
+      <label className="block text-sm sm:max-w-md">
+        <span className="text-slate-600">
+          Photo du jour — fiche de comptage de caisse (pas le bordereau de dépôt en banque)
+        </span>
+        <input
+          type="file"
+          name="depositSlip"
+          accept="image/*,application/pdf"
+          capture="environment"
+          onChange={handlePhotoChange}
+          className="mt-1 w-full text-sm text-slate-500"
+        />
+        {isReadPending && <span className="mt-1 block text-xs text-slate-400">Lecture automatique du montant…</span>}
+        {readNotice && !isReadPending && <span className="mt-1 block text-xs text-amber-700">{readNotice}</span>}
+      </label>
 
       <details className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
         <summary className="cursor-pointer font-medium text-amber-800">

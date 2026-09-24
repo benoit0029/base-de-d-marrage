@@ -4,7 +4,7 @@ import { formatEuro } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 // Registre TVA (régime simplifié agricole) : calculé automatiquement à
-// partir des factures validées (TVA collectée) et des Dépenses validées
+// partir des factures et du journal de caisse (TVA collectée) et des Dépenses validées
 // (TVA déductible) — plus une donnée de démonstration. Le statut confronte
 // ce calcul aux paiements d'acompte réellement enregistrés (onglet Acompte TVA).
 export default async function Page() {
@@ -14,7 +14,8 @@ export default async function Page() {
     <div className="rounded-lg border bg-white overflow-x-auto">
       <p className="p-4 text-sm text-slate-500">
         Registre TVA — régime simplifié agricole (RSA). Calculé
-        automatiquement à partir des factures et des Dépenses validées.
+        automatiquement à partir des factures, des ventes directes (journal de
+        caisse) et des Dépenses validées.
       </p>
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -30,7 +31,12 @@ export default async function Page() {
           {rows.map((row) => (
             <tr key={row.period}>
               <td className="px-4 py-2.5">{row.period}</td>
-              <td className="px-4 py-2.5 text-right">{formatEuro(row.collected)}</td>
+              <td className="px-4 py-2.5 text-right">
+                {formatEuro(row.collected)}
+                {row.collectedDirect > 0 && (
+                  <span className="block text-xs text-slate-400">dont {formatEuro(row.collectedDirect)} vente directe</span>
+                )}
+              </td>
               <td className="px-4 py-2.5 text-right">{formatEuro(row.deductible)}</td>
               <td className="px-4 py-2.5 text-right font-medium">{formatEuro(row.net)}</td>
               <td className="px-4 py-2.5">

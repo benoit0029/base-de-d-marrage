@@ -81,9 +81,11 @@ const cashJournalAmountSchema = z.object({
   date: z.string().nullable(), // format ISO 8601 (YYYY-MM-DD) ou null si absente
   cashAmount: z.number().nullable(),
   checkAmount: z.number().nullable(),
-  // Part DÉJÀ INCLUSE dans cashAmount/checkAmount (pas un montant en plus)
-  // correspondant à de la vente de plants (Maraîchage, taxée à 10% plutôt
-  // que 5,5% pour les fruits/légumes) — voir CashJournalEntry.plantSalesAmount.
+  cardAmount: z.number().nullable(), // CB (Maraîchage), notée sur la fiche du jour
+  // Répartition du total du jour par taux (Maraîchage) : fruits/légumes à
+  // 5,5 % et plants potagers à 10 % — deux parts du MÊME total, pas des
+  // montants en plus. Voir CashJournalEntry.plantSalesAmount.
+  reducedRateAmount: z.number().nullable(),
   plantSalesAmount: z.number().nullable(),
 });
 
@@ -98,15 +100,17 @@ export async function extractCashJournalAmount(
 
   const raw = await chatJson({
     system:
-      "Tu lis une photo de comptage de caisse (manuscrit ou ticket de caisse imprimé) pour la " +
-      "recette d'UNE SEULE journée de vente directe (marché, vente à la ferme). Réponds " +
-      'uniquement en JSON avec les clés "date" (date de la VENTE écrite sur la photo, au format ' +
-      'YYYY-MM-DD, ou null si aucune date n\'y est notée — ne mets JAMAIS la date d\'aujourd\'hui ' +
-      'par défaut, laisse null si tu ne la vois pas), "cashAmount" (montant en espèces de la ' +
-      'recette du jour, nombre ou null si absent/illisible), "checkAmount" (montant en chèques ' +
-      'du jour, nombre ou null si absent/non applicable) et "plantSalesAmount" (part de vente de ' +
-      "plants DÉJÀ INCLUSE dans cashAmount/checkAmount, PAS un montant en plus — nombre ou null si " +
-      "aucune vente de plants n'est mentionnée ce jour-là). Si une date est écrite sans année " +
+      "Tu lis une photo de comptage de caisse (fiche du jour manuscrite ou ticket de caisse " +
+      "imprimé) pour la recette d'UNE SEULE journée de vente directe (marché, vente à la ferme). " +
+      'Réponds uniquement en JSON avec les clés "date" (date de la VENTE écrite sur la photo, au ' +
+      "format YYYY-MM-DD, ou null si aucune date n'y est notée — ne mets JAMAIS la date " +
+      "d'aujourd'hui par défaut, laisse null si tu ne la vois pas), \"cashAmount\" (montant en " +
+      'espèces du jour, nombre ou null), "checkAmount" (montant en chèques du jour, nombre ou ' +
+      'null), "cardAmount" (montant payé par carte bancaire / CB du jour, nombre ou null), ' +
+      '"reducedRateAmount" (part du total du jour en fruits/légumes à 5,5 %, nombre ou null) et ' +
+      '"plantSalesAmount" (part du total du jour en plants potagers à 10 %, nombre ou null). ' +
+      "Les parts 5,5 % et 10 % sont une répartition du MÊME total (espèces + chèques + CB), pas " +
+      "des montants en plus. Si une date est écrite sans année " +
       `(ex. "25/07"), déduis l'année à partir d'aujourd'hui (${today}) : année en cours, sauf si ` +
       "cela donnerait une date dans le futur, auquel cas année précédente. N'invente aucun montant " +
       "ni aucune date : si tu ne peux pas lire un champ avec certitude, réponds null pour ce champ " +
@@ -115,34 +119,6 @@ export async function extractCashJournalAmount(
   });
 
   return cashJournalAmountSchema.parse(raw);
-}
-
-// Même principe pour la part CB (Maraîchage uniquement) : lue sur la capture
-// d'écran de l'appli bancaire Up2Pay plutôt que sur la photo de comptage de
-// caisse ci-dessus — deux justificatifs, deux sources distinctes.
-const cardStatementAmountSchema = z.object({
-  cardAmount: z.number().nullable(),
-});
-
-export type CardStatementAmountExtraction = z.infer<typeof cardStatementAmountSchema>;
-
-export async function extractCardStatementAmount(
-  buffer: Buffer,
-  mimeType: string
-): Promise<CardStatementAmountExtraction> {
-  const ocr = await ocrExtract(buffer, mimeType);
-
-  const raw = await chatJson({
-    system:
-      "Tu lis une capture d'écran de l'application bancaire Up2Pay (terminal de paiement par " +
-      "carte) pour trouver le total encaissé par carte bancaire sur UNE SEULE journée de vente " +
-      'directe. Réponds uniquement en JSON avec la clé "cardAmount" (montant total CB du jour, ' +
-      "nombre ou null si absent/illisible). N'invente aucun montant : si tu ne peux pas lire un " +
-      "chiffre avec certitude, réponds null plutôt que de deviner.",
-    user: ocr.fullText.slice(0, 2000),
-  });
-
-  return cardStatementAmountSchema.parse(raw);
 }
 
 // ---------------------------------------------------------------------------

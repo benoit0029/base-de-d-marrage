@@ -43,6 +43,8 @@ model Tenant {
   kerboothUnits      KerboothUnit[]
   kerboothBookings   KerboothBooking[]
   priorYearRevenues  PriorYearRevenue[]
+  staffRegister      StaffRegisterEntry[]
+  employerChecklist  EmployerChecklistItem[]
 }
 
 model User {
@@ -255,8 +257,8 @@ model Entry {
 //
 // Comptes bancaires distincts : Fruits/Légumes n'encaisse qu'en espèces
 // (checkAmount/cardAmount toujours à 0, justificatif = photo du bordereau de
-// dépôt). Maraîchage agrège espèces/chèques/CB (justificatifs = bordereau +
-// capture d'écran Up2Pay pour la part CB).
+// dépôt). Maraîchage agrège espèces/chèques/CB (justificatif = photo de la
+// fiche du jour, qui porte aussi la CB et la répartition 5,5 % / 10 %).
 //
 // La saisie agrégée journalière n'est légale que pour des ventes unitaires
 // ≤ 76 € (BOI-BIC-DECLA-30-30, voir CASH_JOURNAL_DAILY_THRESHOLD dans
@@ -285,7 +287,7 @@ model CashJournalEntry {
   // n'y note jamais le fond de caisse fixe (30 €), qui n'entre donc jamais
   // dans le montant lu.
   depositSlipUrl   String?
-  cardStatementUrl String? // capture d'écran app bancaire Up2Pay (Maraîchage, part CB)
+  cardStatementUrl String? // ancienne capture Up2Pay (plus utilisée depuis le 24/09/2026, CB notée sur la fiche du jour)
   // Ventes unitaires > 76 € saisies à part, jamais agrégées ci-dessus.
   // Tableau JSON de { amountTtc: number, paymentMethod: string, description?: string }.
   exceptionalSales Json?
@@ -811,4 +813,44 @@ model PriorYearRevenue {
   updatedAt DateTime @updatedAt
 
   @@unique([tenantId, activity, year])
+}
+
+// Registre unique du personnel (Maraîchage, onglet Employeur) : une ligne par
+// salarié embauché, dans l'ordre des embauches, conservée 5 ans après le
+// départ. Mentions reprises du document « Obligations micro-BA » de Benoît
+// (non relues directement sur le code du travail depuis l'outil).
+model StaffRegisterEntry {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  lastName       String
+  firstName      String
+  nationality    String
+  birthDate      DateTime
+  sex            String // "F" / "M"
+  jobTitle       String // emploi
+  qualification  String?
+  contractType   String // ex. "CDD saisonnier", "CDI"
+  hireDate       DateTime
+  exitDate       DateTime?
+  workPermit     String? // salarié étranger : type et numéro du titre de travail
+  infoVisitDoneAt DateTime? // visite d'information et de prévention (3 mois après l'embauche)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId, hireDate])
+}
+
+// Obligations d'employeur à cocher (onglet Employeur) : DUERP, affichages
+// obligatoires, mutuelle, prévoyance — date de réalisation et note.
+model EmployerChecklistItem {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  key       String // "duerp" | "affichages" | "mutuelle" | "prevoyance"
+  doneAt    DateTime?
+  note      String?
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, key])
 }

@@ -7,7 +7,7 @@ import {
   CashJournalAlreadyValidatedError,
   CashJournalError,
 } from "@/server/services/cashJournal";
-import { extractCashJournalAmount, extractCardStatementAmount } from "@/lib/mistral/agents";
+import { extractCashJournalAmount } from "@/lib/mistral/agents";
 import { MistralApiError, MistralConfigError } from "@/lib/mistral/client";
 import { CASH_JOURNAL_DAILY_THRESHOLD } from "@/lib/thresholds";
 import type { Activity } from "@prisma/client";
@@ -17,6 +17,8 @@ export interface CashJournalPhotoReadResult {
   date: string | null;
   cashAmount: number | null;
   checkAmount: number | null;
+  cardAmount: number | null;
+  reducedRateAmount: number | null;
   plantSalesAmount: number | null;
   message?: string;
 }
@@ -40,6 +42,8 @@ export async function extractCashJournalPhotoAmount(
       date: null,
       cashAmount: null,
       checkAmount: null,
+      cardAmount: null,
+      reducedRateAmount: null,
       plantSalesAmount: null,
       message: "Aucune photo reçue.",
     };
@@ -47,7 +51,7 @@ export async function extractCashJournalPhotoAmount(
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { date, cashAmount, checkAmount, plantSalesAmount } = await extractCashJournalAmount(
+    const { date, cashAmount, checkAmount, cardAmount, reducedRateAmount, plantSalesAmount } = await extractCashJournalAmount(
       buffer,
       file.type || "image/jpeg"
     );
@@ -56,6 +60,8 @@ export async function extractCashJournalPhotoAmount(
       date: date && ISO_DATE_RE.test(date) ? date : null,
       cashAmount,
       checkAmount,
+      cardAmount,
+      reducedRateAmount,
       plantSalesAmount,
     };
   } catch (err) {
@@ -65,42 +71,9 @@ export async function extractCashJournalPhotoAmount(
         date: null,
         cashAmount: null,
         checkAmount: null,
-        plantSalesAmount: null,
-        message: "Lecture automatique indisponible — saisis le montant manuellement.",
-      };
-    }
-    throw err;
-  }
-}
-
-export interface CardStatementReadResult {
-  status: "ok" | "error";
-  cardAmount: number | null;
-  message?: string;
-}
-
-/**
- * Même principe que ci-dessus pour la part CB (Maraîchage uniquement) : lue
- * sur la capture d'écran Up2Pay plutôt que sur la photo de comptage de
- * caisse — deux justificatifs distincts, deux lectures distinctes.
- */
-export async function extractCashJournalCardAmount(
-  formData: FormData
-): Promise<CardStatementReadResult> {
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) {
-    return { status: "error", cardAmount: null, message: "Aucune capture reçue." };
-  }
-
-  try {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const { cardAmount } = await extractCardStatementAmount(buffer, file.type || "image/jpeg");
-    return { status: "ok", cardAmount };
-  } catch (err) {
-    if (err instanceof MistralConfigError || err instanceof MistralApiError) {
-      return {
-        status: "error",
         cardAmount: null,
+        reducedRateAmount: null,
+        plantSalesAmount: null,
         message: "Lecture automatique indisponible — saisis le montant manuellement.",
       };
     }
@@ -165,8 +138,24 @@ export async function submitCashJournalEntry(
   const checkAmount = isMaraichage ? parseAmount(formData.get("checkAmount")) : 0;
   const cardAmount = isMaraichage ? parseAmount(formData.get("cardAmount")) : 0;
   const plantSalesAmount = isMaraichage ? parseAmount(formData.get("plantSalesAmount")) : 0;
-  if ([cashAmount, checkAmount, cardAmount, plantSalesAmount].some((n) => Number.isNaN(n) || n < 0)) {
+  // Part fruits/légumes 5,5 % (Maraîchage) : sert seulement de contrôle — la
+  // base ne garde que la part plants 10 %, le 5,5 % étant le reste du total.
+  const reducedRaw = isMaraichage ? formData.get("reducedRateAmount") : null;
+  const reducedRateAmount = typeof reducedRaw === "string" && reducedRaw.trim() !== "" ? parseAmount(reducedRaw) : null;
+  if (
+    [cashAmount, checkAmount, cardAmount, plantSalesAmount, reducedRateAmount ?? 0].some((n) => Number.isNaN(n) || n < 0)
+  ) {
     return { status: "error", message: "Montant invalide." };
+  }
+  if (reducedRateAmount !== null) {
+    const dayTotal = cashAmount + checkAmount + cardAmount;
+    if (Math.abs(reducedRateAmount + plantSalesAmount - dayTotal) > 0.01) {
+      const fmt = (n: number) => n.toFixed(2).replace(".", ",");
+      return {
+        status: "error",
+        message: `Fruits/légumes 5,5 % (${fmt(reducedRateAmount)} €) + plants 10 % (${fmt(plantSalesAmount)} €) doivent égaler le total espèces + chèques + CB (${fmt(dayTotal)} €).`,
+      };
+    }
   }
 
   const exceptionalSales: { amountTtc: number; paymentMethod: string; description?: string }[] = [];
@@ -191,9 +180,6 @@ export async function submitCashJournalEntry(
 
   try {
     const depositSlipUrl = await fileUrlIfProvided(formData, "depositSlip");
-    const cardStatementUrl = isMaraichage
-      ? await fileUrlIfProvided(formData, "cardStatement")
-      : undefined;
 
     await createCashJournalEntry(activity, {
       date,
@@ -202,7 +188,6 @@ export async function submitCashJournalEntry(
       cardAmount,
       plantSalesAmount,
       depositSlipUrl,
-      cardStatementUrl,
       exceptionalSales,
     });
   } catch (err) {

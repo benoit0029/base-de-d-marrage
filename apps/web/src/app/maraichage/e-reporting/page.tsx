@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { computeEReporting, type EReportingTotals } from "@/lib/ereporting";
 import { formatEuro } from "@/lib/format";
+import { getPaConnection } from "@/server/services/pa";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +43,67 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
   const year = yearParam && Number.isInteger(Number(yearParam)) ? Number(yearParam) : currentYear;
   const selectedMonth = monthParam ? Number(monthParam) : null;
 
-  const { months, total } = await computeEReporting(year);
+  const [{ months, total }, pa] = await Promise.all([computeEReporting(year), getPaConnection()]);
+  const connected = pa?.status === "CONNECTED";
   const detail = selectedMonth ? months[selectedMonth - 1] : null;
 
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium text-slate-700">Abby — facture électronique</p>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              connected ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            {connected ? "Abby connecté" : "Abby pas encore connecté"}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          Tes factures se font toujours dans cet outil, jamais sur Abby : l&apos;outil les transmet (ou tu déposes le
+          fichier sur Abby en 2 clics). Connexion à renseigner dans{" "}
+          <Link href="/reglages" className="underline">
+            Réglages
+          </Link>{" "}
+          le jour où tu passes sur Abby. Dates tirées de sources secondaires, à revérifier avant la mise en service.
+        </p>
+        <table className="mt-3 w-full text-sm">
+          <thead className="text-left text-xs uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="py-1 font-medium">Obligation</th>
+              <th className="py-1 font-medium">Depuis / à partir du</th>
+              <th className="py-1 font-medium">Dans l&apos;outil</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            <tr>
+              <td className="py-1.5">Recevoir les factures des fournisseurs</td>
+              <td className="py-1.5">1er septembre 2026</td>
+              <td className="py-1.5 text-slate-600">
+                Couvert par ta plateforme actuelle. Avec Abby : renvoi par mail vers ta boîte de capture Maraîchage →
+                Dépenses (à vérifier le jour du passage).
+              </td>
+            </tr>
+            <tr>
+              <td className="py-1.5">Envoyer les factures aux professionnels</td>
+              <td className="py-1.5">1er septembre 2027</td>
+              <td className="py-1.5 text-slate-600">
+                <Link href="/maraichage/facturation" className="underline">
+                  Facturation
+                </Link>{" "}
+                → bouton « Envoyer via Abby » (à tester) ou dépôt du fichier sur Abby.
+              </td>
+            </tr>
+            <tr>
+              <td className="py-1.5">E-reporting des ventes aux particuliers</td>
+              <td className="py-1.5">1er septembre 2027</td>
+              <td className="py-1.5 text-slate-600">Totaux prêts ci-dessous ; transmission via Abby à activer.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <div className="rounded-lg border bg-white p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-slate-700">E-reporting — ventes aux particuliers {year}</p>

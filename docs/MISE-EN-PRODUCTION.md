@@ -133,31 +133,35 @@ l'annuaire avec Abby (changement de plateforme), puis :
   tableur ; reste la transmission via Abby (format et fréquence à
   confirmer).
 
-## 7. Écarts relevés avec le document « Obligations micro-BA » (24/09/2026)
+## 7. Obligations micro-BA — construit le 24/09/2026
 
-Analyse seulement, rien de construit — à décider par Benoît :
-1. ~~Page « Déclaration 2042 »~~ **fait le 24/09/2026** : vraies recettes
-   HT (case 5XB), moyenne 3 ans, bénéfice estimé, et saisie à la main des
-   recettes des années d'avant l'outil. Reste : le seuil micro-BA de la page
-   Synthèse compte encore la vente directe en TTC au lieu du HT.
-2. **Registre TVA trimestriel** : ne compte que la TVA des factures, pas
-   celle des ventes directes (journal de caisse) — la CA12A annuelle, elle,
-   les compte.
-3. **Acomptes TVA** : règle du document = 1/5 de la TVA de l'année
-   précédente, aux 5 mai, 5 août, 5 novembre, 5 février ; l'appli ne
-   propose ni montants ni dates. Touche la TVA : faire confirmer par
-   Cerfrance avant de construire.
-4. **Nouvelles mentions sur factures** (SIREN du client, catégorie
-   d'opération…) : le SIRET client n'apparaît pas sur le PDF ; date
-   d'obligation à vérifier.
-5. **Totaux trimestriels et annuels du livre des recettes** : non affichés.
-6. **Obligations employeur** (registre unique du personnel, rappel visite
-   d'information à 3 mois, DUERP) : rien n'existe, nouvelles fonctions.
+Onglets Maraîchage regroupés par section (Vue d'ensemble / Comptable /
+Fiscal / Social / Abby), d'après le document « Obligations micro-BA » :
+- **Obligations** (vue d'ensemble, échéances, ce qui reste à activer) ;
+- **Livre des recettes** et **Livre des achats** (lecture seule, totaux
+  par trimestre et par an, PDF à pages numérotées) ;
+- **Registre TVA** : compte désormais la TVA des ventes directes ;
+- **Acompte TVA** : acomptes attendus = 1/5 de la TVA nette de l'année
+  précédente si elle atteint 1 000 €, aux 5 mai, 5 août, 5 novembre et
+  5 février (règle du document, non vérifiée par l'outil — à confirmer
+  avant le premier paiement) ;
+- **Déclaration 2042** : vraie page + saisie des années d'avant l'outil ;
+- **Employeur** : registre unique du personnel, rappel de la visite
+  d'information (3 mois), DUERP, affichages, mutuelle, prévoyance ;
+- **Abby / E-reporting** : calendrier, état de la connexion, totaux ;
+- Recettes : CB notée sur la fiche du jour (plus de capture Up2Pay),
+  répartition fruits/légumes 5,5 % + plants 10 % avec contrôle du total.
 
-Remarques sur le document : il appelle « CA12 » la déclaration agricole,
-qui est la **CA12A** (3517-AGR-SD) — la CA12 est celle de la micro-BIC ;
-conservation 6 ans pour le fiscal agricole, mais 10 ans conseillés pour les
-activités commerciales (Revente, Kerbooth).
+Reste :
+- le seuil micro-BA de la page Synthèse compte encore la vente directe en
+  TTC au lieu du HT ;
+- les immobilisations sont classées par la lecture automatique des pièces,
+  sans bouton pour corriger le classement dans Dépenses ;
+- facture électronique : l'outil produit le PDF ; si Abby exige un fichier
+  structuré (Factur-X) pour le dépôt, il faudra l'ajouter ;
+- remarques sur le document : il appelle « CA12 » la déclaration agricole,
+  qui est la **CA12A** (3517-AGR-SD) ; conservation 6 ans pour le fiscal
+  agricole, 10 ans conseillés pour les activités commerciales.
 
 ---
 

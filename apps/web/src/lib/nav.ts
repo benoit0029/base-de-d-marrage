@@ -1,6 +1,9 @@
 export interface SubTab {
   slug: string;
   label: string;
+  // Section d'obligations (Maraîchage) : les onglets sont regroupés par
+  // section dans la sous-navigation (voir SubNav). Sans section, simple liste.
+  section?: string;
 }
 
 export interface ActivityNav {
@@ -16,17 +19,21 @@ export const activities: ActivityNav[] = [
     label: "Maraîchage",
     colorClass: "border-maraichage text-maraichage",
     subTabs: [
-      { slug: "recettes", label: "Recettes" },
-      { slug: "achats", label: "Dépenses" },
-      { slug: "releve-bancaire", label: "Relevé bancaire" },
-      { slug: "tva", label: "Registre TVA" },
-      { slug: "acomptes", label: "Acompte TVA" },
-      { slug: "tesa-plus", label: "Tesa+" },
-      { slug: "cotisations-non-salarie", label: "Cotisations non salarié" },
-      { slug: "declaration-annuelle", label: "Déclaration 2042" },
-      { slug: "ca12a", label: "CA12A / 3517-AGR-SD (TVA)" },
-      { slug: "e-reporting", label: "E-reporting" },
-      { slug: "facturation", label: "Facturation" },
+      { slug: "obligations", label: "Obligations", section: "Vue d'ensemble" },
+      { slug: "recettes", label: "Recettes", section: "Comptable" },
+      { slug: "achats", label: "Dépenses", section: "Comptable" },
+      { slug: "releve-bancaire", label: "Relevé bancaire", section: "Comptable" },
+      { slug: "facturation", label: "Facturation", section: "Comptable" },
+      { slug: "livre-recettes", label: "Livre des recettes", section: "Comptable" },
+      { slug: "livre-achats", label: "Livre des achats", section: "Comptable" },
+      { slug: "tva", label: "Registre TVA", section: "Fiscal" },
+      { slug: "acomptes", label: "Acompte TVA", section: "Fiscal" },
+      { slug: "ca12a", label: "CA12A / 3517-AGR-SD (TVA)", section: "Fiscal" },
+      { slug: "declaration-annuelle", label: "Déclaration 2042", section: "Fiscal" },
+      { slug: "cotisations-non-salarie", label: "Cotisations non salarié", section: "Social" },
+      { slug: "tesa-plus", label: "Tesa+", section: "Social" },
+      { slug: "employeur", label: "Employeur", section: "Social" },
+      { slug: "e-reporting", label: "Abby / E-reporting", section: "Abby" },
     ],
   },
   {
