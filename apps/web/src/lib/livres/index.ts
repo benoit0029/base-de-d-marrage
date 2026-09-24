@@ -146,7 +146,7 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
     if (dayTtc > 0) {
       rows.push({
         date: d.date,
-        label: "Ventes directes du jour (ventes de 76 € ou moins, regroupées)",
+        label: `Ventes directes du jour${d.location ? ` — ${d.location}` : ""} (ventes de 76 € ou moins, regroupées)`,
         reference: d.depositSlipUrl ? "Fiche du jour (photo)" : "Saisie du jour",
         cash: round2(cash),
         check: round2(check),
@@ -166,7 +166,7 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
       const method = typeof s.paymentMethod === "string" ? s.paymentMethod : "especes";
       rows.push({
         date: d.date,
-        label: `Vente > 76 € (${METHOD_LABEL[method] ?? method})${typeof s.description === "string" && s.description ? ` — ${s.description}` : ""}`,
+        label: `Vente > 76 € (${METHOD_LABEL[method] ?? method})${d.location ? ` — ${d.location}` : ""}${typeof s.description === "string" && s.description ? ` — ${s.description}` : ""}`,
         reference: "Saisie du jour",
         cash: method === "especes" ? round2(amount) : 0,
         check: method === "cheque" ? round2(amount) : 0,

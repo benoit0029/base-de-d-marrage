@@ -190,6 +190,7 @@ export function toCashJournalView(entry: CashJournalEntry): FakeCashJournalEntry
     checkAmount,
     cardAmount,
     totalTtc,
+    location: entry.location,
     depositSlipUrl: entry.depositSlipUrl,
     cardStatementUrl: entry.cardStatementUrl,
     exceptionalSales,

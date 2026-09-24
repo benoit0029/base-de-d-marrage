@@ -245,7 +245,7 @@ function ReconcilePicker({ transaction }: { transaction: FakeBankTransaction }) 
           })),
           ...candidates.cashJournalEntries.map((c) => ({
             value: `cashJournal:${c.id}`,
-            label: `Vente directe — ${formatDate(c.date)} — ${formatEuro(c.totalTtc)}`,
+            label: `Vente directe — ${formatDate(c.date)}${c.location ? ` — ${c.location}` : ""} — ${formatEuro(c.totalTtc)}`,
           })),
         ]
     : [];

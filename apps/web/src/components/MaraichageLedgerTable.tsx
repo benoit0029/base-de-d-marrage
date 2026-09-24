@@ -115,6 +115,7 @@ export default function MaraichageLedgerTable({
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
                       Vente directe (caisse)
                     </span>
+                    {cash.location && <span className="mt-0.5 block text-xs text-slate-500">{cash.location}</span>}
                   </td>
                   <td className="px-4 py-2.5 text-right font-medium">{formatEuro(cash.totalTtc)}</td>
                   <td className="px-4 py-2.5 text-xs">

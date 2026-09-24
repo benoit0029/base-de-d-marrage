@@ -1,4 +1,4 @@
-import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, StyleSheet, Font } from "@react-pdf/renderer";
 import { euro } from "@/lib/pdf/format";
 import type { PurchaseBook, PurchaseSection, ReceiptBook, ReceiptRow, ReceiptTotals } from "@/lib/livres";
 
@@ -10,6 +10,10 @@ export interface BookHeader {
   legalName: string;
   siren: string;
 }
+
+// Pas de coupure de mots avec trait d'union (« Con-carneau ») : un mot trop
+// long passe entier à la ligne suivante.
+Font.registerHyphenationCallback((word) => [word]);
 
 const QUARTER_LABEL = ["1er trimestre", "2e trimestre", "3e trimestre", "4e trimestre"];
 

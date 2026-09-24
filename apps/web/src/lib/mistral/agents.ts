@@ -87,6 +87,7 @@ const cashJournalAmountSchema = z.object({
   // montants en plus. Voir CashJournalEntry.plantSalesAmount.
   reducedRateAmount: z.number().nullable(),
   plantSalesAmount: z.number().nullable(),
+  location: z.string().nullable(), // lieu de vente noté sur la fiche (marché, ferme…)
 });
 
 export type CashJournalAmountExtraction = z.infer<typeof cashJournalAmountSchema>;
@@ -107,8 +108,10 @@ export async function extractCashJournalAmount(
       "d'aujourd'hui par défaut, laisse null si tu ne la vois pas), \"cashAmount\" (montant en " +
       'espèces du jour, nombre ou null), "checkAmount" (montant en chèques du jour, nombre ou ' +
       'null), "cardAmount" (montant payé par carte bancaire / CB du jour, nombre ou null), ' +
-      '"reducedRateAmount" (part du total du jour en fruits/légumes à 5,5 %, nombre ou null) et ' +
-      '"plantSalesAmount" (part du total du jour en plants potagers à 10 %, nombre ou null). ' +
+      '"reducedRateAmount" (part du total du jour en fruits/légumes à 5,5 %, nombre ou null), ' +
+      '"plantSalesAmount" (part du total du jour en plants potagers à 10 %, nombre ou null) et ' +
+      '"location" (lieu de la vente écrit sur la fiche, ex. "Marché de Quimper", "Ferme", texte ' +
+      "court tel qu'écrit, ou null si absent/illisible). " +
       "Les parts 5,5 % et 10 % sont une répartition du MÊME total (espèces + chèques + CB), pas " +
       "des montants en plus. Si une date est écrite sans année " +
       `(ex. "25/07"), déduis l'année à partir d'aujourd'hui (${today}) : année en cours, sauf si ` +

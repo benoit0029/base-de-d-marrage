@@ -27,6 +27,9 @@ export default async function Page({
     listClosedYears(),
   ]);
 
+  // Lieux déjà saisis, proposés en suggestion dans le formulaire (du plus récent au plus ancien).
+  const knownLocations = [...new Set(cashJournalEntries.map((e) => e.location?.trim()).filter((l): l is string => !!l))];
+
   const lignes: LivreRecettesLigne[] = [
     ...invoices
       .filter((i) => i.type === "FACTURE" && i.status !== "CANCELLED")
@@ -48,7 +51,7 @@ export default async function Page({
 
   return (
     <div className="space-y-4">
-      <CashJournalForm activity="BA_MARAICHAGE" />
+      <CashJournalForm activity="BA_MARAICHAGE" knownLocations={knownLocations} />
       <div className="flex items-center justify-between">
         <a
           href="/api/cash-journal/blank-sheets/BA_MARAICHAGE/pdf"

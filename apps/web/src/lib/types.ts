@@ -61,6 +61,7 @@ export interface FakeCashJournalEntry {
   checkAmount: number;
   cardAmount: number;
   totalTtc: number;
+  location: string | null; // lieu de vente
   depositSlipUrl: string | null;
   cardStatementUrl: string | null;
   exceptionalSales: FakeExceptionalSale[];

@@ -23,6 +23,9 @@ export default async function Page({
     listCashJournalEntries("BIC_FRUITS_LEGUMES"),
     listClosedYears(),
   ]);
+
+  // Lieux déjà saisis, proposés en suggestion dans le formulaire (du plus récent au plus ancien).
+  const knownLocations = [...new Set(entries.map((e) => e.location?.trim()).filter((l): l is string => !!l))];
   const view = filterByYear(
     entries.map(toCashJournalView),
     (e) => yearOfIsoDate(e.date),
@@ -31,7 +34,7 @@ export default async function Page({
 
   return (
     <div className="space-y-4">
-      <CashJournalForm activity="BIC_FRUITS_LEGUMES" />
+      <CashJournalForm activity="BIC_FRUITS_LEGUMES" knownLocations={knownLocations} />
       <div className="flex items-center justify-between">
         <a
           href="/api/cash-journal/blank-sheets/BIC_FRUITS_LEGUMES/pdf"

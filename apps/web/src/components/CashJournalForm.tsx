@@ -19,7 +19,13 @@ function formatFrDate(isoDate: string): string {
   return `${d}/${m}/${y}`;
 }
 
-export default function CashJournalForm({ activity }: { activity: Activity }) {
+export default function CashJournalForm({
+  activity,
+  knownLocations = [],
+}: {
+  activity: Activity;
+  knownLocations?: string[]; // lieux déjà saisis, proposés en suggestion
+}) {
   const isMaraichage = activity === "BA_MARAICHAGE";
   const boundAction = submitCashJournalEntry.bind(null, activity);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
@@ -28,6 +34,7 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
   // extractCashJournalPhotoAmount) : pré-remplit les champs ci-dessous, que
   // l'exploitant garde la main pour corriger avant d'enregistrer.
   const [dateValue, setDateValue] = useState(today());
+  const [location, setLocation] = useState("");
   const [cashAmount, setCashAmount] = useState("");
   const [checkAmount, setCheckAmount] = useState("");
   const [cardAmount, setCardAmount] = useState("");
@@ -48,6 +55,7 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
   useEffect(() => {
     if (state.status === "success") {
       setDateValue(today());
+      setLocation("");
       setCashAmount("");
       setCheckAmount("");
       setCardAmount("");
@@ -73,6 +81,7 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
       // une saisie en retard (ex. vente le 25/07, photo prise le 27/07) sans
       // attribuer la recette au mauvais jour — voir extractCashJournalAmount.
       if (result.date !== null) setDateValue(result.date);
+      if (result.location) setLocation(result.location);
       if (result.cashAmount !== null) setCashAmount(String(result.cashAmount).replace(".", ","));
       if (isMaraichage && result.checkAmount !== null) {
         setCheckAmount(String(result.checkAmount).replace(".", ","));
@@ -88,6 +97,7 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
       }
       const notices: string[] = [];
       if (result.date !== null) notices.push(`date de vente lue : ${formatFrDate(result.date)}`);
+      if (result.location) notices.push(`lieu lu : ${result.location}`);
       if (result.cashAmount === null && result.checkAmount === null && result.cardAmount === null) {
         notices.push("aucun montant lu");
       } else {
@@ -111,19 +121,40 @@ export default function CashJournalForm({ activity }: { activity: Activity }) {
         </p>
       </div>
 
-      <label className="block text-sm">
-        <span className="text-slate-600">
-          Date <span className="text-xs text-slate-400">(date de la vente, pas forcément aujourd&apos;hui)</span>
-        </span>
-        <input
-          type="date"
-          name="date"
-          value={dateValue}
-          onChange={(e) => setDateValue(e.target.value)}
-          required
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 sm:w-48"
-        />
-      </label>
+      <div className="grid gap-3 sm:grid-cols-[12rem_1fr] sm:max-w-2xl">
+        <label className="block text-sm">
+          <span className="text-slate-600">
+            Date <span className="text-xs text-slate-400">(de la vente)</span>
+          </span>
+          <input
+            type="date"
+            name="date"
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
+            required
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="text-slate-600">
+            Lieu <span className="text-xs text-slate-400">(marché, ferme…)</span>
+          </span>
+          <input
+            name="location"
+            list="known-locations"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            maxLength={100}
+            placeholder="ex. Marché de Quimper"
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+          <datalist id="known-locations">
+            {knownLocations.map((l) => (
+              <option key={l} value={l} />
+            ))}
+          </datalist>
+        </label>
+      </div>
 
       <div className={`grid gap-3 ${isMaraichage ? "sm:grid-cols-3" : "sm:grid-cols-1 sm:max-w-xs"}`}>
         <label className="text-sm">

@@ -32,6 +32,7 @@ export interface CreateCashJournalEntryInput {
   // Part DÉJÀ INCLUSE dans cashAmount+checkAmount+cardAmount vendue à 10%
   // (plants) plutôt qu'à 5,5% (fruits/légumes) — Maraîchage uniquement.
   plantSalesAmount?: number;
+  location?: string; // lieu de vente (marché, ferme…)
   depositSlipUrl?: string;
   cardStatementUrl?: string;
   exceptionalSales?: ExceptionalSale[];
@@ -81,6 +82,7 @@ export async function createCashJournalEntry(
     checkAmount: cashOnly ? 0 : input.checkAmount ?? 0,
     cardAmount: cashOnly ? 0 : input.cardAmount ?? 0,
     plantSalesAmount: cashOnly ? 0 : input.plantSalesAmount ?? 0,
+    location: input.location || null,
     depositSlipUrl: input.depositSlipUrl,
     cardStatementUrl: cashOnly ? undefined : input.cardStatementUrl,
     exceptionalSales: input.exceptionalSales?.length

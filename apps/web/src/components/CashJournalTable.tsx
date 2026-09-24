@@ -112,7 +112,10 @@ export default function CashJournalTable({
           {entries.map((entry) => (
             <Fragment key={entry.id}>
               <tr className="hover:bg-slate-50">
-                <td className="px-4 py-2.5 whitespace-nowrap">{formatDate(entry.date)}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                  {formatDate(entry.date)}
+                  {entry.location && <span className="block text-xs text-slate-500">{entry.location}</span>}
+                </td>
                 <td className="px-4 py-2.5 text-right font-medium">{formatEuro(entry.totalTtc)}</td>
                 <td className="px-4 py-2.5">
                   <StatusBadge status={entry.status} />

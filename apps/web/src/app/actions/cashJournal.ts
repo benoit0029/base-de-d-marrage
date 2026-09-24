@@ -20,6 +20,7 @@ export interface CashJournalPhotoReadResult {
   cardAmount: number | null;
   reducedRateAmount: number | null;
   plantSalesAmount: number | null;
+  location: string | null;
   message?: string;
 }
 
@@ -45,13 +46,14 @@ export async function extractCashJournalPhotoAmount(
       cardAmount: null,
       reducedRateAmount: null,
       plantSalesAmount: null,
+      location: null,
       message: "Aucune photo reçue.",
     };
   }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { date, cashAmount, checkAmount, cardAmount, reducedRateAmount, plantSalesAmount } = await extractCashJournalAmount(
+    const { date, cashAmount, checkAmount, cardAmount, reducedRateAmount, plantSalesAmount, location } = await extractCashJournalAmount(
       buffer,
       file.type || "image/jpeg"
     );
@@ -63,6 +65,7 @@ export async function extractCashJournalPhotoAmount(
       cardAmount,
       reducedRateAmount,
       plantSalesAmount,
+      location: location?.trim().slice(0, 100) || null,
     };
   } catch (err) {
     if (err instanceof MistralConfigError || err instanceof MistralApiError) {
@@ -74,6 +77,7 @@ export async function extractCashJournalPhotoAmount(
         cardAmount: null,
         reducedRateAmount: null,
         plantSalesAmount: null,
+        location: null,
         message: "Lecture automatique indisponible — saisis le montant manuellement.",
       };
     }
@@ -183,6 +187,7 @@ export async function submitCashJournalEntry(
 
     await createCashJournalEntry(activity, {
       date,
+      location: formData.get("location")?.toString().trim().slice(0, 100) || undefined,
       cashAmount,
       checkAmount,
       cardAmount,
