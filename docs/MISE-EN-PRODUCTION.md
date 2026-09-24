@@ -157,6 +157,16 @@ mail (payant). Conséquences :
   de facture ;
 - décision à prendre avant le 1er septembre 2027.
 
+**Grille Abby transmise par Benoît (24/09/2026, prix par mois, HT ou TTC
+non précisé)** : Basique gratuit ; Commencer 5,40 € ; Maîtriser 9,00 € ;
+Aller plus loin 19,80 €. D'après la grille : facturation électronique dès
+le gratuit ; envoi des documents par e-mail dès Commencer ; **factures et
+devis avec TVA, déclaration de TVA et « Automatisation / intégrations »
+(bêta) à partir de Maîtriser**. À faire confirmer par Abby :
+« Maîtriser » = l'offre appelée « Pro » par leur chat ? elle permet le dépôt
+de factures faites ailleurs, l'API et l'e-reporting ? un abonnement par
+entreprise (micro-BA et micro-BIC) ?
+
 ## 7. Obligations micro-BA — construit le 24/09/2026
 
 Onglets Maraîchage regroupés par section (Vue d'ensemble / Comptable /
