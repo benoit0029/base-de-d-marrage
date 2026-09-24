@@ -55,30 +55,39 @@ interface VatGroup {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
+ * TVA de chaque ligne, calculée comme à la création de la facture (voir
+ * createInvoice) ; l'éventuel centime d'écart avec le total enregistré
+ * (lignes Kerbooth dont la TVA est extraite du TTC) est reporté sur la ligne
+ * de plus gros montant, pour que lignes et détail par taux retombent
+ * toujours sur totalVat.
+ */
+function lineVats(lines: InvoicePdfLine[], totalVat: number): number[] {
+  const vats = lines.map((l) => (l.vatRate > 0 ? round2((l.lineTotal * l.vatRate) / 100) : 0));
+  const taxed = lines.map((l, i) => i).filter((i) => lines[i].vatRate > 0);
+  if (taxed.length === 0) return vats;
+  const diff = round2(totalVat - vats.reduce((sum, v) => sum + v, 0));
+  if (diff !== 0) {
+    const largest = taxed.reduce((a, b) => (lines[b].lineTotal > lines[a].lineTotal ? b : a));
+    vats[largest] = round2(vats[largest] + diff);
+  }
+  return vats;
+}
+
+/**
  * Détail de la TVA par taux (base HT et taxe de chaque taux), mention
  * obligatoire dès qu'une facture mélange plusieurs taux (ex. légumes 5,5 %
- * et plants 10 %). Calculé ligne par ligne comme à la création de la facture
- * (voir createInvoice) ; l'éventuel centime d'écart avec le total enregistré
- * (lignes Kerbooth dont la TVA est extraite du TTC) est reporté sur le taux
- * de plus grosse base, pour que le détail retombe toujours sur totalVat.
+ * et plants 10 %) — somme de la TVA des lignes (voir lineVats).
  */
-function vatBreakdown(lines: InvoicePdfLine[], totalVat: number): VatGroup[] {
+function vatBreakdown(lines: InvoicePdfLine[], vats: number[]): VatGroup[] {
   const byRate = new Map<number, VatGroup>();
-  for (const l of lines) {
-    if (l.vatRate <= 0) continue;
+  lines.forEach((l, i) => {
+    if (l.vatRate <= 0) return;
     const g = byRate.get(l.vatRate) ?? { rate: l.vatRate, base: 0, vat: 0 };
     g.base = round2(g.base + l.lineTotal);
-    g.vat = round2(g.vat + round2((l.lineTotal * l.vatRate) / 100));
+    g.vat = round2(g.vat + vats[i]);
     byRate.set(l.vatRate, g);
-  }
-  const groups = [...byRate.values()].sort((a, b) => a.rate - b.rate);
-  if (groups.length === 0) return groups;
-  const diff = round2(totalVat - groups.reduce((sum, g) => sum + g.vat, 0));
-  if (diff !== 0) {
-    const largest = groups.reduce((a, b) => (b.base > a.base ? b : a));
-    largest.vat = round2(largest.vat + diff);
-  }
-  return groups;
+  });
+  return [...byRate.values()].sort((a, b) => a.rate - b.rate);
 }
 
 const styles = StyleSheet.create({
@@ -105,6 +114,7 @@ const styles = StyleSheet.create({
   colUnit: { flex: 1, textAlign: "right" },
   colVat: { flex: 1, textAlign: "right" },
   colTotal: { flex: 1, textAlign: "right" },
+  colTtc: { flex: 1, textAlign: "right" },
   headerCell: { fontSize: 8, textTransform: "uppercase", color: "#64748b" },
   totalsBlock: { marginTop: 12, alignSelf: "flex-end", width: 260 },
   totalsRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2 },
@@ -121,7 +131,8 @@ const styles = StyleSheet.create({
 });
 
 export function InvoiceDocument(data: InvoicePdfData) {
-  const vatGroups = data.vatApplicable ? vatBreakdown(data.lines, data.totalVat) : [];
+  const vats = data.vatApplicable ? lineVats(data.lines, data.totalVat) : data.lines.map(() => 0);
+  const vatGroups = data.vatApplicable ? vatBreakdown(data.lines, vats) : [];
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -160,6 +171,7 @@ export function InvoiceDocument(data: InvoicePdfData) {
             <Text style={[styles.colUnit, styles.headerCell]}>PU HT</Text>
             <Text style={[styles.colVat, styles.headerCell]}>TVA</Text>
             <Text style={[styles.colTotal, styles.headerCell]}>Total HT</Text>
+            <Text style={[styles.colTtc, styles.headerCell]}>Total TTC</Text>
           </View>
           {data.lines.map((line, i) => (
             <View key={i} style={styles.tableRow}>
@@ -171,6 +183,7 @@ export function InvoiceDocument(data: InvoicePdfData) {
               <Text style={styles.colUnit}>{euro(line.unitPrice)}</Text>
               <Text style={styles.colVat}>{line.vatRate > 0 ? percent(line.vatRate) : "—"}</Text>
               <Text style={styles.colTotal}>{euro(line.lineTotal)}</Text>
+              <Text style={styles.colTtc}>{euro(line.lineTotal + vats[i])}</Text>
             </View>
           ))}
         </View>

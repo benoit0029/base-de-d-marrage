@@ -6,6 +6,17 @@ import type { FakeEntry } from "@/lib/types";
 
 const toInput = (n: number) => String(n).replace(".", ",");
 const toNumber = (v: string) => Number(v.replace(/\s/g, "").replace(",", "."));
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const RATES = [0, 5.5, 10, 20];
+
+// Taux de TVA de la pièce déduit de ses montants (le plus proche des taux
+// usuels), pour recalculer HT/TVA/TTC quand on en modifie un.
+function guessRate(ht: number, vat: number): number {
+  if (ht <= 0) return 0;
+  const r = (vat / ht) * 100;
+  const nearest = RATES.reduce((a, b) => (Math.abs(b - r) < Math.abs(a - r) ? b : a), 0);
+  return Math.abs(nearest - r) < 0.5 ? nearest : round2(r);
+}
 
 // Modifier une dépense encore en attente (la lecture automatique s'est
 // trompée de date, de fournisseur ou de montant) — impossible une fois
@@ -15,6 +26,7 @@ export default function EditEntryButton({ entry }: { entry: FakeEntry }) {
   const [open, setOpen] = useState(false);
   const [busy, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [rate, setRate] = useState(guessRate(entry.amountHt, entry.amountVat));
   const [form, setForm] = useState({
     date: entry.date.slice(0, 10),
     counterpartyName: entry.counterpartyName,
@@ -23,6 +35,34 @@ export default function EditEntryButton({ entry }: { entry: FakeEntry }) {
     amountVat: toInput(entry.amountVat),
     amountTtc: toInput(entry.amountTtc),
   });
+
+  // Recalcul automatique : HT modifié → TVA et TTC ; TTC modifié → HT et TVA ;
+  // TVA modifiée → TTC ; taux changé → recalcul depuis le TTC (montant payé).
+  function changeHt(v: string) {
+    const n = toNumber(v);
+    if (!Number.isFinite(n)) return setForm({ ...form, amountHt: v });
+    const vatN = round2((n * rate) / 100);
+    setForm({ ...form, amountHt: v, amountVat: toInput(vatN), amountTtc: toInput(round2(n + vatN)) });
+  }
+  function changeTtc(v: string) {
+    const n = toNumber(v);
+    if (!Number.isFinite(n)) return setForm({ ...form, amountTtc: v });
+    const htN = round2(n / (1 + rate / 100));
+    setForm({ ...form, amountTtc: v, amountHt: toInput(htN), amountVat: toInput(round2(n - htN)) });
+  }
+  function changeVat(v: string) {
+    const n = toNumber(v);
+    const htN = toNumber(form.amountHt);
+    if (!Number.isFinite(n) || !Number.isFinite(htN)) return setForm({ ...form, amountVat: v });
+    setForm({ ...form, amountVat: v, amountTtc: toInput(round2(htN + n)) });
+  }
+  function changeRate(r: number) {
+    setRate(r);
+    const n = toNumber(form.amountTtc);
+    if (!Number.isFinite(n)) return;
+    const htN = round2(n / (1 + r / 100));
+    setForm({ ...form, amountHt: toInput(htN), amountVat: toInput(round2(n - htN)) });
+  }
 
   const ht = toNumber(form.amountHt);
   const vat = toNumber(form.amountVat);
@@ -90,14 +130,31 @@ export default function EditEntryButton({ entry }: { entry: FakeEntry }) {
         Nature
         <input value={form.nature} onChange={(e) => setForm({ ...form, nature: e.target.value })} className={field} />
       </label>
+      <label className="block text-xs text-slate-600">
+        Taux de TVA
+        <select value={String(rate)} onChange={(e) => changeRate(Number(e.target.value))} className={field}>
+          {[...new Set([...RATES, rate])].sort((a, b) => a - b).map((r) => (
+            <option key={r} value={String(r)}>
+              {String(r).replace(".", ",")} %
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="grid grid-cols-3 gap-2">
-        {(["amountHt", "amountVat", "amountTtc"] as const).map((k) => (
-          <label key={k} className="block text-xs text-slate-600">
-            {k === "amountHt" ? "HT" : k === "amountVat" ? "TVA" : "TTC"}
-            <input inputMode="decimal" value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className={field} />
-          </label>
-        ))}
+        <label className="block text-xs text-slate-600">
+          HT
+          <input inputMode="decimal" value={form.amountHt} onChange={(e) => changeHt(e.target.value)} className={field} />
+        </label>
+        <label className="block text-xs text-slate-600">
+          TVA
+          <input inputMode="decimal" value={form.amountVat} onChange={(e) => changeVat(e.target.value)} className={field} />
+        </label>
+        <label className="block text-xs text-slate-600">
+          TTC
+          <input inputMode="decimal" value={form.amountTtc} onChange={(e) => changeTtc(e.target.value)} className={field} />
+        </label>
       </div>
+      <p className="text-xs text-slate-400">Modifie le HT ou le TTC : le reste se recalcule avec le taux.</p>
       {mismatch && <p className="text-xs text-amber-700">Attention : HT + TVA ≠ TTC.</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">

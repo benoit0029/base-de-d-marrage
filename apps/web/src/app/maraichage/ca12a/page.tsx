@@ -104,14 +104,14 @@ export default async function Page({
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
         <p className="font-medium">⚠️ Limitation restante — à confirmer avec la MSA/Cerfrance</p>
         <p className="mt-1">
-          La TVA de la vente directe distingue les deux taux (5,5 % fruits/
-          légumes, 10 % plants) via la case &laquo; Dont vente de plants
-          &raquo; de la saisie du jour. Seules les ventes exceptionnelles
-          ({">"} 76 €, saisies à part) sont comptées par défaut au taux réduit
-          de 5,5 % — à corriger si l&apos;une d&apos;elles concerne aussi des
-          plants. Si tes factures utilisent plusieurs taux de TVA, vérifie
-          aussi leur répartition (lignes 04, 5a, 5c) avant de reporter les
-          montants sur le formulaire officiel.
+          La TVA de la vente directe distingue les deux taux grâce à la
+          répartition &laquo; Fruits/légumes 5,5 % &raquo; et &laquo; Plants
+          potagers 10 % &raquo; de la saisie du jour. Seules les ventes
+          exceptionnelles ({">"} 76 €, saisies à part) sont comptées par défaut
+          au taux réduit de 5,5 % — à corriger si l&apos;une d&apos;elles
+          concerne aussi des plants. Pour tes factures, le détail de la TVA par
+          taux figure sur chaque PDF : vérifie la répartition (lignes 04, 5a,
+          5c) avant de reporter les montants sur le formulaire officiel.
         </p>
       </div>
 

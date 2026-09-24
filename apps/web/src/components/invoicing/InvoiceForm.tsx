@@ -10,6 +10,18 @@ import VatRateSelect from "@/components/invoicing/VatRateSelect";
 import UnitSuggestions from "@/components/invoicing/UnitSuggestions";
 import type { FakeClient, FakeProduct } from "@/lib/types";
 import type { Activity } from "@prisma/client";
+import { formatEuro } from "@/lib/format";
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const num = (v: string) => Number(v.replace(",", "."));
+
+// Totaux HT/TTC d'une ligne en cours de saisie, calculés comme à la création
+// de la facture (TVA de la ligne arrondie au centime).
+function lineTotals(line: { quantity: string; unitPrice: string; vatRate: string }, vatApplicable: boolean) {
+  const ht = round2(num(line.quantity) * num(line.unitPrice));
+  const vat = vatApplicable ? round2((ht * num(line.vatRate)) / 100) : 0;
+  return Number.isFinite(ht) && Number.isFinite(vat) ? { ht, ttc: round2(ht + vat) } : null;
+}
 
 interface LineDraft {
   productId: string;
@@ -453,6 +465,14 @@ export default function InvoiceForm({
                 ✕
               </button>
             </div>
+            {(() => {
+              const t = lineTotals(line, vatApplicable);
+              return t && t.ht > 0 ? (
+                <p className="text-right text-xs text-slate-500">
+                  Total ligne : {formatEuro(t.ht)} HT{vatApplicable ? ` · ${formatEuro(t.ttc)} TTC` : ""}
+                </p>
+              ) : null;
+            })()}
           </div>
         ))}
         <button type="button" onClick={addLine} className="text-sm font-medium text-slate-600">
