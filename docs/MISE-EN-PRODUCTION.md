@@ -110,18 +110,51 @@ Cerfrance/un juriste.
 inaccessibles depuis l'outil, à confirmer avec Cerfrance) :
 - **Recevoir** les factures fournisseurs au format électronique : obligatoire
   depuis le **1er septembre 2026**, pour toutes les entreprises, micro et
-  franchise comprises → s'inscrire dès maintenant sur une PA (Abby a une
-  offre gratuite), sans rien à construire dans l'appli.
+  franchise comprises → **fait : Benoît a déjà une PA via Cerfrance**
+  (24/09/2026). Pas d'inscription chez Abby : une seule PA suffit.
 - **Émettre** les factures aux professionnels via une PA, et transmettre
   les totaux des ventes aux particuliers (**e-reporting**) : à partir du
   **1er septembre 2027** pour les petites entreprises.
 - L'exclusion des exploitants au remboursement forfaitaire agricole (RFA) ne
   te concerne pas : tu es au réel simplifié agricole.
 
-**Dans l'appli** : le bouton « Envoyer via Abby » existe, mais la connexion
-a été écrite sans accès à la documentation d'Abby (à vérifier avant le
-premier envoi réel) ; l'e-reporting n'est pas construit. À faire avant
-septembre 2027.
+**À demander à Cerfrance** : le nom de la plateforme ; si elle peut
+renvoyer par mail les factures reçues (→ boîte de capture Maraîchage, tout
+automatique sans rien construire) ; si elle a un accès pour logiciel (API)
+pour que l'appli récupère les factures reçues et envoie les factures
+émises ; comment ils veulent recevoir l'e-reporting (totaux de ventes par
+taux, fréquence).
+
+**Dans l'appli** : le bouton « Envoyer via Abby » existe mais vise Abby ; à
+remplacer par la PA de Cerfrance selon leurs réponses. L'e-reporting n'est
+pas construit (les totaux par taux existent déjà dans le journal de caisse).
+À faire avant septembre 2027.
+
+## 7. Écarts relevés avec le document « Obligations micro-BA » (24/09/2026)
+
+Analyse seulement, rien de construit — à décider par Benoît :
+1. **Page « Déclaration 2042 »** : affiche encore des chiffres fictifs
+   (données de démonstration). À remplacer par les vraies recettes HT de
+   l'année (case 5XB), la moyenne 3 ans et le bénéfice estimé (13 %,
+   abattement minimum 305 €).
+2. **Registre TVA trimestriel** : ne compte que la TVA des factures, pas
+   celle des ventes directes (journal de caisse) — la CA12A annuelle, elle,
+   les compte.
+3. **Acomptes TVA** : règle du document = 1/5 de la TVA de l'année
+   précédente, aux 5 mai, 5 août, 5 novembre, 5 février ; l'appli ne
+   propose ni montants ni dates. Touche la TVA : faire confirmer par
+   Cerfrance avant de construire.
+4. **Nouvelles mentions sur factures** (SIREN du client, catégorie
+   d'opération…) : le SIRET client n'apparaît pas sur le PDF ; date
+   d'obligation à vérifier.
+5. **Totaux trimestriels et annuels du livre des recettes** : non affichés.
+6. **Obligations employeur** (registre unique du personnel, rappel visite
+   d'information à 3 mois, DUERP) : rien n'existe, nouvelles fonctions.
+
+Remarques sur le document : il appelle « CA12 » la déclaration agricole,
+qui est la **CA12A** (3517-AGR-SD) — la CA12 est celle de la micro-BIC ;
+conservation 6 ans pour le fiscal agricole, mais 10 ans conseillés pour les
+activités commerciales (Revente, Kerbooth).
 
 ---
 
