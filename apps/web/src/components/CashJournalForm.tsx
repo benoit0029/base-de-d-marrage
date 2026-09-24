@@ -2,10 +2,13 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useActionState } from "react";
+import { useRouter } from "next/navigation";
 import {
   submitCashJournalEntry,
+  submitCashJournalSheets,
   extractCashJournalPhotoAmount,
   type CashJournalFormState,
+  type CashJournalSheetRead,
 } from "@/app/actions/cashJournal";
 import type { Activity } from "@prisma/client";
 
@@ -43,6 +46,14 @@ export default function CashJournalForm({
   const [readNotice, setReadNotice] = useState<string | null>(null);
   const [isReadPending, startReadTransition] = useTransition();
 
+  // Plusieurs fiches sur la même photo (saisie en retard) : liste des fiches
+  // lues, enregistrables en une fois (voir submitCashJournalSheets).
+  const router = useRouter();
+  const [sheets, setSheets] = useState<CashJournalSheetRead[]>([]);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [sheetsMessage, setSheetsMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [isSheetsPending, startSheetsTransition] = useTransition();
+
   // Contrôle en direct (Maraîchage) : 5,5 % + 10 % doivent égaler le total
   // espèces + chèques + CB, comme sur la fiche du jour.
   const dayTotal = toNumber(cashAmount) + toNumber(checkAmount) + toNumber(cardAmount);
@@ -65,40 +76,46 @@ export default function CashJournalForm({
     }
   }, [state]);
 
+  // Remplit le formulaire avec une fiche lue sur la photo.
+  function fillFromSheet(sheet: CashJournalSheetRead) {
+    const str = (n: number | null) => (n === null ? "" : String(n).replace(".", ","));
+    // Date de la VENTE lue sur la fiche (pas la date d'aujourd'hui) : permet
+    // une saisie en retard sans attribuer la recette au mauvais jour.
+    setDateValue(sheet.date ?? today());
+    setLocation(sheet.location ?? "");
+    setCashAmount(str(sheet.cashAmount));
+    setCheckAmount(isMaraichage ? str(sheet.checkAmount) : "");
+    setCardAmount(isMaraichage ? str(sheet.cardAmount) : "");
+    setReducedRateAmount(isMaraichage ? str(sheet.reducedRateAmount) : "");
+    setPlantSalesAmount(isMaraichage ? str(sheet.plantSalesAmount) : "");
+  }
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setReadNotice(null);
+    setSheets([]);
+    setSheetsMessage(null);
+    setPhotoFile(file);
     const photoData = new FormData();
     photoData.set("photo", file);
     startReadTransition(async () => {
       const result = await extractCashJournalPhotoAmount(photoData);
-      if (result.status === "error") {
+      if (result.status === "error" || result.sheets.length === 0) {
         setReadNotice(result.message ?? "Lecture automatique impossible — saisis le montant toi-même.");
         return;
       }
-      // Date de la VENTE lue sur la photo (pas la date d'aujourd'hui) : permet
-      // une saisie en retard (ex. vente le 25/07, photo prise le 27/07) sans
-      // attribuer la recette au mauvais jour — voir extractCashJournalAmount.
-      if (result.date !== null) setDateValue(result.date);
-      if (result.location) setLocation(result.location);
-      if (result.cashAmount !== null) setCashAmount(String(result.cashAmount).replace(".", ","));
-      if (isMaraichage && result.checkAmount !== null) {
-        setCheckAmount(String(result.checkAmount).replace(".", ","));
+      if (result.sheets.length > 1) {
+        setSheets(result.sheets);
+        setReadNotice(`${result.sheets.length} fiches trouvées sur la photo — vérifie-les ci-dessous.`);
+        return;
       }
-      if (isMaraichage && result.cardAmount !== null) {
-        setCardAmount(String(result.cardAmount).replace(".", ","));
-      }
-      if (isMaraichage && result.reducedRateAmount !== null) {
-        setReducedRateAmount(String(result.reducedRateAmount).replace(".", ","));
-      }
-      if (isMaraichage && result.plantSalesAmount !== null) {
-        setPlantSalesAmount(String(result.plantSalesAmount).replace(".", ","));
-      }
+      const sheet = result.sheets[0];
+      fillFromSheet(sheet);
       const notices: string[] = [];
-      if (result.date !== null) notices.push(`date de vente lue : ${formatFrDate(result.date)}`);
-      if (result.location) notices.push(`lieu lu : ${result.location}`);
-      if (result.cashAmount === null && result.checkAmount === null && result.cardAmount === null) {
+      if (sheet.date !== null) notices.push(`date de vente lue : ${formatFrDate(sheet.date)}`);
+      if (sheet.location) notices.push(`lieu lu : ${sheet.location}`);
+      if (sheet.cashAmount === null && sheet.checkAmount === null && sheet.cardAmount === null) {
         notices.push("aucun montant lu");
       } else {
         notices.push("montant lu");
@@ -106,6 +123,27 @@ export default function CashJournalForm({
       setReadNotice(`Lecture automatique (${notices.join(", ")}) — vérifie avant d'enregistrer.`);
     });
   }
+
+  function saveAllSheets() {
+    if (!photoFile) return;
+    const data = new FormData();
+    data.set("photo", photoFile);
+    data.set("sheets", JSON.stringify(sheets));
+    setSheetsMessage(null);
+    startSheetsTransition(async () => {
+      const result = await submitCashJournalSheets(activity, data);
+      setSheetsMessage({ ok: result.status === "success", text: result.message });
+      if (result.status === "success") {
+        setSheets([]);
+        setReadNotice(null);
+        router.refresh();
+      }
+    });
+  }
+
+  const sheetTotal = (sh: CashJournalSheetRead) =>
+    (sh.cashAmount ?? 0) + (isMaraichage ? (sh.checkAmount ?? 0) + (sh.cardAmount ?? 0) : 0);
+  const euros = (n: number | null) => (n === null ? "—" : `${fmt(n)} €`);
 
   return (
     <form action={formAction} className="space-y-4 rounded-lg border bg-white p-4">
@@ -254,6 +292,88 @@ export default function CashJournalForm({
         {isReadPending && <span className="mt-1 block text-xs text-slate-400">Lecture automatique du montant…</span>}
         {readNotice && !isReadPending && <span className="mt-1 block text-xs text-amber-700">{readNotice}</span>}
       </label>
+
+      {sheets.length > 0 && (
+        <div className="space-y-2 rounded-md border border-sky-200 bg-sky-50 p-3">
+          <p className="text-sm font-medium text-sky-900">
+            {sheets.length > 1 ? `${sheets.length} fiches lues sur la photo` : "Fiche restante lue sur la photo"}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-xs">
+              <thead className="text-left text-slate-500">
+                <tr>
+                  <th className="px-2 py-1">Fiche</th>
+                  <th className="px-2 py-1">Date</th>
+                  <th className="px-2 py-1">Lieu</th>
+                  <th className="px-2 py-1 text-right">Espèces</th>
+                  {isMaraichage && (
+                    <>
+                      <th className="px-2 py-1 text-right">Chèques</th>
+                      <th className="px-2 py-1 text-right">CB</th>
+                      <th className="px-2 py-1 text-right">5,5 %</th>
+                      <th className="px-2 py-1 text-right">10 %</th>
+                    </>
+                  )}
+                  <th className="px-2 py-1 text-right">Total</th>
+                  <th className="px-2 py-1" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-sky-100">
+                {sheets.map((sh, i) => (
+                  <tr key={i}>
+                    <td className="px-2 py-1">{i + 1}</td>
+                    <td className={`px-2 py-1 ${sh.date ? "" : "text-red-600"}`}>{sh.date ? formatFrDate(sh.date) : "date illisible"}</td>
+                    <td className="px-2 py-1">{sh.location ?? "—"}</td>
+                    <td className="px-2 py-1 text-right">{euros(sh.cashAmount)}</td>
+                    {isMaraichage && (
+                      <>
+                        <td className="px-2 py-1 text-right">{euros(sh.checkAmount)}</td>
+                        <td className="px-2 py-1 text-right">{euros(sh.cardAmount)}</td>
+                        <td className="px-2 py-1 text-right">{euros(sh.reducedRateAmount)}</td>
+                        <td className="px-2 py-1 text-right">{euros(sh.plantSalesAmount)}</td>
+                      </>
+                    )}
+                    <td className="px-2 py-1 text-right font-medium">{fmt(sheetTotal(sh))} €</td>
+                    <td className="space-x-2 whitespace-nowrap px-2 py-1 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fillFromSheet(sh);
+                          setSheets(sheets.filter((_, j) => j !== i));
+                        }}
+                        className="text-sky-800 underline"
+                      >
+                        Corriger dans le formulaire
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={saveAllSheets}
+              disabled={isSheetsPending}
+              className="rounded-md bg-sky-800 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {isSheetsPending
+                ? "Enregistrement…"
+                : sheets.length > 1
+                  ? `Enregistrer ces ${sheets.length} fiches`
+                  : "Enregistrer cette fiche"}
+            </button>
+            <span className="text-xs text-slate-500">
+              Chacune devient une saisie du jour en attente de validation. « Corriger dans le formulaire » sort une
+              fiche de la liste pour la modifier et l&apos;enregistrer à part.
+            </span>
+          </div>
+        </div>
+      )}
+      {sheetsMessage && (
+        <p className={`text-sm ${sheetsMessage.ok ? "text-emerald-700" : "text-red-600"}`}>{sheetsMessage.text}</p>
+      )}
 
       <details className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
         <summary className="cursor-pointer font-medium text-amber-800">

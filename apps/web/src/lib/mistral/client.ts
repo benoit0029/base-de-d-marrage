@@ -3,7 +3,8 @@
 // https://docs.mistral.ai/api/ (chat completions). À revérifier lors du
 // déploiement (phase 6) si l'API a évolué depuis l'écriture de ce client.
 
-const API_BASE = "https://api.mistral.ai/v1";
+// Surchargeable pour les tests (faux service local), comme ABBY_API_BASE_URL.
+const API_BASE = process.env.MISTRAL_API_BASE_URL ?? "https://api.mistral.ai/v1";
 const OCR_MODEL = process.env.MISTRAL_OCR_MODEL ?? "mistral-ocr-latest";
 const CHAT_MODEL = process.env.MISTRAL_CHAT_MODEL ?? "mistral-small-latest";
 const TRANSCRIPTION_MODEL = process.env.MISTRAL_TRANSCRIPTION_MODEL ?? "voxtral-mini-latest";

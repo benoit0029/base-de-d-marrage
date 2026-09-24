@@ -92,36 +92,45 @@ const cashJournalAmountSchema = z.object({
 
 export type CashJournalAmountExtraction = z.infer<typeof cashJournalAmountSchema>;
 
-export async function extractCashJournalAmount(
+// Une photo peut contenir PLUSIEURS fiches du jour (saisie en retard : 3
+// fiches posées côte à côte) : une entrée par fiche, dans l'ordre de lecture.
+const cashJournalSheetsSchema = z.object({ fiches: z.array(cashJournalAmountSchema) });
+
+export async function extractCashJournalSheets(
   buffer: Buffer,
   mimeType: string
-): Promise<CashJournalAmountExtraction> {
+): Promise<CashJournalAmountExtraction[]> {
   const ocr = await ocrExtract(buffer, mimeType);
   const today = new Date().toISOString().slice(0, 10);
 
   const raw = await chatJson({
     system:
-      "Tu lis une photo de comptage de caisse (fiche du jour manuscrite ou ticket de caisse " +
-      "imprimé) pour la recette d'UNE SEULE journée de vente directe (marché, vente à la ferme). " +
-      'Réponds uniquement en JSON avec les clés "date" (date de la VENTE écrite sur la photo, au ' +
-      "format YYYY-MM-DD, ou null si aucune date n'y est notée — ne mets JAMAIS la date " +
-      "d'aujourd'hui par défaut, laisse null si tu ne la vois pas), \"cashAmount\" (montant en " +
-      'espèces du jour, nombre ou null), "checkAmount" (montant en chèques du jour, nombre ou ' +
-      'null), "cardAmount" (montant payé par carte bancaire / CB du jour, nombre ou null), ' +
-      '"reducedRateAmount" (part du total du jour en fruits/légumes à 5,5 %, nombre ou null), ' +
-      '"plantSalesAmount" (part du total du jour en plants potagers à 10 %, nombre ou null) et ' +
-      '"location" (lieu de la vente écrit sur la fiche, ex. "Marché de Quimper", "Ferme", texte ' +
-      "court tel qu'écrit, ou null si absent/illisible). " +
+      "Tu lis une photo de comptage de caisse de vente directe (marché, vente à la ferme) : une " +
+      "ou PLUSIEURS fiches du jour manuscrites (une fiche = une journée de vente), ou un ticket de " +
+      "caisse imprimé. Chaque fiche commence en général par « Fiche de saisie — recette du jour ». " +
+      'Réponds uniquement en JSON : {"fiches": [ ... ]}, avec UN objet par fiche trouvée, dans ' +
+      "l'ordre de lecture (un tableau d'un seul objet s'il n'y a qu'une fiche). Ne mélange jamais " +
+      "les montants de deux fiches. Chaque objet a les clés \"date\" (date de la VENTE écrite sur " +
+      "la fiche, au format YYYY-MM-DD, ou null si aucune date n'y est notée — ne mets JAMAIS la " +
+      "date d'aujourd'hui par défaut), \"cashAmount\" (montant en espèces, nombre ou null), " +
+      '"checkAmount" (montant en chèques, nombre ou null), "cardAmount" (montant payé par carte ' +
+      'bancaire / CB, nombre ou null), "reducedRateAmount" (part du total en fruits/légumes à ' +
+      '5,5 %, nombre ou null), "plantSalesAmount" (part du total en plants potagers à 10 %, ' +
+      'nombre ou null) et "location" (lieu de la vente écrit sur la fiche, ex. "Marché de ' +
+      "Quimper\", \"Ferme\", texte court tel qu'écrit, ou null si absent/illisible). " +
       "Les parts 5,5 % et 10 % sont une répartition du MÊME total (espèces + chèques + CB), pas " +
       "des montants en plus. Si une date est écrite sans année " +
       `(ex. "25/07"), déduis l'année à partir d'aujourd'hui (${today}) : année en cours, sauf si ` +
       "cela donnerait une date dans le futur, auquel cas année précédente. N'invente aucun montant " +
       "ni aucune date : si tu ne peux pas lire un champ avec certitude, réponds null pour ce champ " +
       "plutôt que de deviner.",
-    user: ocr.fullText.slice(0, 2000),
+    user: ocr.fullText.slice(0, 8000),
   });
 
-  return cashJournalAmountSchema.parse(raw);
+  // Tolère une réponse au format « une seule fiche » (objet sans "fiches").
+  const parsed = cashJournalSheetsSchema.safeParse(raw);
+  if (parsed.success) return parsed.data.fiches;
+  return [cashJournalAmountSchema.parse(raw)];
 }
 
 // ---------------------------------------------------------------------------

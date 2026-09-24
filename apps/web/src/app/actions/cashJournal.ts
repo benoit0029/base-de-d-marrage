@@ -2,18 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { saveDocumentFile } from "@/lib/storage";
+import { prisma } from "@/server/db/client";
+import { getDefaultTenantId } from "@/server/db/tenant";
 import {
   createCashJournalEntry,
   CashJournalAlreadyValidatedError,
   CashJournalError,
 } from "@/server/services/cashJournal";
-import { extractCashJournalAmount } from "@/lib/mistral/agents";
+import { extractCashJournalSheets } from "@/lib/mistral/agents";
 import { MistralApiError, MistralConfigError } from "@/lib/mistral/client";
 import { CASH_JOURNAL_DAILY_THRESHOLD } from "@/lib/thresholds";
 import type { Activity } from "@prisma/client";
 
-export interface CashJournalPhotoReadResult {
-  status: "ok" | "error";
+// Une fiche du jour lue sur la photo (une photo peut en contenir plusieurs).
+export interface CashJournalSheetRead {
   date: string | null;
   cashAmount: number | null;
   checkAmount: number | null;
@@ -21,63 +23,51 @@ export interface CashJournalPhotoReadResult {
   reducedRateAmount: number | null;
   plantSalesAmount: number | null;
   location: string | null;
+}
+
+export interface CashJournalPhotoReadResult {
+  status: "ok" | "error";
+  sheets: CashJournalSheetRead[];
   message?: string;
 }
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Lit automatiquement la recette du jour — ET la date de vente si elle est
- * notée dessus (saisie en retard) — sur la photo de comptage de caisse, pour
- * pré-remplir le formulaire (voir CashJournalForm) — l'exploitant garde la
- * main pour corriger avant d'enregistrer. Ne touche à aucune donnée, pure
- * lecture : aucun risque à l'appeler à chaque changement de photo.
+ * Lit automatiquement la ou les fiches du jour photographiées (plusieurs
+ * fiches sur une même photo en cas de saisie en retard) — date de vente,
+ * lieu et montants de chacune — pour pré-remplir le formulaire (voir
+ * CashJournalForm) ; l'exploitant garde la main pour corriger avant
+ * d'enregistrer. Pure lecture : ne touche à aucune donnée.
  */
 export async function extractCashJournalPhotoAmount(
   formData: FormData
 ): Promise<CashJournalPhotoReadResult> {
   const file = formData.get("photo");
   if (!(file instanceof File) || file.size === 0) {
-    return {
-      status: "error",
-      date: null,
-      cashAmount: null,
-      checkAmount: null,
-      cardAmount: null,
-      reducedRateAmount: null,
-      plantSalesAmount: null,
-      location: null,
-      message: "Aucune photo reçue.",
-    };
+    return { status: "error", sheets: [], message: "Aucune photo reçue." };
   }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { date, cashAmount, checkAmount, cardAmount, reducedRateAmount, plantSalesAmount, location } = await extractCashJournalAmount(
-      buffer,
-      file.type || "image/jpeg"
-    );
+    const fiches = await extractCashJournalSheets(buffer, file.type || "image/jpeg");
     return {
       status: "ok",
-      date: date && ISO_DATE_RE.test(date) ? date : null,
-      cashAmount,
-      checkAmount,
-      cardAmount,
-      reducedRateAmount,
-      plantSalesAmount,
-      location: location?.trim().slice(0, 100) || null,
+      sheets: fiches.map((f) => ({
+        date: f.date && ISO_DATE_RE.test(f.date) ? f.date : null,
+        cashAmount: f.cashAmount,
+        checkAmount: f.checkAmount,
+        cardAmount: f.cardAmount,
+        reducedRateAmount: f.reducedRateAmount,
+        plantSalesAmount: f.plantSalesAmount,
+        location: f.location?.trim().slice(0, 100) || null,
+      })),
     };
   } catch (err) {
     if (err instanceof MistralConfigError || err instanceof MistralApiError) {
       return {
         status: "error",
-        date: null,
-        cashAmount: null,
-        checkAmount: null,
-        cardAmount: null,
-        reducedRateAmount: null,
-        plantSalesAmount: null,
-        location: null,
+        sheets: [],
         message: "Lecture automatique indisponible — saisis le montant manuellement.",
       };
     }
@@ -206,4 +196,93 @@ export async function submitCashJournalEntry(
   revalidatePath("/synthese");
 
   return { status: "success", message: "Saisie du jour enregistrée, en attente de validation." };
+}
+
+export interface CashJournalSheetsResult {
+  status: "success" | "error";
+  message: string;
+}
+
+const fmt2 = (n: number) => n.toFixed(2).replace(".", ",");
+
+/**
+ * Enregistre en une fois plusieurs fiches lues sur une même photo (saisie en
+ * retard) : une saisie du jour par fiche, toutes en attente de validation,
+ * avec la même photo comme justificatif. Rien n'est enregistré si une fiche
+ * est incomplète ou incohérente (message indiquant laquelle).
+ */
+export async function submitCashJournalSheets(activity: Activity, formData: FormData): Promise<CashJournalSheetsResult> {
+  const isMaraichage = activity === "BA_MARAICHAGE";
+  let sheets: CashJournalSheetRead[];
+  try {
+    sheets = JSON.parse(formData.get("sheets")?.toString() ?? "[]");
+  } catch {
+    return { status: "error", message: "Fiches illisibles." };
+  }
+  if (!Array.isArray(sheets) || sheets.length === 0) return { status: "error", message: "Aucune fiche à enregistrer." };
+
+  const clean = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : 0);
+  const inputs = [];
+  for (const [i, sh] of sheets.entries()) {
+    const label = `Fiche ${i + 1}`;
+    if (!sh.date || !ISO_DATE_RE.test(sh.date)) return { status: "error", message: `${label} : date de vente manquante.` };
+    const cash = clean(sh.cashAmount);
+    const check = isMaraichage ? clean(sh.checkAmount) : 0;
+    const card = isMaraichage ? clean(sh.cardAmount) : 0;
+    const plants = isMaraichage ? clean(sh.plantSalesAmount) : 0;
+    if ([cash, check, card, plants].some((n) => n < 0)) return { status: "error", message: `${label} : montant invalide.` };
+    const total = cash + check + card;
+    if (total <= 0) return { status: "error", message: `${label} : aucun montant.` };
+    if (isMaraichage && typeof sh.reducedRateAmount === "number" && Math.abs(sh.reducedRateAmount + plants - total) > 0.01) {
+      return {
+        status: "error",
+        message: `${label} : 5,5 % (${fmt2(sh.reducedRateAmount)} €) + 10 % (${fmt2(plants)} €) ≠ total (${fmt2(total)} €).`,
+      };
+    }
+    inputs.push({
+      date: new Date(sh.date),
+      location: sh.location?.trim().slice(0, 100) || undefined,
+      cashAmount: cash,
+      checkAmount: check,
+      cardAmount: card,
+      plantSalesAmount: plants,
+    });
+  }
+  const dates = inputs.map((x) => x.date.getTime());
+  if (new Set(dates).size !== dates.length) {
+    return { status: "error", message: "Deux fiches ont la même date de vente : corrige la date avant d'enregistrer." };
+  }
+
+  // Tout ou rien : aucune fiche n'est enregistrée si l'une d'elles tombe sur
+  // un jour déjà validé (non modifiable).
+  const tenantId = await getDefaultTenantId();
+  const locked = await prisma.cashJournalEntry.findFirst({
+    where: { tenantId, activity, status: "VALIDATED", date: { in: inputs.map((x) => x.date) } },
+    select: { date: true },
+  });
+  if (locked) {
+    return {
+      status: "error",
+      message: `Une saisie validée existe déjà pour le ${locked.date.toLocaleDateString("fr-FR")} : retire cette fiche ou corrige sa date.`,
+    };
+  }
+
+  try {
+    const depositSlipUrl = await fileUrlIfProvided(formData, "photo");
+    for (const input of inputs) {
+      await createCashJournalEntry(activity, { ...input, depositSlipUrl, exceptionalSales: [] });
+    }
+  } catch (err) {
+    if (err instanceof CashJournalAlreadyValidatedError || err instanceof CashJournalError) {
+      return { status: "error", message: err.message };
+    }
+    throw err;
+  }
+
+  revalidatePath(`${activityBasePath[activity]}/recettes`);
+  revalidatePath("/synthese");
+  return {
+    status: "success",
+    message: `${inputs.length} saisie${inputs.length > 1 ? "s" : ""} enregistrée${inputs.length > 1 ? "s" : ""}, en attente de validation.`,
+  };
 }
