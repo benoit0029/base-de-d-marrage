@@ -8,6 +8,11 @@
 - Ne jamais modifier un texte juridique du site kerbooth360.fr (CGV, politique de confidentialité, mentions légales) sans avoir d'abord montré le nouveau texte à Benoît et obtenu son accord.
 - Quand une même erreur revient deux fois, ajouter ici une consigne courte et vérifiable qui l'empêche, et le signaler à Benoît.
 
+## Mémoire du projet
+- Avant de travailler, lire le sommaire de `docs/DECISIONS.md` (journal de toutes les décisions prises avec Benoît) et la section utile.
+- Chaque décision validée par Benoît est ajoutée à `docs/DECISIONS.md` (numéro, date, décision, statut de vérification) **dans le même commit que le code**. Une décision n'est jamais effacée : on la marque « remplacée par D-xx ».
+- Jamais de secret (clé API, mot de passe) dans ces fichiers.
+
 ## Redéploiement
 À chaque fois qu'un changement doit être déployé, donner les trois commandes habituelles, une par bloc (le terminal de Benoît colle mal les commandes sur plusieurs lignes) :
 
@@ -24,4 +29,4 @@ docker compose up -d --build
 Puis, pour vérifier : `docker compose logs -f app` (attendre `Ready`, quitter avec `Ctrl+C`).
 
 ## Reste à faire
-Voir `docs/MISE-EN-PRODUCTION.md` (liste priorisée).
+Voir `docs/MISE-EN-PRODUCTION.md` (liste priorisée). Décisions : `docs/DECISIONS.md`.

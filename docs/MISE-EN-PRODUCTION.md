@@ -15,8 +15,10 @@ disque, erreur de manipulation ou piratage = tout est perdu, y compris les
 justificatifs à conserver 10 ans pour un contrôle fiscal.
 
 **Ce qu'il te faut** : un compte de stockage S3-compatible **chez un autre
-hébergeur que le serveur** (Scaleway Object Storage, OVH Object Storage ou
-Backblaze B2 — quelques centimes par mois pour ce volume). Tu crées un
+hébergeur que le serveur** — le compte **Scaleway** déjà ouvert pour les
+justificatifs convient, avec un bucket séparé réservé aux sauvegardes
+(sinon OVH Object Storage ou Backblaze B2 ; quelques centimes par mois pour
+ce volume). Tu crées un
 "bucket" privé et une clé d'accès, puis tu me donnes : l'endpoint, le nom du
 bucket, la clé d'accès et le secret.
 
