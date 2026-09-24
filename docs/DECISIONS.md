@@ -101,8 +101,9 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   hébergeur que le VPS (Scaleway possible, bucket séparé).
 - **D-024 (14-15/09, précisé 24/09)** — Mistral AI pour la lecture des
   documents, compte au nom de l'entreprise, **offre gratuite** 👤. Limites
-  atteintes le 15/09 (erreurs 429). L'appli ne réessaie pas
-  automatiquement après une erreur 429. ❓ conditions d'utilisation des
+  atteintes le 15/09 (erreurs 429). Depuis le 24/09, l'appli **réessaie
+  automatiquement** (429 et pannes passagères 500/502/503/504 : jusqu'à 4
+  nouveaux essais, attente demandée par Mistral ou 2, 4, 8, 16 s). ❓ conditions d'utilisation des
   données sur l'offre gratuite : à vérifier dans les réglages Mistral.
 - **D-025 (24/09)** — Réglage `HIDDEN_ACTIVITIES` pour masquer des
   activités dans une installation (vide chez Benoît).

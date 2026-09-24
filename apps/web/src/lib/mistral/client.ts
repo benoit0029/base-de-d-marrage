@@ -26,15 +26,51 @@ function getApiKey(): string {
   return key;
 }
 
+// Réessai automatique (décision D-024, 24/09/2026) : l'offre gratuite de
+// Mistral limite le nombre d'appels, et répond 429 (« trop de demandes »)
+// quand on la dépasse, par exemple en lisant plusieurs fiches d'un coup.
+// On réessaie aussi sur les pannes passagères du service (500, 502, 503,
+// 504). Attente : celle demandée par Mistral (en-tête Retry-After) si elle
+// est donnée, sinon 2 s, 4 s, 8 s puis 16 s — au-delà, l'erreur remonte et
+// le document reste « en échec » comme avant.
+const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000];
+const MAX_WAIT_MS = 30000;
+
+function retryDelayMs(res: Response, attempt: number): number {
+  const header = res.headers.get("retry-after");
+  if (header !== null) {
+    const seconds = Number(header);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, MAX_WAIT_MS);
+    const date = Date.parse(header);
+    if (!Number.isNaN(date)) return Math.min(Math.max(date - Date.now(), 0), MAX_WAIT_MS);
+  }
+  return RETRY_DELAYS_MS[attempt];
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** fetch vers Mistral avec réessai automatique (429 et pannes passagères). */
+async function fetchWithRetry(url: string, init: () => RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init());
+    if (res.ok || !RETRY_STATUSES.has(res.status) || attempt >= RETRY_DELAYS_MS.length) return res;
+    const wait = retryDelayMs(res, attempt);
+    await res.body?.cancel().catch(() => {});
+    console.warn(`[mistral] ${res.status} sur ${new URL(url).pathname}, nouvel essai dans ${Math.round(wait / 1000)} s`);
+    await sleep(wait);
+  }
+}
+
 async function mistralFetch(pathname: string, body: unknown) {
-  const res = await fetch(`${API_BASE}${pathname}`, {
+  const res = await fetchWithRetry(`${API_BASE}${pathname}`, () => ({
     method: "POST",
     headers: {
       Authorization: `Bearer ${getApiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
-  });
+  }));
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -113,14 +149,12 @@ export async function transcribeAudio(
   mimeType: string,
   filename: string
 ): Promise<string> {
-  const form = new FormData();
-  form.append("model", TRANSCRIPTION_MODEL);
-  form.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType }), filename);
-
-  const res = await fetch(`${API_BASE}/audio/transcriptions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${getApiKey()}` },
-    body: form,
+  const res = await fetchWithRetry(`${API_BASE}/audio/transcriptions`, () => {
+    // Formulaire recréé à chaque essai : un corps de requête ne se renvoie pas deux fois.
+    const form = new FormData();
+    form.append("model", TRANSCRIPTION_MODEL);
+    form.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType }), filename);
+    return { method: "POST", headers: { Authorization: `Bearer ${getApiKey()}` }, body: form };
   });
 
   if (!res.ok) {
