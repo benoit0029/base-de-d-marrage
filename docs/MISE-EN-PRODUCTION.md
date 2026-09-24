@@ -128,17 +128,18 @@ l'annuaire avec Abby (changement de plateforme), puis :
 - sinon, liaison directe appli ↔ Abby (API, peut-être payante) ;
 - tester le bouton « Envoyer via Abby » (écrit sans accès à la
   documentation d'Abby, jamais testé) ;
-- e-reporting : non construit (les totaux par taux existent déjà dans le
-  journal de caisse).
+- e-reporting : onglet « E-reporting » (Maraîchage) construit le 24/09/2026
+  — totaux des ventes aux particuliers par jour et par taux, export
+  tableur ; reste la transmission via Abby (format et fréquence à
+  confirmer).
 
 ## 7. Écarts relevés avec le document « Obligations micro-BA » (24/09/2026)
 
 Analyse seulement, rien de construit — à décider par Benoît :
 1. ~~Page « Déclaration 2042 »~~ **fait le 24/09/2026** : vraies recettes
-   HT (case 5XB), moyenne 3 ans, bénéfice estimé. Reste : les années
-   d'avant l'outil ne sont pas connues (moyenne faussée tant qu'elles ne
-   sont pas saisies), et le seuil micro-BA de la page Synthèse compte
-   encore la vente directe en TTC au lieu du HT.
+   HT (case 5XB), moyenne 3 ans, bénéfice estimé, et saisie à la main des
+   recettes des années d'avant l'outil. Reste : le seuil micro-BA de la page
+   Synthèse compte encore la vente directe en TTC au lieu du HT.
 2. **Registre TVA trimestriel** : ne compte que la TVA des factures, pas
    celle des ventes directes (journal de caisse) — la CA12A annuelle, elle,
    les compte.

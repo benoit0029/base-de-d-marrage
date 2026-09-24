@@ -15,6 +15,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export interface MicroBaRecettes {
   year: number;
+  manual: boolean; // montant saisi à la main (année d'avant l'outil), voir PriorYearRevenue
   factures: number; // factures encaissées, HT
   venteDirecteTtc: number; // journal de caisse, TTC tel qu'encaissé
   venteDirecteTva: number; // TVA extraite (5,5 % et 10 % plants)
@@ -56,6 +57,7 @@ export async function computeMicroBaRecettes(year: number): Promise<MicroBaRecet
 
   return {
     year,
+    manual: false,
     factures: round2(factures),
     venteDirecteTtc,
     venteDirecteTva,
@@ -85,7 +87,19 @@ export interface MicroBaDeclaration {
  * exacte des premières années d'activité reste à confirmer.
  */
 export async function computeMicroBaDeclaration(year: number): Promise<MicroBaDeclaration> {
-  const history = await Promise.all([year - 2, year - 1, year].map((y) => computeMicroBaRecettes(y)));
+  const tenantId = await getDefaultTenantId();
+  const years = [year - 2, year - 1, year];
+  const [computed, manualRows] = await Promise.all([
+    Promise.all(years.map((y) => computeMicroBaRecettes(y))),
+    prisma.priorYearRevenue.findMany({ where: { tenantId, activity: "BA_MARAICHAGE", year: { in: years } } }),
+  ]);
+  // Une saisie manuelle remplace le calcul de son année (jamais additionnée).
+  const history = computed.map((r): MicroBaRecettes => {
+    const manual = manualRows.find((m) => m.year === r.year);
+    if (!manual) return r;
+    const total = round2(Number(manual.amountHt));
+    return { year: r.year, manual: true, factures: 0, venteDirecteTtc: 0, venteDirecteTva: 0, venteDirecteHt: 0, autres: 0, total };
+  });
   const recettes = history[2];
 
   const active = history.filter((r) => r.total > 0);
@@ -102,4 +116,32 @@ export async function computeMicroBaDeclaration(year: number): Promise<MicroBaDe
     abattement,
     benefice: round2(moyenne - abattement),
   };
+}
+
+export interface PriorYearRevenueView {
+  year: number;
+  amountHt: number;
+}
+
+export async function listPriorYearRevenues(): Promise<PriorYearRevenueView[]> {
+  const tenantId = await getDefaultTenantId();
+  const rows = await prisma.priorYearRevenue.findMany({
+    where: { tenantId, activity: "BA_MARAICHAGE" },
+    orderBy: { year: "desc" },
+  });
+  return rows.map((r) => ({ year: r.year, amountHt: Number(r.amountHt) }));
+}
+
+export async function savePriorYearRevenue(year: number, amountHt: number) {
+  const tenantId = await getDefaultTenantId();
+  await prisma.priorYearRevenue.upsert({
+    where: { tenantId_activity_year: { tenantId, activity: "BA_MARAICHAGE", year } },
+    create: { tenantId, activity: "BA_MARAICHAGE", year, amountHt },
+    update: { amountHt },
+  });
+}
+
+export async function deletePriorYearRevenue(year: number) {
+  const tenantId = await getDefaultTenantId();
+  await prisma.priorYearRevenue.deleteMany({ where: { tenantId, activity: "BA_MARAICHAGE", year } });
 }

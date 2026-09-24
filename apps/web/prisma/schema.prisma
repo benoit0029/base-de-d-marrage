@@ -42,6 +42,7 @@ model Tenant {
   fiscalYearClosures FiscalYearClosure[]
   kerboothUnits      KerboothUnit[]
   kerboothBookings   KerboothBooking[]
+  priorYearRevenues  PriorYearRevenue[]
 }
 
 model User {
@@ -793,4 +794,21 @@ model AuditLog {
   before     Json?
   after      Json?
   createdAt  DateTime @default(now())
+}
+
+// Recettes HT d'une année passée saisies à la main (années d'activité
+// antérieures à l'outil), pour la moyenne triennale du micro-BA sur la page
+// Déclaration 2042. Une saisie remplace le calcul automatique de cette
+// année-là (jamais additionnée), voir lib/declaration/microBa.
+model PriorYearRevenue {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  activity  Activity
+  year      Int
+  amountHt  Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, activity, year])
 }

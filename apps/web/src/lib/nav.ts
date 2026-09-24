@@ -25,6 +25,7 @@ export const activities: ActivityNav[] = [
       { slug: "cotisations-non-salarie", label: "Cotisations non salarié" },
       { slug: "declaration-annuelle", label: "Déclaration 2042" },
       { slug: "ca12a", label: "CA12A / 3517-AGR-SD (TVA)" },
+      { slug: "e-reporting", label: "E-reporting" },
       { slug: "facturation", label: "Facturation" },
     ],
   },

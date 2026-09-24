@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { computeMicroBaDeclaration } from "@/lib/declaration/microBa";
+import { computeMicroBaDeclaration, listPriorYearRevenues } from "@/lib/declaration/microBa";
 import { formatEuro } from "@/lib/format";
+import PriorYearRevenueForm from "@/components/PriorYearRevenueForm";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
   const currentYear = new Date().getFullYear();
   const year = yearParam && Number.isInteger(Number(yearParam)) ? Number(yearParam) : currentYear - 1;
 
-  const d = await computeMicroBaDeclaration(year);
+  const [d, priorRows] = await Promise.all([computeMicroBaDeclaration(year), listPriorYearRevenues()]);
   const r = d.recettes;
   const partialAverage = d.yearsAveraged.length < 3;
 
@@ -52,6 +53,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
         </p>
       </div>
 
+      {r.manual ? (
+        <p className="rounded-lg border bg-white p-4 text-sm text-slate-600">
+          Recettes {year} saisies à la main (année d&apos;avant l&apos;outil) : pas de détail disponible.
+        </p>
+      ) : (
       <div className="rounded-lg border bg-white p-4">
         <p className="text-sm font-medium text-slate-700">Détail des recettes HT {year}</p>
         <p className="mt-1 text-xs text-slate-500">
@@ -83,6 +89,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
           </div>
         </dl>
       </div>
+      )}
 
       <div className="rounded-lg border bg-white p-4">
         <p className="text-sm font-medium text-slate-700">Estimation du revenu imposable (calculé par l&apos;administration)</p>
@@ -98,6 +105,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
               <tr key={h.year} className={d.yearsAveraged.includes(h.year) ? "" : "text-slate-400"}>
                 <td className="py-1.5">
                   {h.year}
+                  {h.manual && <span className="text-xs text-slate-400"> (saisi à la main)</span>}
                   {!d.yearsAveraged.includes(h.year) && " (aucune recette, non comptée)"}
                 </td>
                 <td className="py-1.5 text-right">{formatEuro(h.total)}</td>
@@ -123,9 +131,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
         </dl>
         {partialAverage && (
           <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            Moins de 3 années de recettes dans l&apos;outil : la moyenne est faite sur les seules années connues. La
-            règle exacte pour les premières années d&apos;activité (ou des années saisies ailleurs avant l&apos;outil)
-            est à vérifier : l&apos;estimation peut différer du calcul de l&apos;administration.
+            Moins de 3 années de recettes connues : la moyenne est faite sur les seules années connues. Si ton
+            activité existait avant l&apos;outil, saisis ces années-là ci-dessous. La règle exacte pour les premières
+            années d&apos;activité est à vérifier : l&apos;estimation peut différer du calcul de l&apos;administration.
           </p>
         )}
         <p className="mt-3 text-xs text-slate-500">
@@ -133,6 +141,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
           ci-dessus. Pas de charges à déclarer au micro-BA (l&apos;abattement les remplace).
         </p>
       </div>
+
+      <PriorYearRevenueForm rows={priorRows} defaultYear={Math.min(year, currentYear - 1) - 1} />
     </div>
   );
 }
