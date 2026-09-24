@@ -192,7 +192,7 @@ export function ca12aDeadline(recetteYear: number): Date {
  * exceptionnelles (> 76 €, saisies à part) sont comptées au taux réduit par
  * défaut — simplification à corriger si elles concernent aussi des plants.
  */
-async function computeCashJournalVat(year: number): Promise<{ caTotal: number; collected: number }> {
+export async function computeCashJournalVat(year: number): Promise<{ caTotal: number; collected: number }> {
   const tenantId = await getDefaultTenantId();
   const { start, end } = currentYearRange(year);
 
