@@ -1,6 +1,6 @@
 # Reste à faire avant la mise en production — par ordre de priorité
 
-État au 23/09/2026. L'appli tourne déjà sur le vrai serveur
+État au 24/09/2026. L'appli tourne déjà sur le vrai serveur
 (`https://compta.kalonia.fr`) et enregistre pour de vrai, mais elle n'est pas
 encore "en production" au sens où l'on pourrait s'y fier seule pour ses
 déclarations. Chaque point ci-dessous dit pourquoi il compte, ce qu'il faut
@@ -49,6 +49,11 @@ les seuils et les déclarations.
   ce qu'elles vont supprimer, comme pour les nettoyages Kerbooth précédents.
 - Idéalement juste avant de commencer la vraie saisie (1er jour d'activité
   réelle ou 1er janvier).
+- **Numérotation des factures** : le même jour, après suppression des
+  factures de test, remettre à zéro les compteurs (table
+  `InvoiceSequence`) pour que la première vraie facture soit bien
+  FA2026-001 (ou FA2027-001). Les factures de test créées avant le
+  24/09/2026 gardent leur ancien numéro tant qu'elles existent.
 
 ## 3. Sortie de franchise TVA micro-BIC (Revente + Kerbooth) — CONSTRUIT
 
@@ -136,6 +141,22 @@ l'annuaire avec Abby (changement de plateforme), puis :
   tableur ; reste la transmission via Abby (format et fréquence à
   confirmer).
 
+**Réponse du chat Abby (24/09/2026, à reconfirmer au moment de souscrire —
+tarifs non vérifiés)** : l'offre **gratuite** permet seulement de créer et
+envoyer factures et devis (numérotation légale, conforme facture
+électronique). Réservé aux offres payantes : factures **avec TVA** et totaux
+TVA / e-reporting (Pro), **dépôt de factures faites ailleurs** (Pro),
+**API** (Pro/Business), renvoi automatique des factures fournisseurs par
+mail (payant). Conséquences :
+- Maraîchage (assujetti TVA) : l'offre gratuite ne suffit pas → **Abby Pro**
+  nécessaire, que ce soit pour l'envoi automatique depuis l'appli (API) ou
+  pour le dépôt manuel des PDF ;
+- micro-BIC en franchise : l'offre gratuite obligerait à refaire les
+  factures dans Abby (deux numérotations en parallèle → à éviter) ;
+- Revente : ventes directes aux particuliers seulement → e-reporting, pas
+  de facture ;
+- décision à prendre avant le 1er septembre 2027.
+
 ## 7. Obligations micro-BA — construit le 24/09/2026
 
 Onglets Maraîchage regroupés par section (Vue d'ensemble / Comptable /
@@ -166,6 +187,30 @@ Reste :
 - remarques sur le document : il appelle « CA12 » la déclaration agricole,
   qui est la **CA12A** (3517-AGR-SD) ; conservation 6 ans pour le fiscal
   agricole, 10 ans conseillés pour les activités commerciales.
+
+## 8. Facturation légale et micro-BIC — construit le 24/09/2026
+
+- **Numéros de facture** : FA2026-001, avoirs AV2026-001, devis
+  DE2026-001 ; une suite par entreprise (micro-BA d'un côté, micro-BIC
+  Revente + Kerbooth de l'autre), sans trou, remise à 001 chaque année.
+  L'appli refuse une facture datée avant la dernière facture de la même
+  suite.
+- **Pas de suppression de facture** : bouton « Annuler par un avoir ».
+  Facture pas encore payée → annulée, sans effet sur les comptes ; facture
+  payée → avoir à rembourser, compté en négatif dans le livre des recettes
+  à la date du remboursement (« Marquer remboursé »).
+- **Revente et Kerbooth** : mêmes sections que le Maraîchage (Livre des
+  recettes, Registre des achats pour la Revente) ; Synthèse micro-BIC avec
+  Obligations, Suivi des seuils, TVA, Déclaration 2042 (cases 5KO ventes /
+  5KP services, à vérifier sur le formulaire de l'année), Cotisations
+  sociales, E-reporting.
+- **Cotisations sociales micro-BIC** : régime à choisir dans Synthèse
+  micro-BIC → Cotisations sociales. Benoît : **MSA** (activité principale
+  agricole, une déclaration annuelle, appel de cotisations MSA) → plus de
+  rappel URSSAF mensuel. Taux URSSAF affichés pour le partenaire (12,3 %
+  ventes, 21,2 % services) : non vérifiés.
+- **n8n** : réimporter `n8n/workflows/kerbooth-urssaf-reminder.json` (texte
+  du mail modifié ; il n'envoie plus rien en régime MSA).
 
 ---
 
