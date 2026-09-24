@@ -8,9 +8,11 @@ import { useRouter } from "next/navigation";
 export default function ReclassifyEntryButton({
   entryId,
   type,
+  variant = "button",
 }: {
   entryId: string;
   type: "achat" | "immobilisation";
+  variant?: "button" | "link"; // bouton (colonne d'actions de Dépenses) ou lien (Livre des achats)
 }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
@@ -37,12 +39,16 @@ export default function ReclassifyEntryButton({
   }
 
   return (
-    <span className="block">
+    <span className={variant === "button" ? "inline-flex flex-col items-end" : "block"}>
       <button
         type="button"
         onClick={handleClick}
         disabled={busy}
-        className="text-xs text-slate-500 underline disabled:opacity-50"
+        className={
+          variant === "button"
+            ? "whitespace-nowrap rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 disabled:opacity-50"
+            : "whitespace-nowrap text-xs text-slate-500 underline disabled:opacity-50"
+        }
         title="La lecture automatique s'est trompée de classement ? Corrige-le ici."
       >
         {busy ? "…" : `Corriger → ${targetLabel}`}

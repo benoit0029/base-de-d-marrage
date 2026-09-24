@@ -63,12 +63,7 @@ export default function EntriesTable({
               <td className="px-4 py-2.5 whitespace-nowrap">
                 {formatDate(entry.date)}
               </td>
-              <td className="px-4 py-2.5">
-                {typeLabel[entry.type]}
-                {entry.type !== "recette" && !locked && (
-                  <ReclassifyEntryButton entryId={entry.id} type={entry.type} />
-                )}
-              </td>
+              <td className="px-4 py-2.5">{typeLabel[entry.type]}</td>
               <td className="px-4 py-2.5">
                 {entry.counterpartyName}
                 {entry.possibleDuplicate && (
@@ -120,7 +115,10 @@ export default function EntriesTable({
                   <span className="text-slate-400">Non pointé</span>
                 )}
               </td>
-              <td className="px-4 py-2.5 text-right">
+              <td className="space-y-1 px-4 py-2.5 text-right">
+                {entry.type !== "recette" && !locked && (
+                  <ReclassifyEntryButton entryId={entry.id} type={entry.type} />
+                )}
                 <RegisterActions
                   pending={entry.status === "pending"}
                   validateUrl={entry.status === "pending" ? `/api/entries/${entry.id}/validate` : undefined}

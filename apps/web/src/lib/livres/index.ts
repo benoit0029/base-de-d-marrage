@@ -233,6 +233,8 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
 // ---------------------------------------------------------------------------
 
 export interface PurchaseRow {
+  id: string;
+  type: "achat" | "immobilisation";
   date: Date; // date de paiement
   supplier: string;
   nature: string;
@@ -303,6 +305,8 @@ export async function computePurchaseBook(year: number): Promise<PurchaseBook> {
   ]);
 
   const toRow = (e: (typeof entries)[number]): PurchaseRow => ({
+    id: e.id,
+    type: e.type === "IMMOBILISATION" ? "immobilisation" : "achat",
     date: e.paidAt!,
     supplier: e.counterpartyName,
     nature: e.nature,

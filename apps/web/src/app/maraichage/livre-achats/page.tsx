@@ -1,13 +1,25 @@
 import Link from "next/link";
 import { computePurchaseBook, type PurchaseSection } from "@/lib/livres";
 import { formatEuro } from "@/lib/format";
+import { listClosedYears } from "@/server/services/fiscalYearClosure";
+import ReclassifyEntryButton from "@/components/ReclassifyEntryButton";
 
 export const dynamic = "force-dynamic";
 
 const frDay = (d: Date) => d.toLocaleDateString("fr-FR");
 const QUARTER_LABEL = ["1er trimestre", "2e trimestre", "3e trimestre", "4e trimestre"];
 
-function Section({ title, hint, section }: { title: string; hint: string; section: PurchaseSection }) {
+function Section({
+  title,
+  hint,
+  section,
+  locked,
+}: {
+  title: string;
+  hint: string;
+  section: PurchaseSection;
+  locked: boolean; // exercice clôturé : plus de correction possible
+}) {
   return (
     <div className="overflow-x-auto rounded-lg border bg-white">
       <div className="px-3 pt-3">
@@ -23,11 +35,12 @@ function Section({ title, hint, section }: { title: string; hint: string; sectio
             <th className="px-2 py-2 text-right">HT</th>
             <th className="px-2 py-2 text-right">TVA</th>
             <th className="px-2 py-2 text-right">TTC</th>
+            <th className="px-2 py-2" />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {section.quarters.map((q) => (
-            <QuarterRows key={q.quarter} q={q} />
+            <QuarterRows key={q.quarter} q={q} locked={locked} />
           ))}
           <tr className="bg-slate-800 font-semibold text-white">
             <td className="px-2 py-2" colSpan={3}>
@@ -36,6 +49,7 @@ function Section({ title, hint, section }: { title: string; hint: string; sectio
             <td className="px-2 py-2 text-right">{formatEuro(section.totals.ht)}</td>
             <td className="px-2 py-2 text-right">{formatEuro(section.totals.vat)}</td>
             <td className="px-2 py-2 text-right">{formatEuro(section.totals.ttc)}</td>
+            <td />
           </tr>
         </tbody>
       </table>
@@ -43,18 +57,18 @@ function Section({ title, hint, section }: { title: string; hint: string; sectio
   );
 }
 
-function QuarterRows({ q }: { q: PurchaseSection["quarters"][number] }) {
+function QuarterRows({ q, locked }: { q: PurchaseSection["quarters"][number]; locked: boolean }) {
   const label = QUARTER_LABEL[q.quarter - 1];
   return (
     <>
       <tr className="bg-slate-50">
-        <td className="px-2 py-1.5 font-semibold text-slate-600" colSpan={6}>
+        <td className="px-2 py-1.5 font-semibold text-slate-600" colSpan={7}>
           {label}
         </td>
       </tr>
       {q.rows.length === 0 ? (
         <tr>
-          <td className="px-2 py-1.5 text-slate-400" colSpan={6}>
+          <td className="px-2 py-1.5 text-slate-400" colSpan={7}>
             Aucun achat.
           </td>
         </tr>
@@ -67,6 +81,9 @@ function QuarterRows({ q }: { q: PurchaseSection["quarters"][number] }) {
             <td className="px-2 py-1.5 text-right">{formatEuro(r.ht)}</td>
             <td className="px-2 py-1.5 text-right">{formatEuro(r.vat)}</td>
             <td className="px-2 py-1.5 text-right">{formatEuro(r.ttc)}</td>
+            <td className="px-2 py-1.5 text-right">
+              {!locked && <ReclassifyEntryButton entryId={r.id} type={r.type} variant="link" />}
+            </td>
           </tr>
         ))
       )}
@@ -77,6 +94,7 @@ function QuarterRows({ q }: { q: PurchaseSection["quarters"][number] }) {
         <td className="px-2 py-1.5 text-right">{formatEuro(q.totals.ht)}</td>
         <td className="px-2 py-1.5 text-right">{formatEuro(q.totals.vat)}</td>
         <td className="px-2 py-1.5 text-right">{formatEuro(q.totals.ttc)}</td>
+        <td />
       </tr>
     </>
   );
@@ -88,7 +106,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
   const { year: yearParam } = await searchParams;
   const currentYear = new Date().getFullYear();
   const year = yearParam && Number.isInteger(Number(yearParam)) ? Number(yearParam) : currentYear;
-  const book = await computePurchaseBook(year);
+  const [book, closedYears] = await Promise.all([computePurchaseBook(year), listClosedYears()]);
+  const locked = closedYears.includes(year);
 
   return (
     <div className="space-y-4">
@@ -124,10 +143,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
 
       <Section
         title="Immobilisations"
-        hint="Matériel durable (outillage, serre, véhicule…) — classé ainsi par la lecture automatique de la pièce."
+        hint="Matériel durable (outillage, serre, véhicule…) — classé par la lecture automatique de la pièce ; « Corriger » sur une ligne si elle s'est trompée."
         section={book.immobilisations}
+        locked={locked}
       />
-      <Section title="Autres achats" hint="Dépenses courantes (semences, fournitures, services…)." section={book.autres} />
+      <Section
+        title="Autres achats"
+        hint="Dépenses courantes (semences, fournitures, services…)."
+        section={book.autres}
+        locked={locked}
+      />
 
       <div className="rounded-lg border bg-white p-4 text-sm">
         <div className="flex justify-between font-semibold">
