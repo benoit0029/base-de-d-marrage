@@ -175,6 +175,95 @@ bancaire) et « Business » = Aller plus loin (comptes bancaires illimités) :
 la connexion bancaire d'Abby n'est pas utile ici, les relevés s'importent
 déjà dans l'appli (onglet Relevé bancaire).
 
+### Mail à envoyer à Abby (rédigé le 24/09/2026)
+
+À envoyer depuis ton compte ou le formulaire de contact d'Abby. Compléter
+les [crochets] avant l'envoi.
+
+> **Objet : Questions avant souscription — deux entreprises, factures
+> émises depuis mon propre logiciel, e-reporting**
+>
+> Bonjour,
+>
+> Je prévois de passer par Abby comme plateforme agréée pour la facturation
+> électronique avant l'échéance du 1er septembre 2027. Avant de choisir une
+> offre, j'ai besoin de confirmations précises.
+>
+> **Ma situation : deux entreprises**
+> 1. Exploitation maraîchère (micro-BA, **assujettie à la TVA** au réel
+>    simplifié agricole) — SIRET [à compléter]. Ventes directes aux
+>    particuliers (marchés, vente à la ferme) et **factures à des
+>    professionnels** (restaurants, magasins), TVA à 5,5 %, 10 % et 20 %.
+> 2. Micro-entreprise micro-BIC en **franchise de TVA** — SIRET
+>    533 242 053 00015 : revente de fruits et légumes (vente directe aux
+>    particuliers uniquement) et location d'un photobooth (surtout des
+>    particuliers, parfois des professionnels).
+>
+> Mes factures et avoirs sont déjà produits par mon propre logiciel de
+> comptabilité (numérotation légale continue FA2026-001, AV2026-001, PDF).
+> Je souhaite garder ce logiciel et utiliser Abby uniquement pour la
+> transmission (factures électroniques, e-reporting, réception des factures
+> fournisseurs).
+>
+> **Mes questions**
+> 1. **Offres** : l'offre appelée « Pro » par votre assistant correspond-elle
+>    à « Maîtriser » (9 €/mois), et « Business » à « Aller plus loin »
+>    (19,80 €/mois) ? Ces prix sont-ils HT ou TTC, avec ou sans engagement
+>    annuel ?
+> 2. **Dépôt de factures produites ailleurs** : puis-je déposer dans Abby les
+>    factures émises par mon logiciel pour qu'Abby les transmette comme
+>    factures électroniques, **en gardant ma propre numérotation** ? À partir
+>    de quelle offre ? Quel format faut-il : PDF simple, Factur-X, UBL ou CII ?
+> 3. **API** : l'offre « Maîtriser » donne-t-elle accès à une API pour
+>    envoyer ces factures et avoirs automatiquement depuis mon logiciel ?
+>    La ligne « Automatisation / intégrations (bêta) » correspond-elle à cette
+>    API ? Où trouver la documentation ?
+> 4. **E-reporting** : pour les ventes aux particuliers (vente directe,
+>    location), Abby transmet-elle l'e-reporting à l'administration ? À partir
+>    de quelle offre, y compris pour une entreprise en franchise de TVA ?
+>    Puis-je importer des totaux par jour et par taux de TVA (fichier CSV ou
+>    API) ? À quelle fréquence faut-il transmettre ?
+> 5. **Deux entreprises** : faut-il un abonnement par SIRET, ou un seul
+>    compte peut-il gérer les deux ? L'entreprise en franchise de TVA peut-elle
+>    rester sur l'offre gratuite si je n'y fais aucune facture dans Abby ?
+> 6. **Réception des factures fournisseurs** : est-elle incluse dans l'offre
+>    gratuite ? Comment les récupérer vers mon logiciel : renvoi
+>    automatique par e-mail, API ou téléchargement ? À partir de quelle offre ?
+> 7. **Changement de plateforme** : je suis aujourd'hui inscrit à l'annuaire
+>    via une autre plateforme agréée. Quelle est la démarche pour passer chez
+>    Abby, et en combien de temps est-elle effective ?
+> 8. **Avoirs** : les avoirs (montants négatifs, liés à la facture
+>    d'origine) sont-ils acceptés par dépôt ou par API ?
+> 9. **Calendrier** : Abby est-elle déjà immatriculée comme plateforme
+>    agréée ? Quel délai prévoir entre la souscription et la première
+>    transmission ? Y a-t-il une période d'essai sur « Maîtriser » ?
+> 10. **Sortie** : si je quitte Abby, comment récupérer mes factures et
+>     données ?
+>
+> Merci d'avance pour vos réponses précises, offre par offre.
+>
+> Cordialement,
+> Benoît [nom]
+> [téléphone]
+
+### Méthode et calendrier de souscription (à ajuster avec les réponses)
+
+1. **Maintenant** : envoyer le mail, sans rien souscrire. Me transmettre la
+   réponse ; j'adapte l'appli si besoin (fichier Factur-X, liaison API,
+   format de l'e-reporting).
+2. **Au moment de quitter ta plateforme actuelle** (idéalement au
+   1er janvier, pour ne pas couper l'année en deux) : créer le compte Abby
+   (offre gratuite si elle suffit pour recevoir les factures fournisseurs)
+   et changer l'inscription à l'annuaire. Le 1er septembre 2026 est passé :
+   aucun trou sans plateforme pour la réception.
+3. **Vers mai–juin 2027** : souscrire **Maîtriser** pour le Maraîchage
+   (période d'essai si elle existe), puis tester en vrai : une facture à un
+   professionnel, un avoir, un envoi d'e-reporting.
+4. **Juillet–août 2027** : corriger ce qui coince ; tout doit fonctionner
+   avant le **1er septembre 2027**.
+5. **Micro-BIC** : selon la réponse à la question 5, offre gratuite ou
+   ajout au même compte.
+
 ## 7. Obligations micro-BA — construit le 24/09/2026
 
 Onglets Maraîchage regroupés par section (Vue d'ensemble / Comptable /
