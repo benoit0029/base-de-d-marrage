@@ -91,7 +91,7 @@ manuellement, mais sans remboursement automatisé.
 | `kerbooth-booking-request.json` | Webhook (formulaire site/HubSpot) | Crée la réservation (dispatch automatique), envoie immédiatement le contrat à signer via Yousign, répond 409 "complet" si aucune unité disponible |
 | `kerbooth-yousign-contract-signed.json` | Webhook Yousign (`signature_request.done`) | Passe la réservation en attente de paiement, crée la page de paiement Stripe (montant total), l'envoie au client |
 | `kerbooth-stripe-payment-received.json` | Webhook Stripe (`checkout.session.completed`) | Crée et marque payée la facture dans l'outil compta, confirme la réservation, envoie la facture au client par email |
-| `kerbooth-urssaf-reminder.json` | Planifié (1er de chaque mois) | Calcule le CA Kerbooth encaissé du mois précédent et le montant de cotisations (21,2 %) à déclarer sur autoentrepreneur.urssaf.fr — aucune télétransmission possible, juste un rappel avec le bon montant |
+| `kerbooth-urssaf-reminder.json` | Planifié (1er de chaque mois) | Selon le régime choisi dans Synthèse micro-BIC → Cotisations sociales : URSSAF mensuel ou trimestriel → rappel avec le CA micro-BIC encaissé de la période (ventes et services séparés) et les cotisations estimées (taux à vérifier), à déclarer sur autoentrepreneur.urssaf.fr ; régime MSA ou pas encore choisi → aucun mail |
 
 **⚠️ Ces 4 workflows sont nettement moins mûrs que les 7 premiers** : ils
 n'ont pu être vérifiés ni contre une vraie instance n8n, ni contre les API
