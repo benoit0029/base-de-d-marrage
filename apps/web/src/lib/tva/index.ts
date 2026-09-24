@@ -83,7 +83,7 @@ export async function computeTvaRegister(): Promise<TvaRegisterRow[]> {
         where: {
           tenantId,
           activity: "BA_MARAICHAGE",
-          type: "FACTURE",
+          type: { in: ["FACTURE", "AVOIR"] }, // avoir remboursé : montants négatifs, à sa date de remboursement
           status: { in: ["SENT", "PAID"] },
           paidAt: { gte: start, lte: end },
         },
@@ -268,7 +268,7 @@ export async function computeAnnualTvaDeclaration(year: number): Promise<AnnualT
         where: {
           tenantId,
           activity: "BA_MARAICHAGE",
-          type: "FACTURE",
+          type: { in: ["FACTURE", "AVOIR"] }, // avoir remboursé : montants négatifs, à sa date de remboursement
           status: { in: ["SENT", "PAID"] },
           paidAt: { gte: start, lte: end },
         },

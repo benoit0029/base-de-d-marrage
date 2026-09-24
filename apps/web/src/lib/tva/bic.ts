@@ -103,7 +103,7 @@ export async function detectBicVatLiability(referenceDate = new Date()): Promise
       where: {
         tenantId,
         activity: "BIC_PHOTOBOOTH",
-        type: "FACTURE",
+        type: { in: ["FACTURE", "AVOIR"] }, // avoir remboursé : montants négatifs, à sa date de remboursement
         status: { in: ["SENT", "PAID"] },
         paidAt: { gte: start, lte: end },
       },
@@ -234,7 +234,7 @@ export async function computeBicAnnualVat(year: number): Promise<BicAnnualVatDec
       where: {
         tenantId,
         activity: { in: [...BIC_ACTIVITIES] },
-        type: "FACTURE",
+        type: { in: ["FACTURE", "AVOIR"] }, // avoir remboursé : montants négatifs, à sa date de remboursement
         status: { in: ["SENT", "PAID"] },
         vatApplicable: true,
         paidAt: paidInPeriod,

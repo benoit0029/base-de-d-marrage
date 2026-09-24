@@ -1,41 +1,46 @@
-import { prisma } from "@/server/db/client";
-import type { Activity, InvoiceType } from "@prisma/client";
+import type { Activity, InvoiceType, Prisma } from "@prisma/client";
 
-const activityPrefix: Record<Activity, string> = {
-  BA_MARAICHAGE: "MAR",
-  BIC_FRUITS_LEGUMES: "FL",
-  BIC_PHOTOBOOTH: "PB",
-};
+// Numérotation légale des factures : chronologique et continue, sans trou
+// ni réattribution (mention obligatoire, art. 242 nonies A de l'annexe II au
+// CGI — règle connue, non relue sur le texte depuis l'outil). Une suite par
+// ENTREPRISE (SIRET) : "BA" pour le Maraîchage (exploitation agricole), "BIC"
+// pour Revente + Kerbooth (une seule micro-entreprise → une seule suite).
+// Format choisi par Benoît : FA2026-001 (facture), AV2026-001 (avoir),
+// DE2026-001 (devis, pas d'obligation légale mais même logique).
+
+export type InvoiceSeries = "BA" | "BIC";
+
+export function seriesOf(activity: Activity): InvoiceSeries {
+  return activity === "BA_MARAICHAGE" ? "BA" : "BIC";
+}
+
+const KIND: Record<InvoiceType, "FA" | "AV" | "DE"> = { FACTURE: "FA", AVOIR: "AV", DEVIS: "DE" };
+
+export function formatInvoiceNumber(type: InvoiceType, year: number, sequence: number): string {
+  return `${KIND[type]}${year}-${String(sequence).padStart(3, "0")}`;
+}
 
 /**
- * Numérotation chronologique par activité, exigée par la loi pour les
- * factures (les devis n'ont pas cette contrainte mais suivent la même
- * logique pour rester simples). Une facture est {PREFIX}-{ANNÉE}-{SÉQUENCE}
- * (ex. MAR-2026-003) et un devis {PREFIX}-DEV-{SÉQUENCE}.
- *
- * L'unicité réelle est garantie par la contrainte @unique sur Invoice.number ;
- * en cas de collision (deux créations concurrentes), l'appelant doit relancer
- * generateInvoiceNumber puis retenter l'écriture.
+ * Réserve le numéro suivant, DANS la transaction qui crée le document : le
+ * compteur (InvoiceSequence) ne recule jamais — même si une facture de test
+ * est effacée de la base, son numéro n'est jamais réattribué. La mise à jour
+ * verrouille la ligne du compteur, donc deux créations simultanées ne peuvent
+ * pas obtenir le même numéro.
  */
-export async function generateInvoiceNumber(
+export async function nextInvoiceNumber(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
   activity: Activity,
   type: InvoiceType,
   issueDate: Date
-): Promise<string> {
-  const prefix = activityPrefix[activity];
-
-  if (type === "DEVIS") {
-    const pattern = `${prefix}-DEV-`;
-    const count = await prisma.invoice.count({
-      where: { activity, type: "DEVIS", number: { startsWith: pattern } },
-    });
-    return `${pattern}${String(count + 1).padStart(3, "0")}`;
-  }
-
+): Promise<{ series: InvoiceSeries; number: string }> {
+  const series = seriesOf(activity);
+  const kind = KIND[type];
   const year = issueDate.getFullYear();
-  const pattern = `${prefix}-${year}-`;
-  const count = await prisma.invoice.count({
-    where: { activity, type: "FACTURE", number: { startsWith: pattern } },
+  const seq = await tx.invoiceSequence.upsert({
+    where: { tenantId_series_kind_year: { tenantId, series, kind, year } },
+    create: { tenantId, series, kind, year, lastNumber: 1 },
+    update: { lastNumber: { increment: 1 } },
   });
-  return `${pattern}${String(count + 1).padStart(3, "0")}`;
+  return { series, number: formatInvoiceNumber(type, year, seq.lastNumber) };
 }

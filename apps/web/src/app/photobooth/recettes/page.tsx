@@ -28,7 +28,10 @@ export default async function Page({
     listClosedYears(),
   ]);
   const invoices = filterByYear(
-    allInvoices.filter((i) => i.type === "FACTURE" && i.status !== "CANCELLED").map(toInvoiceView),
+    allInvoices
+      // Factures + avoirs remboursés (montant négatif à la date du remboursement).
+      .filter((i) => (i.type === "FACTURE" && i.status !== "CANCELLED") || (i.type === "AVOIR" && i.paidAt))
+      .map(toInvoiceView),
     (i) => yearOfIsoDate(i.paidAt),
     Number.isInteger(year) ? year : null
   );

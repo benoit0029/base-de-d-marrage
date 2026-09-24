@@ -27,7 +27,7 @@ export interface FakeEntry {
   paidAt: string | null;
 }
 
-export type InvoiceType = "devis" | "facture";
+export type InvoiceType = "devis" | "facture" | "avoir";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled";
 
 export interface FakeInvoice {
@@ -39,6 +39,7 @@ export interface FakeInvoice {
   status: InvoiceStatus;
   totalTtc: number;
   paExternalId: string | null;
+  creditedInvoiceId: string | null; // avoir : facture qu'il annule
   reconciled: boolean; // rapproché avec une ligne du relevé bancaire (Recettes)
   // Comptabilité de caisse (BOI-BA-BASE-20-10) : date d'ENCAISSEMENT réel,
   // pas issueDate ci-dessus. Vide = créance en cours (voir lib/cashStatus).

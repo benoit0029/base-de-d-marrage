@@ -44,6 +44,7 @@ model Tenant {
   kerboothBookings   KerboothBooking[]
   priorYearRevenues  PriorYearRevenue[]
   staffRegister      StaffRegisterEntry[]
+  invoiceSequences   InvoiceSequence[]
   employerChecklist  EmployerChecklistItem[]
 }
 
@@ -321,6 +322,7 @@ model CashJournalEntry {
 enum InvoiceType {
   DEVIS
   FACTURE
+  AVOIR // facture d'avoir : annule une facture (jamais de suppression)
 }
 
 enum InvoiceStatus {
@@ -336,7 +338,12 @@ model Invoice {
   tenant         Tenant        @relation(fields: [tenantId], references: [id])
   activity       Activity
   type           InvoiceType
-  number         String        @unique // numérotation automatique par activité
+  // Numérotation légale chronologique et continue, par entreprise : série
+  // "BA" (Maraîchage, exploitation agricole) ou "BIC" (Revente + Kerbooth,
+  // une seule micro-entreprise → une seule suite). Format FA2026-001 (facture),
+  // AV2026-001 (avoir), DE2026-001 (devis) — voir lib/invoicing/numbering.
+  series         String        @default("BIC")
+  number         String
   clientName     String
   clientAddress  String?
   issueDate      DateTime
@@ -364,6 +371,28 @@ model Invoice {
   bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
 
   lines InvoiceLine[]
+
+  // Avoir : facture qu'il annule (un seul avoir par facture).
+  creditedInvoiceId String?  @unique
+  creditedInvoice   Invoice? @relation("CreditNote", fields: [creditedInvoiceId], references: [id])
+  creditNote        Invoice? @relation("CreditNote")
+
+  @@unique([tenantId, series, number])
+}
+
+// Compteur de numérotation par entreprise (série), type de document et
+// année : ne recule jamais, même si une facture de test est effacée de la
+// base — un numéro n'est jamais réattribué.
+model InvoiceSequence {
+  id         String @id @default(cuid())
+  tenantId   String
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+  series     String // "BA" | "BIC"
+  kind       String // "FA" | "AV" | "DE"
+  year       Int
+  lastNumber Int    @default(0)
+
+  @@unique([tenantId, series, kind, year])
 }
 
 model InvoiceLine {

@@ -65,6 +65,7 @@ export function toEntryView(entry: Entry & { sourceDocument: Document | null }):
 const invoiceTypeMap: Record<Invoice["type"], FakeInvoice["type"]> = {
   DEVIS: "devis",
   FACTURE: "facture",
+  AVOIR: "avoir",
 };
 
 const invoiceStatusMap: Record<Invoice["status"], FakeInvoice["status"]> = {
@@ -84,6 +85,7 @@ export function toInvoiceView(invoice: Invoice): FakeInvoice {
     status: invoiceStatusMap[invoice.status],
     totalTtc: Number(invoice.totalTtc),
     paExternalId: invoice.paExternalId,
+    creditedInvoiceId: invoice.creditedInvoiceId,
     reconciled: invoice.bankTransactionId !== null,
     paidAt: invoice.paidAt ? invoice.paidAt.toISOString() : null,
   };

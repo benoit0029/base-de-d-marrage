@@ -50,7 +50,10 @@ export async function renderInvoicePdfBuffer(
   const buffer = await renderInvoicePdf({
     activityLabel: activityLabel[invoice.activity] ?? invoice.activity,
     accentColorHex: navEntry ? accentHex(invoice.activity) : "#1e293b",
-    documentTitle: invoice.type === "DEVIS" ? "Devis" : "Facture",
+    documentTitle: invoice.type === "DEVIS" ? "Devis" : invoice.type === "AVOIR" ? "Facture d'avoir" : "Facture",
+    creditNoteFor: invoice.creditedInvoice
+      ? `Annule la facture n° ${invoice.creditedInvoice.number} du ${invoice.creditedInvoice.issueDate.toLocaleDateString("fr-FR")}`
+      : undefined,
     number: invoice.number,
     issueDate: invoice.issueDate.toLocaleDateString("fr-FR"),
     dueDate: invoice.dueDate?.toLocaleDateString("fr-FR"),

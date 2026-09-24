@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   InvoiceAlreadyPaidError,
   InvoiceNotFoundError,
+  InvoiceNothingToRefundError,
   markInvoicePaid,
 } from "@/server/services/invoices";
 import { getCurrentUserId } from "@/lib/auth/currentUser";
@@ -24,6 +25,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (err) {
     if (err instanceof InvoiceNotFoundError) {
       return NextResponse.json({ error: "Facture introuvable" }, { status: 404 });
+    }
+    if (err instanceof InvoiceNothingToRefundError) {
+      return NextResponse.json(
+        { error: "Rien à rembourser : la facture annulée n'avait pas été encaissée" },
+        { status: 409 }
+      );
     }
     if (err instanceof InvoiceAlreadyPaidError) {
       return NextResponse.json({ error: "Déjà marquée encaissée" }, { status: 409 });

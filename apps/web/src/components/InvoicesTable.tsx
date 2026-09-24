@@ -4,6 +4,9 @@ import { invoiceCashLabel } from "@/lib/cashStatus";
 import StatusBadge from "@/components/StatusBadge";
 import SendToPaButton from "@/components/invoicing/SendToPaButton";
 import MarkPaidButton from "@/components/MarkPaidButton";
+import CreditNoteButton from "@/components/invoicing/CreditNoteButton";
+
+const TYPE_LABEL: Record<FakeInvoice["type"], string> = { facture: "Facture", devis: "Devis", avoir: "Avoir" };
 
 export default function InvoicesTable({
   invoices,
@@ -19,6 +22,10 @@ export default function InvoicesTable({
       </p>
     );
   }
+
+  // Liens facture ↔ avoir (dans la liste de la même activité).
+  const creditNoteOf = new Map(invoices.filter((i) => i.creditedInvoiceId).map((a) => [a.creditedInvoiceId!, a]));
+  const byId = new Map(invoices.map((i) => [i.id, i]));
 
   return (
     <div className="overflow-x-auto">
@@ -41,12 +48,32 @@ export default function InvoicesTable({
           {invoices.map((invoice) => (
             <tr key={invoice.id} className="hover:bg-slate-50">
               <td className="px-4 py-2.5 font-medium">{invoice.number}</td>
-              <td className="px-4 py-2.5 capitalize">{invoice.type}</td>
+              <td className="px-4 py-2.5">
+                {TYPE_LABEL[invoice.type]}
+                {invoice.type === "avoir" && invoice.creditedInvoiceId && (
+                  <span className="block text-xs text-slate-500">
+                    sur {byId.get(invoice.creditedInvoiceId)?.number ?? "facture"}
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-2.5">{invoice.clientName}</td>
               <td className="px-4 py-2.5 whitespace-nowrap">{formatDate(invoice.issueDate)}</td>
               <td className="px-4 py-2.5 text-right font-medium">{formatEuro(invoice.totalTtc)}</td>
               <td className="px-4 py-2.5">
-                {invoice.type === "facture" ? (
+                {invoice.type === "facture" && creditNoteOf.has(invoice.id) ? (
+                  <span className="text-xs text-slate-500">
+                    Annulée par l&apos;avoir {creditNoteOf.get(invoice.id)!.number}
+                    {invoice.paidAt ? " (était encaissée)" : ""}
+                  </span>
+                ) : invoice.type === "avoir" ? (
+                  <span className="text-xs text-slate-500">
+                    {byId.get(invoice.creditedInvoiceId ?? "")?.paidAt
+                      ? invoice.paidAt
+                        ? "Remboursé"
+                        : "À rembourser"
+                      : "Sans remboursement (facture non encaissée)"}
+                  </span>
+                ) : invoice.type === "facture" ? (
                   <span
                     className={
                       invoice.status !== "cancelled" && !invoice.paidAt
@@ -63,7 +90,15 @@ export default function InvoicesTable({
                 )}
               </td>
               <td className="px-4 py-2.5 whitespace-nowrap text-xs">
-                {invoice.type !== "facture" || invoice.status === "cancelled" ? (
+                {invoice.type === "avoir" ? (
+                  invoice.paidAt ? (
+                    formatDate(invoice.paidAt)
+                  ) : byId.get(invoice.creditedInvoiceId ?? "")?.paidAt ? (
+                    <MarkPaidButton url={`/api/invoices/${invoice.id}/mark-paid`} label="Marquer remboursé" />
+                  ) : (
+                    "—"
+                  )
+                ) : invoice.type !== "facture" || invoice.status === "cancelled" ? (
                   "—"
                 ) : invoice.paidAt ? (
                   formatDate(invoice.paidAt)
@@ -88,7 +123,10 @@ export default function InvoicesTable({
                   PDF
                 </a>
               </td>
-              <td className="px-4 py-2.5 text-right">
+              <td className="space-y-1 px-4 py-2.5 text-right">
+                {invoice.type === "facture" && invoice.status !== "cancelled" && !creditNoteOf.has(invoice.id) && (
+                  <CreditNoteButton invoiceId={invoice.id} invoiceNumber={invoice.number} />
+                )}
                 {invoice.type === "facture" &&
                   (invoice.paExternalId ? (
                     <span className="text-xs text-emerald-700">Envoyé à Abby</span>

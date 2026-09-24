@@ -18,7 +18,8 @@ export interface InvoicePdfLine {
 export interface InvoicePdfData {
   activityLabel: string;
   accentColorHex: string;
-  documentTitle: string; // "Devis" ou "Facture"
+  documentTitle: string; // "Devis", "Facture" ou "Facture d'avoir"
+  creditNoteFor?: string; // avoir : référence de la facture annulée
   number: string;
   issueDate: string;
   dueDate?: string;
@@ -152,6 +153,7 @@ export function InvoiceDocument(data: InvoicePdfData) {
             <Text style={styles.meta}>{data.activityLabel}</Text>
             <Text style={styles.meta}>N° {data.number}</Text>
             <Text style={styles.meta}>Date : {data.issueDate}</Text>
+            {data.creditNoteFor && <Text style={styles.meta}>{data.creditNoteFor}</Text>}
             {data.dueDate && <Text style={styles.meta}>Échéance : {data.dueDate}</Text>}
           </View>
         </View>
@@ -216,11 +218,13 @@ export function InvoiceDocument(data: InvoicePdfData) {
 
         <View style={styles.legal}>
           {!data.vatApplicable && <Text>TVA non applicable, art. 293 B du CGI.</Text>}
-          <Text>
-            Délai de règlement : 30 jours à compter de la date de facture. Pénalité de
-            retard : taux d&apos;intérêt légal en vigueur. Indemnité forfaitaire pour
-            frais de recouvrement en cas de retard de paiement : 40 € (professionnels).
-          </Text>
+          {!data.creditNoteFor && (
+            <Text>
+              Délai de règlement : 30 jours à compter de la date de facture. Pénalité de
+              retard : taux d&apos;intérêt légal en vigueur. Indemnité forfaitaire pour
+              frais de recouvrement en cas de retard de paiement : 40 € (professionnels).
+            </Text>
+          )}
           {data.abMentionText && <Text>{data.abMentionText}</Text>}
           {data.extraLegalMentions && <Text>{data.extraLegalMentions}</Text>}
         </View>

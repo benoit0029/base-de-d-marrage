@@ -76,7 +76,8 @@ function addReceipt(t: ReceiptTotals, r: ReceiptRow | ReceiptTotals): ReceiptTot
 
 // Taux le plus proche parmi ceux du livre (TVA / HT d'une pièce saisie).
 function nearestRate(ht: number, vat: number): ReceiptRate {
-  const rate = ht > 0 ? (vat / ht) * 100 : 5.5;
+  // Valeurs absolues : un avoir a des montants négatifs.
+  const rate = ht !== 0 ? Math.abs(vat / ht) * 100 : 5.5;
   return RECEIPT_RATES.reduce((best, r) => (Math.abs(r - rate) < Math.abs(best - rate) ? r : best), 5.5 as ReceiptRate);
 }
 
@@ -115,7 +116,7 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
       where: {
         tenantId,
         activity: "BA_MARAICHAGE",
-        type: "FACTURE",
+        type: { in: ["FACTURE", "AVOIR"] }, // avoir remboursé : montants négatifs, à sa date de remboursement
         status: { in: ["SENT", "PAID"] },
         paidAt: { gte: start, lte: end },
       },
@@ -190,8 +191,8 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
     }
     rows.push({
       date: inv.paidAt!,
-      label: `Facture ${inv.number} — ${inv.clientName}`,
-      reference: `Facture ${inv.number}`,
+      label: `${inv.type === "AVOIR" ? "Avoir (remboursement)" : "Facture"} ${inv.number} — ${inv.clientName}`,
+      reference: `${inv.type === "AVOIR" ? "Avoir" : "Facture"} ${inv.number}`,
       cash: 0,
       check: 0,
       card: 0,

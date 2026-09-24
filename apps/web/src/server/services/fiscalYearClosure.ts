@@ -269,7 +269,7 @@ async function appendSourceDocuments(
   }
 
   const invoices = await prisma.invoice.findMany({
-    where: { tenantId, type: "FACTURE", paidAt: { gte: start, lte: end } },
+    where: { tenantId, type: { in: ["FACTURE", "AVOIR"] }, paidAt: { gte: start, lte: end } },
   });
   for (const inv of invoices) {
     const rendered = await renderInvoicePdfBuffer(inv.id);

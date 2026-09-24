@@ -32,7 +32,8 @@ export default async function Page({
 
   const lignes: LivreRecettesLigne[] = [
     ...invoices
-      .filter((i) => i.type === "FACTURE" && i.status !== "CANCELLED")
+      // Factures + avoirs remboursés (montant négatif à la date du remboursement).
+      .filter((i) => (i.type === "FACTURE" && i.status !== "CANCELLED") || (i.type === "AVOIR" && i.paidAt))
       .map((i) => {
         const data = toInvoiceView(i);
         return { kind: "invoice" as const, date: data.issueDate, data };

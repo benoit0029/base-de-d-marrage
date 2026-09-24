@@ -59,7 +59,7 @@ export default function MaraichageLedgerTable({
                   <td className="px-4 py-2.5 whitespace-nowrap">{formatDate(inv.issueDate)}</td>
                   <td className="px-4 py-2.5">
                     <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">
-                      Facture {inv.number}
+                      {inv.type === "avoir" ? "Avoir" : "Facture"} {inv.number}
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-right font-medium">{formatEuro(inv.totalTtc)}</td>

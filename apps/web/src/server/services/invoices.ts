@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
-import { generateInvoiceNumber } from "@/lib/invoicing/numbering";
+import { nextInvoiceNumber, seriesOf } from "@/lib/invoicing/numbering";
 import { isVatApplicableOn } from "@/lib/invoicing/vatPolicy";
 import { upsertClient } from "@/server/services/clients";
 import { ensureProduct } from "@/server/services/products";
@@ -16,11 +16,12 @@ export async function listInvoices(activity: Activity) {
 }
 
 export async function getInvoiceWithLines(id: string) {
-  return prisma.invoice.findUnique({ where: { id }, include: { lines: true } });
+  return prisma.invoice.findUnique({ where: { id }, include: { lines: true, creditedInvoice: true } });
 }
 
 export class InvoiceNotFoundError extends Error {}
 export class InvoiceAlreadyPaidError extends Error {}
+export class InvoiceNothingToRefundError extends Error {}
 
 /**
  * Renseigne manuellement la date d'encaissement d'une facture (comptabilité
@@ -31,9 +32,14 @@ export class InvoiceAlreadyPaidError extends Error {}
  * connu avant tout import de relevé.
  */
 export async function markInvoicePaid(id: string, paidAt: Date, userId: string | null) {
-  const invoice = await prisma.invoice.findUnique({ where: { id } });
+  const invoice = await prisma.invoice.findUnique({ where: { id }, include: { creditedInvoice: true } });
   if (!invoice) throw new InvoiceNotFoundError(id);
   if (invoice.paidAt) throw new InvoiceAlreadyPaidError(id);
+  // Avoir : « payé » = remboursé ; rien à rembourser si la facture annulée
+  // n'avait jamais été encaissée.
+  if (invoice.type === "AVOIR" && !invoice.creditedInvoice?.paidAt) {
+    throw new InvoiceNothingToRefundError(id);
+  }
 
   const [updated] = await prisma.$transaction([
     prisma.invoice.update({ where: { id }, data: { paidAt, status: "PAID" } }),
@@ -44,7 +50,7 @@ export async function markInvoicePaid(id: string, paidAt: Date, userId: string |
         action: "INVOICE_MARKED_PAID",
         entityType: "Invoice",
         entityId: id,
-        before: JSON.parse(JSON.stringify(invoice)),
+        before: JSON.parse(JSON.stringify({ ...invoice, creditedInvoice: undefined })),
         after: Prisma.JsonNull,
       },
     }),
@@ -132,45 +138,141 @@ export async function createInvoice(input: CreateInvoiceInput) {
     // Non bloquant, voir commentaire ci-dessus.
   }
 
-  // Une collision de numéro (créations concurrentes) est extrêmement
-  // improbable en v1 (utilisateur unique) ; on retente une fois par sécurité.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const number = await generateInvoiceNumber(input.activity, input.type, input.issueDate);
-    try {
-      return await prisma.invoice.create({
-        data: {
-          tenantId,
-          activity: input.activity,
-          type: input.type,
-          number,
-          clientName: input.clientName,
-          clientAddress: input.clientAddress,
-          issueDate: input.issueDate,
-          dueDate: input.dueDate,
-          status: input.type === "DEVIS" ? "DRAFT" : "SENT",
-          vatApplicable,
-          totalHt,
-          totalVat,
-          totalTtc,
-          lines: {
-            create: lines.map((l) => ({
-              description: l.description,
-              quantity: l.quantity,
-              unitPrice: l.unitPrice,
-              vatRate: l.vatRate,
-              lineTotal: l.lineTotal,
-              unit: l.unit || null,
-            })),
-          },
-        },
-        include: { lines: true },
-      });
-    } catch (err) {
-      const isUniqueConflict =
-        typeof err === "object" && err !== null && "code" in err && err.code === "P2002";
-      if (isUniqueConflict && attempt === 0) continue;
-      throw err;
+  return prisma.$transaction(async (tx) => {
+    if (input.type !== "DEVIS") {
+      await assertChronological(tx, tenantId, input.activity, input.type, input.issueDate);
     }
+    const { series, number } = await nextInvoiceNumber(tx, tenantId, input.activity, input.type, input.issueDate);
+    return tx.invoice.create({
+      data: {
+        tenantId,
+        activity: input.activity,
+        type: input.type,
+        series,
+        number,
+        clientName: input.clientName,
+        clientAddress: input.clientAddress,
+        issueDate: input.issueDate,
+        dueDate: input.dueDate,
+        status: input.type === "DEVIS" ? "DRAFT" : "SENT",
+        vatApplicable,
+        totalHt,
+        totalVat,
+        totalTtc,
+        lines: {
+          create: lines.map((l) => ({
+            description: l.description,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            vatRate: l.vatRate,
+            lineTotal: l.lineTotal,
+            unit: l.unit || null,
+          })),
+        },
+      },
+      include: { lines: true },
+    });
+  });
+}
+
+const dayOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+/**
+ * Numérotation chronologique : une facture (ou un avoir) ne peut pas être
+ * datée avant la dernière de la même suite, sinon les numéros ne suivraient
+ * plus l'ordre des dates.
+ */
+async function assertChronological(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  activity: Activity,
+  type: InvoiceType,
+  issueDate: Date
+) {
+  const last = await tx.invoice.findFirst({
+    where: { tenantId, series: seriesOf(activity), type },
+    orderBy: { issueDate: "desc" },
+    select: { number: true, issueDate: true },
+  });
+  if (last && dayOf(issueDate) < dayOf(last.issueDate)) {
+    throw new InvoicingError(
+      `Date antérieure à ${type === "AVOIR" ? "l'avoir" : "la facture"} ${last.number} du ${last.issueDate.toLocaleDateString("fr-FR")} : la numérotation doit suivre l'ordre des dates. Choisis une date à partir du ${last.issueDate.toLocaleDateString("fr-FR")}.`
+    );
   }
-  throw new InvoicingError("Impossible de générer un numéro de facture unique.");
+}
+
+export class CreditNoteError extends Error {}
+
+/**
+ * Annule une facture par une FACTURE D'AVOIR (une facture émise n'est
+ * jamais modifiée ni supprimée) : avoir total, mêmes lignes en négatif,
+ * numéroté dans sa propre suite (AV2026-001…), à une date qui respecte
+ * l'ordre chronologique. Effet comptable (comptabilité de caisse) :
+ * - facture pas encore encaissée → elle passe « annulée », l'avoir n'a aucun
+ *   effet sur le chiffre d'affaires ;
+ * - facture déjà encaissée → elle reste encaissée ; l'avoir compte en
+ *   négatif (CA, TVA, livres) à la date du remboursement, renseignée par
+ *   « Marquer remboursé » (même mécanisme que « Marquer encaissée »).
+ */
+export async function createCreditNote(invoiceId: string, issueDate: Date, userId: string | null) {
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { lines: true, creditNote: true },
+  });
+  if (!invoice) throw new InvoiceNotFoundError(invoiceId);
+  if (invoice.type !== "FACTURE") throw new CreditNoteError("Seule une facture peut être annulée par un avoir.");
+  if (invoice.creditNote) throw new CreditNoteError(`Facture déjà annulée par l'avoir ${invoice.creditNote.number}.`);
+  if (invoice.status === "CANCELLED") throw new CreditNoteError("Facture déjà annulée.");
+  if (dayOf(issueDate) < dayOf(invoice.issueDate)) {
+    throw new CreditNoteError("L'avoir ne peut pas être daté avant la facture qu'il annule.");
+  }
+
+  const neg = (v: Prisma.Decimal | number) => -Number(v);
+  return prisma.$transaction(async (tx) => {
+    await assertChronological(tx, invoice.tenantId, invoice.activity, "AVOIR", issueDate);
+    const { series, number } = await nextInvoiceNumber(tx, invoice.tenantId, invoice.activity, "AVOIR", issueDate);
+    const creditNote = await tx.invoice.create({
+      data: {
+        tenantId: invoice.tenantId,
+        activity: invoice.activity,
+        type: "AVOIR",
+        series,
+        number,
+        clientName: invoice.clientName,
+        clientAddress: invoice.clientAddress,
+        issueDate,
+        status: "SENT",
+        vatApplicable: invoice.vatApplicable,
+        totalHt: neg(invoice.totalHt),
+        totalVat: neg(invoice.totalVat),
+        totalTtc: neg(invoice.totalTtc),
+        creditedInvoiceId: invoice.id,
+        lines: {
+          create: invoice.lines.map((l) => ({
+            description: l.description,
+            quantity: neg(l.quantity),
+            unitPrice: l.unitPrice,
+            vatRate: l.vatRate,
+            lineTotal: neg(l.lineTotal),
+            unit: l.unit,
+          })),
+        },
+      },
+    });
+    if (!invoice.paidAt) {
+      await tx.invoice.update({ where: { id: invoice.id }, data: { status: "CANCELLED" } });
+    }
+    await tx.auditLog.create({
+      data: {
+        tenantId: invoice.tenantId,
+        userId,
+        action: "INVOICE_CREDITED",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        before: JSON.parse(JSON.stringify({ ...invoice, lines: undefined, creditNote: undefined })),
+        after: { creditNoteId: creditNote.id, creditNoteNumber: number },
+      },
+    });
+    return creditNote;
+  });
 }

@@ -82,7 +82,7 @@ export async function sumInvoicedTotal(
     where: {
       tenantId,
       activity,
-      type: "FACTURE",
+      type: { in: ["FACTURE", "AVOIR"] }, // avoir remboursé : montants négatifs, à sa date de remboursement
       status: { in: ["SENT", "PAID"] },
       paidAt: { gte: yearStart, lte: yearEnd },
     },

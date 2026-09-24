@@ -23,7 +23,7 @@ export async function computeUrssafReminder(referenceDate = new Date()) {
     where: {
       tenantId,
       activity: "BIC_PHOTOBOOTH",
-      type: "FACTURE",
+      type: { in: ["FACTURE", "AVOIR"] }, // avoir remboursé : montants négatifs, à sa date de remboursement
       status: { in: ["SENT", "PAID"] },
       paidAt: { gte: periodStart, lte: periodEnd },
     },
