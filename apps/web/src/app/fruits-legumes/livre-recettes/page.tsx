@@ -5,5 +5,5 @@ export const dynamic = "force-dynamic";
 export default async function Page({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
   const { year } = await searchParams;
   const y = year && Number.isInteger(Number(year)) ? Number(year) : new Date().getFullYear();
-  return <ReceiptBookPage activity="BA_MARAICHAGE" year={y} />;
+  return <ReceiptBookPage activity="BIC_FRUITS_LEGUMES" year={y} />;
 }

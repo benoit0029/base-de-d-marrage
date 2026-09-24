@@ -79,6 +79,11 @@ model CompanySettings {
   // Choix fait au moment de la bascule pour Kerbooth : "INCLUDED" = le prix
   // client ne change pas (TVA prise sur la marge), "ADDED" = prix + 20 %.
   bicVatPricing    String?
+  // Régime social de la micro-BIC : "MSA" = revenus rattachés à l'activité
+  // principale agricole (une déclaration annuelle, cotisations appelées par
+  // la MSA — cas de Benoît), "URSSAF_MENSUEL" / "URSSAF_TRIMESTRIEL" =
+  // micro-entrepreneur qui déclare son chiffre d'affaires à l'URSSAF.
+  bicSocialRegime  String?
   updatedAt     DateTime @updatedAt
 }
 

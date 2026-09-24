@@ -9,6 +9,8 @@ import type { PurchaseBook, PurchaseSection, ReceiptBook, ReceiptRow, ReceiptTot
 export interface BookHeader {
   legalName: string;
   siren: string;
+  title: string; // "Livre des recettes", "Registre des achats"…
+  subtitle: string; // activité et précisions
 }
 
 // Pas de coupure de mots avec trait d'union (« Con-carneau ») : un mot trop
@@ -67,8 +69,10 @@ export function ReceiptBookDocument({ book, header }: { book: ReceiptBook; heade
       <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Livre des recettes — {book.year}</Text>
-            <Text style={styles.meta}>Maraîchage (micro-BA) — tient lieu de livre des ventes (TVA par taux)</Text>
+            <Text style={styles.title}>
+              {header.title} — {book.year}
+            </Text>
+            <Text style={styles.meta}>{header.subtitle}</Text>
           </View>
           <View>
             <Text style={styles.meta}>{header.legalName}</Text>
@@ -106,7 +110,7 @@ export function ReceiptBookDocument({ book, header }: { book: ReceiptBook; heade
           <Text style={{ width: RC.date + RC.label + RC.ref }}>Total {book.year}</Text>
           <ReceiptAmounts r={book.totals} />
         </View>
-        <Footer label={`Livre des recettes ${book.year} — ${header.legalName}`} />
+        <Footer label={`${header.title} ${book.year} — ${header.legalName}`} />
       </Page>
     </Document>
   );
@@ -165,8 +169,10 @@ export function PurchaseBookDocument({ book, header }: { book: PurchaseBook; hea
       <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Livre des achats — {book.year}</Text>
-            <Text style={styles.meta}>Maraîchage (micro-BA) — immobilisations et autres achats, avec TVA</Text>
+            <Text style={styles.title}>
+              {header.title} — {book.year}
+            </Text>
+            <Text style={styles.meta}>{header.subtitle}</Text>
           </View>
           <View>
             <Text style={styles.meta}>{header.legalName}</Text>
@@ -181,7 +187,7 @@ export function PurchaseBookDocument({ book, header }: { book: PurchaseBook; hea
           <Text style={{ width: PC.amount, textAlign: "right" }}>{euro(book.totals.vat)}</Text>
           <Text style={{ width: PC.amount, textAlign: "right" }}>{euro(book.totals.ttc)}</Text>
         </View>
-        <Footer label={`Livre des achats ${book.year} — ${header.legalName}`} />
+        <Footer label={`${header.title} ${book.year} — ${header.legalName}`} />
       </Page>
     </Document>
   );

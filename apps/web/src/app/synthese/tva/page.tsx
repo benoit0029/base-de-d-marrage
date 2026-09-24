@@ -36,14 +36,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
     (!settings.liableFrom || settings.liableFrom.getTime() > detection.effectiveDate.getTime());
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <p className="text-sm">
-          <Link href="/synthese" className="text-slate-500 underline">
-            ← Synthèse micro-BIC
-          </Link>
-        </p>
-        <h1 className="mt-1 text-xl font-semibold text-slate-800">TVA de la micro-BIC</h1>
+        <h2 className="text-lg font-semibold text-slate-800">TVA de la micro-BIC</h2>
         <p className="text-sm text-slate-500">
           Revente Fruits/Légumes et Kerbooth 360° partagent une seule franchise de TVA : dépasser un seuil fait
           basculer les deux activités à la fois.

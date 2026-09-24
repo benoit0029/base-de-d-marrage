@@ -40,8 +40,8 @@ export default async function Page({
     <div className="rounded-lg border bg-white">
       <div className="flex items-center justify-between gap-3 border-b bg-slate-50 p-3 text-xs text-slate-500">
         <span>
-          Livre des recettes. Pour créer ou envoyer une facture, utilisez
-          l&apos;onglet Facturation.
+          Encaissements des factures (le registre officiel est l&apos;onglet
+          « Livre des recettes »). Pour créer une facture : onglet Factures.
         </span>
         <YearFilter closedYears={closedYears} />
       </div>

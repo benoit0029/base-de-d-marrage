@@ -45,6 +45,8 @@ export const activities: ActivityNav[] = [
       { slug: "achats", label: "Dépenses", section: "Comptable" },
       { slug: "releve-bancaire", label: "Relevé bancaire", section: "Comptable" },
       { slug: "factures", label: "Factures", section: "Comptable" },
+      { slug: "livre-recettes", label: "Livre des recettes", section: "Comptable" },
+      { slug: "registre-achats", label: "Registre des achats", section: "Comptable" },
       { slug: "seuils", label: "Suivi des seuils", section: "Fiscal" },
     ],
   },
@@ -58,9 +60,21 @@ export const activities: ActivityNav[] = [
       { slug: "achats", label: "Dépenses", section: "Comptable" },
       { slug: "releve-bancaire", label: "Relevé bancaire", section: "Comptable" },
       { slug: "factures", label: "Factures", section: "Comptable" },
+      { slug: "livre-recettes", label: "Livre des recettes", section: "Comptable" },
       { slug: "seuils", label: "Suivi des seuils", section: "Fiscal" },
     ],
   },
+];
+
+// Synthèse micro-BIC : ce qui est COMMUN à Revente et Kerbooth (une seule
+// micro-entreprise) — mêmes sections que le Maraîchage.
+export const syntheseTabs: SubTab[] = [
+  { slug: "obligations", label: "Obligations", section: "Vue d'ensemble" },
+  { slug: "seuils", label: "Suivi des seuils", section: "Fiscal" },
+  { slug: "tva", label: "TVA micro-BIC (CA12)", section: "Fiscal" },
+  { slug: "declaration", label: "Déclaration 2042", section: "Fiscal" },
+  { slug: "social", label: "Cotisations sociales", section: "Social" },
+  { slug: "e-reporting", label: "Abby / E-reporting", section: "Abby" },
 ];
 
 export const topLevelNav = [

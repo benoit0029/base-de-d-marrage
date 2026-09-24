@@ -13,7 +13,7 @@ export default async function Page() {
         Ces seuils sont partagés avec Kerbooth 360° (même micro-entreprise).
         Calculés sur les recettes <strong>validées</strong> de l&apos;année{" "}
         {thresholds.year}. Voir aussi la{" "}
-        <Link href="/synthese" className="font-medium text-fruits underline">
+        <Link href="/synthese/seuils" className="font-medium text-fruits underline">
           synthèse micro-BIC
         </Link>{" "}
         pour le détail cumulé.

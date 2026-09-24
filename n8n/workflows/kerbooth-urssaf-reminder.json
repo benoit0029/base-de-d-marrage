@@ -5,7 +5,9 @@
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "months" }
+            {
+              "field": "months"
+            }
           ]
         }
       },
@@ -13,7 +15,10 @@
       "name": "Le 1er de chaque mois",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "notes": "Par défaut, le planificateur mensuel de n8n se déclenche le 1er du mois à minuit — ajuster l'heure dans les paramètres du nœud si besoin. Envoie un rappel chaque mois quelle que soit la périodicité de déclaration choisie (mensuelle ou trimestrielle) : mieux vaut un rappel de trop qu'une échéance manquée, à ajuster si la fréquence mensuelle est jugée trop fréquente."
     },
     {
@@ -22,7 +27,12 @@
         "url": "={{ $env.APP_URL }}/api/kerbooth/alerts/urssaf-reminder",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" }]
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
         },
         "options": {}
       },
@@ -30,34 +40,62 @@
       "name": "Calculer le CA Kerbooth du mois précédent",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
         "fromEmail": "={{ $env.SMTP_FROM }}",
         "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
-        "subject": "Kerbooth 360° — Rappel déclaration URSSAF ({{ $json.periodLabel }})",
+        "subject": "Micro-BIC — Rappel déclaration URSSAF ({{ $json.periodLabel }})",
         "emailFormat": "text",
-        "text": "CA Kerbooth 360° encaissé en {{ $json.periodLabel }} : {{ $json.caEncaisse }} €.\nCotisations dues (21,2 %) : {{ $json.cotisationsDues }} €.\n\nÀ déclarer sur autoentrepreneur.urssaf.fr — ce montant est calculé à partir des factures encaissées enregistrées dans l'outil compta, à recouper toi-même avant de déclarer.",
+        "text": "Chiffre d'affaires micro-BIC encaissé ({{ $json.periodLabel }}) : {{ $json.caEncaisse }} €\n— ventes (Revente) : {{ $json.ventes }} €\n— services (Kerbooth) : {{ $json.services }} €\nCotisations estimées : {{ $json.cotisationsDues }} € (taux à vérifier sur autoentrepreneur.urssaf.fr).\n\nÀ déclarer sur autoentrepreneur.urssaf.fr — montants calculés à partir des recettes validées dans l'outil compta, à recouper avant de déclarer.",
         "options": {}
       },
       "id": "44444444-0006-4000-8000-000000000003",
       "name": "Envoyer le rappel",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [680, 300],
-      "credentials": { "smtp": { "name": "SMTP — adresse dédiée (émission)" } }
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "name": "SMTP — adresse dédiée (émission)"
+        }
+      }
     }
   ],
   "connections": {
     "Le 1er de chaque mois": {
-      "main": [[{ "node": "Calculer le CA Kerbooth du mois précédent", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Calculer le CA Kerbooth du mois précédent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Calculer le CA Kerbooth du mois précédent": {
-      "main": [[{ "node": "Envoyer le rappel", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Envoyer le rappel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "id": "55555555-0006-4000-8000-000000000001"
 }

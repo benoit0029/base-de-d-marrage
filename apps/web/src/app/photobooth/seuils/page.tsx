@@ -14,7 +14,7 @@ export default async function Page() {
         (même micro-entreprise). Calculés sur les recettes{" "}
         <strong>validées</strong> de l&apos;année {thresholds.year}. Voir
         aussi la{" "}
-        <Link href="/synthese" className="font-medium text-photobooth underline">
+        <Link href="/synthese/seuils" className="font-medium text-photobooth underline">
           synthèse micro-BIC
         </Link>{" "}
         pour le détail cumulé.

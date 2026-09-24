@@ -2,6 +2,8 @@ import { prisma } from "@/server/db/client";
 import { getDefaultTenantId } from "@/server/db/tenant";
 import { currentYearRange } from "@/lib/thresholds";
 import { vatFromTtc } from "@/lib/tva";
+import { getBicVatSettings, isBicLiableOn } from "@/lib/tva/bic";
+import type { Activity } from "@prisma/client";
 
 // Livre des recettes et livre des achats du Maraîchage (micro-BA) : simple
 // LECTURE des saisies déjà faites (journal de caisse, factures encaissées,
@@ -103,19 +105,28 @@ export interface ReceiptBook {
   totals: ReceiptTotals;
 }
 
-export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
+/**
+ * Livre des recettes d'une activité. Maraîchage : ventes directes réparties
+ * 5,5 % / 10 % (plants). Revente (micro-BIC) : ventes directes en espèces,
+ * TVA à 5,5 % seulement après la sortie de franchise (sinon pas de TVA,
+ * colonnes vides). Kerbooth : factures (TVA selon la facture).
+ */
+export async function computeReceiptBook(year: number, activity: Activity = "BA_MARAICHAGE"): Promise<ReceiptBook> {
   const tenantId = await getDefaultTenantId();
   const { start, end } = currentYearRange(year);
+  const bicVat = activity === "BA_MARAICHAGE" ? null : await getBicVatSettings();
+  // TVA sur les ventes directes à cette date ? (toujours en Maraîchage)
+  const directVat = (date: Date) => bicVat === null || isBicLiableOn(bicVat, date);
 
   const [days, invoices, others] = await Promise.all([
     prisma.cashJournalEntry.findMany({
-      where: { tenantId, activity: "BA_MARAICHAGE", status: "VALIDATED", deletedAt: null, date: { gte: start, lte: end } },
+      where: { tenantId, activity, status: "VALIDATED", deletedAt: null, date: { gte: start, lte: end } },
       orderBy: { date: "asc" },
     }),
     prisma.invoice.findMany({
       where: {
         tenantId,
-        activity: "BA_MARAICHAGE",
+        activity,
         type: { in: ["FACTURE", "AVOIR"] }, // avoir remboursé : montants négatifs, à sa date de remboursement
         status: { in: ["SENT", "PAID"] },
         paidAt: { gte: start, lte: end },
@@ -126,7 +137,7 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
     prisma.entry.findMany({
       where: {
         tenantId,
-        activity: "BA_MARAICHAGE",
+        activity,
         type: "RECETTE",
         status: "VALIDATED",
         deletedAt: null,
@@ -154,7 +165,7 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
         card: round2(card),
         other: 0,
         ttc: round2(dayTtc),
-        byRate: splitTtc(dayTtc - plants, plants),
+        byRate: directVat(d.date) ? splitTtc(dayTtc - plants, plants) : emptyByRate(),
       });
     }
     // Ventes > 76 € : une ligne chacune, comptées à 5,5 % (comme la CA12A).
@@ -174,7 +185,7 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
         card: method === "cb" ? round2(amount) : 0,
         other: 0,
         ttc: round2(amount),
-        byRate: splitTtc(amount, 0),
+        byRate: directVat(d.date) ? splitTtc(amount, 0) : emptyByRate(),
       });
     }
   }
@@ -182,6 +193,7 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
   for (const inv of invoices) {
     const byRate = emptyByRate();
     for (const l of inv.lines) {
+      if (Number(l.vatRate) <= 0) continue; // sans TVA (franchise) : colonnes par taux vides
       const ht = Number(l.lineTotal);
       const rate = nearestRate(ht, (ht * Number(l.vatRate)) / 100);
       byRate[rate] = {
@@ -206,7 +218,7 @@ export async function computeReceiptBook(year: number): Promise<ReceiptBook> {
     const ht = Number(e.amountHt);
     const vat = Number(e.amountVat);
     const byRate = emptyByRate();
-    byRate[nearestRate(ht, vat)] = { ht: round2(ht), vat: round2(vat) };
+    if (vat !== 0) byRate[nearestRate(ht, vat)] = { ht: round2(ht), vat: round2(vat) };
     rows.push({
       date: e.paidAt!,
       label: `${e.nature} — ${e.counterpartyName}`,
@@ -276,7 +288,7 @@ function buildSection(rows: PurchaseRow[]): PurchaseSection {
   return { quarters, totals: quarters.reduce((t, q) => addPurchase(t, q.totals), zero) };
 }
 
-export async function computePurchaseBook(year: number): Promise<PurchaseBook> {
+export async function computePurchaseBook(year: number, activity: Activity = "BA_MARAICHAGE"): Promise<PurchaseBook> {
   const tenantId = await getDefaultTenantId();
   const { start, end } = currentYearRange(year);
 
@@ -284,7 +296,7 @@ export async function computePurchaseBook(year: number): Promise<PurchaseBook> {
     prisma.entry.findMany({
       where: {
         tenantId,
-        activity: "BA_MARAICHAGE",
+        activity,
         type: { in: ["ACHAT", "IMMOBILISATION"] },
         status: "VALIDATED",
         deletedAt: null,
@@ -295,7 +307,7 @@ export async function computePurchaseBook(year: number): Promise<PurchaseBook> {
     prisma.entry.count({
       where: {
         tenantId,
-        activity: "BA_MARAICHAGE",
+        activity,
         type: { in: ["ACHAT", "IMMOBILISATION"] },
         status: "VALIDATED",
         deletedAt: null,
