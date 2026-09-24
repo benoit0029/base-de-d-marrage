@@ -84,8 +84,9 @@ déclaration par Cerfrance.
 passe (clés de test / sandbox).
 
 **Quand** : après les retours INPI, assurance et SIRET définitifs.
-INPI : **réponse favorable reçue le 24/09/2026** — restent l'assurance et le
-SIRET définitif.
+INPI : **réponse favorable reçue le 24/09/2026** ; SIRET définitif :
+**533 242 053 00015** (24/09/2026, déjà celui affiché sur kerbooth360.fr) —
+reste l'assurance.
 
 **Comment** :
 1. Stripe : activer le compte (pièces d'identité, IBAN), récupérer les clés
