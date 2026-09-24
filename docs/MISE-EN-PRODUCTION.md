@@ -181,8 +181,8 @@ déjà dans l'appli (onglet Relevé bancaire).
 À envoyer depuis ton compte ou le formulaire de contact d'Abby. Compléter
 les [crochets] avant l'envoi.
 
-> **Objet : Questions avant souscription — deux entreprises, factures
-> émises depuis mon propre logiciel, e-reporting**
+> **Objet : Questions avant souscription — un SIRET, trois activités,
+> factures émises depuis mon propre logiciel, e-reporting**
 >
 > Bonjour,
 >
@@ -190,15 +190,15 @@ les [crochets] avant l'envoi.
 > électronique avant l'échéance du 1er septembre 2027. Avant de choisir une
 > offre, j'ai besoin de confirmations précises.
 >
-> **Ma situation : deux entreprises**
-> 1. Exploitation maraîchère (micro-BA, **assujettie à la TVA** au réel
->    simplifié agricole) — SIRET [à compléter]. Ventes directes aux
->    particuliers (marchés, vente à la ferme) et **factures à des
->    professionnels** (restaurants, magasins), TVA à 5,5 %, 10 % et 20 %.
-> 2. Micro-entreprise micro-BIC en **franchise de TVA** — SIRET
->    533 242 053 00015 : revente de fruits et légumes (vente directe aux
->    particuliers uniquement) et location d'un photobooth (surtout des
->    particuliers, parfois des professionnels).
+> **Ma situation : un seul SIRET (533 242 053 00015), trois activités**
+> 1. Maraîchage (micro-BA, **assujetti à la TVA** au réel simplifié
+>    agricole) : ventes directes aux particuliers (marchés, vente à la
+>    ferme) et **factures à des professionnels** (restaurants, magasins),
+>    TVA à 5,5 %, 10 % et 20 %.
+> 2. Revente de fruits et légumes (micro-BIC, **franchise de TVA**) :
+>    vente directe aux particuliers uniquement.
+> 3. Location d'un photobooth (micro-BIC, **franchise de TVA**) : surtout
+>    des particuliers, parfois des professionnels.
 >
 > Mes factures et avoirs sont déjà produits par mon propre logiciel de
 > comptabilité (numérotation légale continue FA2026-001, AV2026-001, PDF).
@@ -220,9 +220,11 @@ les [crochets] avant l'envoi.
 >    de quelle offre, y compris pour une entreprise en franchise de TVA ?
 >    Puis-je importer des totaux par jour et par taux de TVA (fichier CSV ou
 >    API) ? À quelle fréquence faut-il transmettre ?
-> 4. **Deux entreprises** : faut-il un abonnement par SIRET, ou un seul
->    compte peut-il gérer les deux ? L'entreprise en franchise de TVA peut-elle
->    rester sur l'offre gratuite si je n'y fais aucune facture dans Abby ?
+> 4. **Un SIRET, deux régimes de TVA** : un seul abonnement « Maîtriser »
+>    peut-il gérer, sous le même SIRET, des factures avec TVA (maraîchage)
+>    et des factures sans TVA avec la mention « TVA non applicable, art.
+>    293 B du CGI » (micro-BIC) ? L'e-reporting peut-il séparer les
+>    activités ?
 > 5. **Réception des factures fournisseurs** : est-elle incluse dans l'offre
 >    gratuite ? Comment les récupérer vers mon logiciel : renvoi
 >    automatique par e-mail, API ou téléchargement ? À partir de quelle offre ?
@@ -231,9 +233,8 @@ les [crochets] avant l'envoi.
 >    Abby, et en combien de temps est-elle effective ?
 > 7. **Avoirs** : les avoirs (montants négatifs, liés à la facture
 >    d'origine) sont-ils acceptés par dépôt ou par API ?
-> 8. **Calendrier** : Abby est-elle déjà immatriculée comme plateforme
->    agréée ? Quel délai prévoir entre la souscription et la première
->    transmission ? Y a-t-il une période d'essai sur « Maîtriser » ?
+> 8. **Calendrier** : quel délai prévoir entre la souscription et la
+>    première transmission ? Y a-t-il une période d'essai sur « Maîtriser » ?
 > 9. **Sortie** : si je quitte Abby, comment récupérer mes factures et
 >    données ?
 >
@@ -259,8 +260,9 @@ les [crochets] avant l'envoi.
    professionnel, un avoir, un envoi d'e-reporting.
 4. **Juillet–août 2027** : corriger ce qui coince ; tout doit fonctionner
    avant le **1er septembre 2027**.
-5. **Micro-BIC** : selon la réponse à la question 4, offre gratuite ou
-   ajout au même compte.
+5. **Micro-BIC** : même SIRET que le Maraîchage (confirmé par Benoît le
+   24/09/2026) → un seul compte Abby pour les trois activités, sous
+   réserve de la réponse à la question 4.
 
 ## 7. Obligations micro-BA — construit le 24/09/2026
 
