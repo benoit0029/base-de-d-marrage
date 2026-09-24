@@ -218,3 +218,48 @@ export async function reclassifyEntry(
   ]);
   return updated;
 }
+
+export class EntryActivityChangeError extends Error {}
+
+/**
+ * Déplace une dépense vers une autre activité (la lecture automatique l'a
+ * rangée au mauvais endroit) — tracé dans le journal d'audit. Refusé si elle
+ * est rapprochée d'une ligne de relevé bancaire (le relevé appartient à une
+ * activité : annuler d'abord le rapprochement), si elle vient d'un import
+ * Tesa+/cotisations, ou si elle est payée dans un exercice déjà clôturé.
+ */
+export async function changeEntryActivity(
+  entryId: string,
+  userId: string | null,
+  activity: Activity
+): Promise<Entry> {
+  const entry = await prisma.entry.findUnique({ where: { id: entryId }, include: { simpleImport: true } });
+  if (!entry || entry.deletedAt) throw new EntryNotFoundError(entryId);
+  if (entry.activity === activity) return entry;
+  if (entry.bankTransactionId) {
+    throw new EntryActivityChangeError(
+      "Cette dépense est rapprochée d'une ligne du relevé bancaire : annule d'abord le rapprochement."
+    );
+  }
+  if (entry.simpleImport) {
+    throw new EntryActivityChangeError("Cette écriture vient d'un import Tesa+ ou cotisations : elle reste en Maraîchage.");
+  }
+  await assertDateNotInClosedYear(entry.paidAt, "cette dépense");
+
+  const { simpleImport: _unused, ...before } = entry;
+  const [updated] = await prisma.$transaction([
+    prisma.entry.update({ where: { id: entryId }, data: { activity } }),
+    prisma.auditLog.create({
+      data: {
+        tenantId: entry.tenantId,
+        userId,
+        action: "ENTRY_ACTIVITY_CHANGED",
+        entityType: "Entry",
+        entityId: entryId,
+        before: JSON.parse(JSON.stringify(before)),
+        after: { activity },
+      },
+    }),
+  ]);
+  return updated;
+}

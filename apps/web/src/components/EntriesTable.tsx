@@ -5,6 +5,9 @@ import { yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import RegisterActions from "@/components/RegisterActions";
 import MarkPaidButton from "@/components/MarkPaidButton";
 import ReclassifyEntryButton from "@/components/ReclassifyEntryButton";
+import EditEntryButton from "@/components/EditEntryButton";
+import ChangeActivityButton from "@/components/ChangeActivityButton";
+import type { Activity } from "@prisma/client";
 
 const sourceLabel: Record<FakeEntry["source"], string> = {
   email: "📧 Email",
@@ -20,9 +23,11 @@ const typeLabel: Record<FakeEntry["type"], string> = {
 
 export default function EntriesTable({
   entries,
+  activity,
   closedYears = [],
 }: {
   entries: FakeEntry[];
+  activity: Activity; // activité de l'onglet (pour « Changer d'activité »)
   closedYears?: number[];
 }) {
   if (entries.length === 0) {
@@ -116,9 +121,11 @@ export default function EntriesTable({
                 )}
               </td>
               <td className="space-y-1 px-4 py-2.5 text-right">
+                {entry.status === "pending" && <EditEntryButton entry={entry} />}
                 {entry.type !== "recette" && !locked && (
                   <ReclassifyEntryButton entryId={entry.id} type={entry.type} />
                 )}
+                {!locked && !entry.reconciled && <ChangeActivityButton entryId={entry.id} current={activity} />}
                 <RegisterActions
                   pending={entry.status === "pending"}
                   validateUrl={entry.status === "pending" ? `/api/entries/${entry.id}/validate` : undefined}

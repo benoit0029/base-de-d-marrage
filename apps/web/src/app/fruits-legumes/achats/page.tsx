@@ -33,7 +33,7 @@ export default async function Page({
         <YearFilter closedYears={closedYears} />
       </div>
       <div className="rounded-lg border bg-white">
-        <EntriesTable entries={achats} closedYears={closedYears} />
+        <EntriesTable entries={achats} activity="BIC_FRUITS_LEGUMES" closedYears={closedYears} />
       </div>
     </div>
   );

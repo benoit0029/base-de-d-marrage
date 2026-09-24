@@ -169,6 +169,14 @@ Reste :
 
 ---
 
+## Historique de l'appli (journal d'audit)
+
+Visible par personne dans l'appli : il est seulement dans la base de
+données du serveur, comme preuve en cas de contrôle (qui a validé, corrigé,
+déplacé ou supprimé quoi, et quand). Lignes de plus de **10 ans effacées
+automatiquement** (au démarrage du serveur puis chaque jour) — décision du
+24/09/2026.
+
 ## Petits points techniques (sans urgence)
 
 - Avertissement `prisma:warn … libssl/openssl` au démarrage : sans effet,
