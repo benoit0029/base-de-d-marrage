@@ -51,7 +51,7 @@
         "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
         "subject": "Micro-BIC — Rappel déclaration URSSAF ({{ $json.periodLabel }})",
         "emailFormat": "text",
-        "text": "Chiffre d'affaires micro-BIC encaissé ({{ $json.periodLabel }}) : {{ $json.caEncaisse }} €\n— ventes (Revente) : {{ $json.ventes }} €\n— services (Kerbooth) : {{ $json.services }} €\nCotisations estimées : {{ $json.cotisationsDues }} € (taux à vérifier sur autoentrepreneur.urssaf.fr).\n\nÀ déclarer sur autoentrepreneur.urssaf.fr — montants calculés à partir des recettes validées dans l'outil compta, à recouper avant de déclarer.",
+        "text": "Chiffre d'affaires micro-BIC encaissé ({{ $json.periodLabel }}) : {{ $json.caEncaisse }} €\n— ventes (Revente) : {{ $json.ventes }} €\n— services (Kerbooth) : {{ $json.services }} €\nCotisations + CFP estimées : {{ $json.cotisationsDues }} € (12,3 % ventes / 21,2 % services + 0,1 % CFP).\n\nÀ déclarer sur autoentrepreneur.urssaf.fr — montants calculés à partir des recettes validées dans l'outil compta, à recouper avant de déclarer.",
         "options": {}
       },
       "id": "44444444-0006-4000-8000-000000000003",

@@ -207,8 +207,15 @@ Reste :
 - **Cotisations sociales micro-BIC** : régime à choisir dans Synthèse
   micro-BIC → Cotisations sociales. Benoît : **MSA** (activité principale
   agricole, une déclaration annuelle, appel de cotisations MSA) → plus de
-  rappel URSSAF mensuel. Taux URSSAF affichés pour le partenaire (12,3 %
-  ventes, 21,2 % services) : non vérifiés.
+  rappel URSSAF mensuel. Taux vérifiés par Benoît le 24/09/2026 : 12,3 %
+  ventes, 21,2 % services, + 0,1 % de CFP ; abattements 71 % / 50 %
+  (minimum 305 €). À mettre à jour dans `apps/web/src/lib/bic/social.ts`
+  quand ils changent.
+- **Mémo « ce qu'il te reste réellement »** en haut de Synthèse micro-BIC →
+  Obligations : CA, cotisations URSSAF + CFP, revenu déclaré, dépenses
+  maximum pour gagner plus que ce qu'on déclare, et reste réel. Pour
+  Benoît (MSA) : calcul au taux URSSAF à titre de comparaison — cotisations
+  MSA réelles de la micro-BIC **à confirmer** (MSA / Cerfrance).
 - **n8n** : réimporter `n8n/workflows/kerbooth-urssaf-reminder.json` (texte
   du mail modifié ; il n'envoie plus rien en régime MSA).
 

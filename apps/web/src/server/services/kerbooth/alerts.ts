@@ -1,6 +1,6 @@
 import { getCompanySettings } from "@/server/services/settings";
 import { bicRevenueBetween } from "@/lib/bic/revenue";
-import { asBicSocialRegime, URSSAF_RATE_SERVICES, URSSAF_RATE_VENTES } from "@/lib/bic/social";
+import { asBicSocialRegime, urssafDue } from "@/lib/bic/social";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -41,6 +41,6 @@ export async function computeUrssafReminder(referenceDate = new Date()) {
     ventes: revenue.ventes,
     services: revenue.services,
     caEncaisse: round2(revenue.ventes + revenue.services),
-    cotisationsDues: round2(revenue.ventes * URSSAF_RATE_VENTES + revenue.services * URSSAF_RATE_SERVICES),
+    cotisationsDues: urssafDue(revenue),
   };
 }

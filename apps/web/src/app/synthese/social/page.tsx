@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCompanySettings } from "@/server/services/settings";
 import { bicRevenueByMonth, bicRevenueOfYear, type BicRevenue } from "@/lib/bic/revenue";
-import { asBicSocialRegime, URSSAF_RATE_SERVICES, URSSAF_RATE_VENTES } from "@/lib/bic/social";
+import { asBicSocialRegime, CFP_RATE, pct, URSSAF_RATE_SERVICES, URSSAF_RATE_VENTES, urssafDue } from "@/lib/bic/social";
 import { formatEuro } from "@/lib/format";
 import BicSocialRegimeForm from "@/components/BicSocialRegimeForm";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const MONTHS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
 const round2 = (n: number) => Math.round(n * 100) / 100;
-const cotisations = (r: BicRevenue) => round2(r.ventes * URSSAF_RATE_VENTES + r.services * URSSAF_RATE_SERVICES);
+const cotisations = urssafDue;
 const frDate = (d: Date) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
 // Cotisations sociales de la micro-BIC, selon le régime : rattachement à
@@ -107,7 +107,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
               <th className="px-3 py-2">Période</th>
               <th className="px-3 py-2 text-right">Ventes</th>
               <th className="px-3 py-2 text-right">Services</th>
-              <th className="px-3 py-2 text-right">Cotisations estimées</th>
+              <th className="px-3 py-2 text-right">Cotisations + CFP</th>
               <th className="px-3 py-2">À déclarer avant le</th>
             </tr>
           </thead>
@@ -124,11 +124,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
           </tbody>
         </table>
         <p className="p-3 text-xs text-amber-800">
-          Taux utilisés : {String(URSSAF_RATE_VENTES * 100).replace(".", ",")} % sur les ventes,{" "}
-          {String(URSSAF_RATE_SERVICES * 100).replace(".", ",")} % sur les services — valeurs connues mais non
-          vérifiées, à contrôler sur autoentrepreneur.urssaf.fr (elles changent). Échéances : fin du mois suivant la
-          période, à vérifier aussi. La déclaration se fait sur autoentrepreneur.urssaf.fr, l&apos;appli ne la
-          transmet pas.
+          Taux utilisés : {pct(URSSAF_RATE_VENTES)} % sur les ventes et {pct(URSSAF_RATE_SERVICES)} % sur les
+          services, plus {pct(CFP_RATE)} % de formation professionnelle (CFP) — vérifiés le 24/09/2026 ; ils changent
+          de temps en temps. Échéances : fin du mois suivant la période, à vérifier. La déclaration se fait sur
+          autoentrepreneur.urssaf.fr, l&apos;appli ne la transmet pas.
         </p>
       </div>
     );

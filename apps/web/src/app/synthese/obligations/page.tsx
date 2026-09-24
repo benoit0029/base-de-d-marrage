@@ -5,6 +5,8 @@ import { getCompanySettings } from "@/server/services/settings";
 import { getPaConnection } from "@/server/services/pa";
 import { getBicVatSettings } from "@/lib/tva/bic";
 import { asBicSocialRegime, BIC_SOCIAL_LABEL } from "@/lib/bic/social";
+import { computeBicMemo } from "@/lib/bic/memo";
+import BicMemo from "@/components/BicMemo";
 
 export const dynamic = "force-dynamic";
 
@@ -36,13 +38,14 @@ export default async function Page() {
   const year = today.getFullYear();
   const bic = ["BIC_FRUITS_LEGUMES", "BIC_PHOTOBOOTH"] as const;
 
-  const [pendingRecettes, pendingDepenses, openInvoices, vat, company, pa] = await Promise.all([
+  const [pendingRecettes, pendingDepenses, openInvoices, vat, company, pa, memo] = await Promise.all([
     prisma.cashJournalEntry.count({ where: { tenantId, activity: "BIC_FRUITS_LEGUMES", status: "PENDING", deletedAt: null } }),
     prisma.entry.count({ where: { tenantId, activity: { in: [...bic] }, status: "PENDING", deletedAt: null } }),
     prisma.invoice.count({ where: { tenantId, activity: { in: [...bic] }, type: "FACTURE", status: "SENT", paidAt: null } }),
     getBicVatSettings(),
     getCompanySettings(),
     getPaConnection(),
+    computeBicMemo(year),
   ]);
   const regime = asBicSocialRegime(company?.bicSocialRegime);
   const declarationYear = today.getMonth() < 6 ? year - 1 : year;
@@ -173,6 +176,7 @@ export default async function Page() {
           d&apos;agir.
         </p>
       </div>
+      <BicMemo year={year} lines={memo} msa={regime === "MSA"} />
       {sections.map((section) => (
         <div key={section.title} className="rounded-lg border bg-white">
           <p className="border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{section.title}</p>

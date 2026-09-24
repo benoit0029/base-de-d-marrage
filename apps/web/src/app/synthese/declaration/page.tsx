@@ -1,21 +1,9 @@
 import Link from "next/link";
 import { bicRevenueOfYear } from "@/lib/bic/revenue";
 import { formatEuro } from "@/lib/format";
+import { ABATTEMENT_SERVICES, ABATTEMENT_VENTES, bicTaxable as taxable } from "@/lib/bic/social";
 
 export const dynamic = "force-dynamic";
-
-// Abattements forfaitaires du régime micro-BIC (sans versement libératoire)
-// et minimum de 305 € — règles connues, non relues sur un texte officiel
-// depuis l'outil : à vérifier sur le formulaire de l'année.
-const ABATTEMENT_VENTES = 0.71;
-const ABATTEMENT_SERVICES = 0.5;
-const ABATTEMENT_MIN = 305;
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-function taxable(ca: number, rate: number): number {
-  if (ca <= 0) return 0;
-  return round2(ca - Math.min(ca, Math.max(ca * rate, ABATTEMENT_MIN)));
-}
 
 // Déclaration de revenus de la micro-BIC (Revente + Kerbooth) : chiffres
 // d'affaires encaissés de l'année, ventes et services sur deux lignes
@@ -82,9 +70,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-        Numéros de case et abattements (71 % ventes, 50 % services) : règles connues, non vérifiées sur un texte
-        officiel depuis l&apos;outil — vérifie-les sur le formulaire de l&apos;année avant de déclarer. Sources des
-        montants : factures encaissées et ventes directes validées de {year} (onglets Livre des recettes).
+        Abattements (71 % ventes, 50 % services, minimum 305 €) vérifiés le 24/09/2026. Numéros de case (5KO,
+        5KP) : à contrôler sur le formulaire de l&apos;année avant de déclarer. Sources des montants : factures
+        encaissées et ventes directes validées de {year} (onglets Livre des recettes).
       </div>
     </div>
   );
