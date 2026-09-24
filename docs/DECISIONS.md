@@ -271,7 +271,9 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   = Aller plus loin 👤. Connexion bancaire d'Abby inutile (relevés déjà
   importés dans l'appli).
 - **D-113 (24/09)** — Mail de questions à Abby rédigé (docs/MISE-EN-
-  PRODUCTION.md §6) ; calendrier : ne rien payer avant ~mai-juin 2027,
+  PRODUCTION.md §6) — question 10 ajoutée le 24/09 : frais du paiement
+  en ligne Stripe via Abby (total ou en plus des frais Stripe ? compte
+  Stripe existant utilisable ?) ; calendrier : ne rien payer avant ~mai-juin 2027,
   changer de plateforme au 1er janvier idéalement, sans jamais un jour
   sans plateforme ; tout prêt avant le 1/09/2027.
 - **D-114 (24/09)** — Onglet **E-reporting** : totaux des ventes aux

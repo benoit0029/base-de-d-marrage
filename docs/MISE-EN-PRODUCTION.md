@@ -164,7 +164,11 @@ non précisé)** : Basique gratuit ; Commencer 5,40 € ; Maîtriser 9,00 € ;
 Aller plus loin 19,80 €. D'après la grille : facturation électronique dès
 le gratuit ; envoi des documents par e-mail dès Commencer ; **factures et
 devis avec TVA, déclaration de TVA et « Automatisation / intégrations »
-(bêta) à partir de Maîtriser**. À faire confirmer par Abby (voir le
+(bêta) à partir de Maîtriser**. Paiement en ligne avec Stripe : non sur
+Basique ; 3,4 % + 0,60 € (Commencer) ; 1,9 % + 0,50 € (Maîtriser) ;
+1,5 % + 0,25 € (Aller plus loin) — on ne sait pas si c'est le total ou
+une commission Abby en plus des frais Stripe (question 10 du mail).
+Benoît a déjà son propre compte Stripe (celui de Kerbooth). À faire confirmer par Abby (voir le
 mail ci-dessous) : l'offre Maîtriser (= « Pro ») permet le dépôt
 de factures faites ailleurs, l'API et l'e-reporting ? un abonnement par
 entreprise (micro-BA et micro-BIC) ?
@@ -241,6 +245,17 @@ les [crochets] avant l'envoi.
 >    première transmission ? Y a-t-il une période d'essai sur « Maîtriser » ?
 > 9. **Sortie** : si je quitte Abby, comment récupérer mes factures et
 >    données ?
+> 10. **Paiement en ligne avec Stripe** : votre grille indique « Non » sur
+>    Basique, puis 3,4 % + 0,60 € (Commencer), 1,9 % + 0,50 € (Maîtriser)
+>    et 1,5 % + 0,25 € (Aller plus loin). J'ai **déjà mon propre compte
+>    Stripe**. À quoi correspondent exactement ces pourcentages et ces
+>    montants fixes : est-ce le **total** prélevé par paiement (frais
+>    Stripe compris), ou une **commission Abby qui s'ajoute** aux frais
+>    de Stripe ? Par paiement ou par facture ? Pour toutes les cartes
+>    (européennes, hors UE, professionnelles) ? Puis-je **connecter mon
+>    compte Stripe existant** à Abby, et dans ce cas quels frais
+>    s'appliquent ? Le paiement en ligne est-il facultatif (aucuns frais
+>    si je ne l'active pas) ?
 >
 > Merci d'avance pour vos réponses précises, offre par offre.
 >
