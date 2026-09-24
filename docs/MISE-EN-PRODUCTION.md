@@ -167,6 +167,14 @@ devis avec TVA, déclaration de TVA et « Automatisation / intégrations »
 de factures faites ailleurs, l'API et l'e-reporting ? un abonnement par
 entreprise (micro-BA et micro-BIC) ?
 
+Précisions de Benoît (24/09/2026) : le Maraîchage fait des **factures à
+des professionnels** → facture électronique via une plateforme agréée
+obligatoire au 1/09/2027, avec TVA → offre **Maîtriser (9 €/mois)
+minimum** si Abby. D'après la grille, « Pro » = Maîtriser (1 compte
+bancaire) et « Business » = Aller plus loin (comptes bancaires illimités) :
+la connexion bancaire d'Abby n'est pas utile ici, les relevés s'importent
+déjà dans l'appli (onglet Relevé bancaire).
+
 ## 7. Obligations micro-BA — construit le 24/09/2026
 
 Onglets Maraîchage regroupés par section (Vue d'ensemble / Comptable /
@@ -187,8 +195,6 @@ Fiscal / Social / Abby), d'après le document « Obligations micro-BA » :
   répartition fruits/légumes 5,5 % + plants 10 % avec contrôle du total.
 
 Reste :
-- le seuil micro-BA de la page Synthèse compte encore la vente directe en
-  TTC au lieu du HT ;
 - les immobilisations sont classées par la lecture automatique des pièces ;
   bouton « Corriger » dans Dépenses (achat ↔ immobilisation) ajouté le
   24/09/2026 ;
@@ -199,6 +205,13 @@ Reste :
   agricole, 10 ans conseillés pour les activités commerciales.
 
 ## 8. Facturation légale et micro-BIC — construit le 24/09/2026
+
+- Seuil micro-BA (Synthèse → Suivi des seuils) : corrigé le 24/09/2026,
+  mêmes recettes HT que la page Déclaration 2042 du Maraîchage (vente
+  directe ramenée au HT, années saisies à la main comprises).
+- Réglage `HIDDEN_ACTIVITIES` (fichier `apps/web/.env`) : masque des
+  activités dans une installation — chez le partenaire
+  `HIDDEN_ACTIVITIES=maraichage,fruits-legumes`. Vide chez Benoît.
 
 - **Numéros de facture** : FA2026-001, avoirs AV2026-001, devis
   DE2026-001 ; une suite par entreprise (micro-BA d'un côté, micro-BIC

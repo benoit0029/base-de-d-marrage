@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import TopNav from "@/components/TopNav";
+import { hiddenActivities } from "@/lib/visibility";
 import PwaRegister from "@/components/PwaRegister";
 import "./globals.css";
 
@@ -21,7 +22,7 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -29,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="min-h-screen bg-slate-50 pb-16 md:pb-0">
-        <TopNav />
+        <TopNav hidden={await hiddenActivities()} />
         <main>{children}</main>
         <PwaRegister />
       </body>

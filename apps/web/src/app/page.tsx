@@ -1,20 +1,23 @@
 import Link from "next/link";
 import { activities } from "@/lib/nav";
+import { hiddenActivities } from "@/lib/visibility";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const hidden = await hiddenActivities();
+  const shown = activities.filter((a) => !hidden.includes(a.slug));
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">
       <h1 className="text-2xl font-semibold text-slate-800">
         Bonjour 👋
       </h1>
       <p className="mt-2 text-slate-600">
-        Vue d&apos;ensemble de vos 3 activités. Les écritures marquées
+        Vue d&apos;ensemble de {shown.length > 1 ? `vos ${shown.length} activités` : "votre activité"}. Les écritures marquées
         « en attente » ont été proposées automatiquement par le pipeline de
         capture (email, photo, extraction IA) et attendent votre validation.
       </p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        {activities.map((activity) => (
+      <div className={`mt-6 grid gap-4 ${shown.length > 1 ? "sm:grid-cols-3" : ""}`}>
+        {shown.map((activity) => (
           <Link
             key={activity.slug}
             href={`/${activity.slug}/recettes`}

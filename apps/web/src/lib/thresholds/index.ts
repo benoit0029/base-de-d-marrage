@@ -242,30 +242,17 @@ export interface BaThresholdResult {
 }
 
 export async function computeBaThreshold(referenceYear = new Date().getFullYear()): Promise<BaThresholdResult> {
-  // Fenêtre dynamique (année en cours + 2 précédentes) : jamais codée en dur,
-  // recalculée à chaque appel à partir de `referenceYear`.
-  const years = [referenceYear - 2, referenceYear - 1, referenceYear];
+  // Mêmes recettes HT que la page Déclaration 2042 du Maraîchage (factures
+  // encaissées HT, vente directe ramenée au HT, autres recettes validées,
+  // saisies des années d'avant l'outil) : un seul calcul, pas deux chiffres
+  // différents. Fenêtre dynamique : année de référence + 2 précédentes.
+  // Import à l'exécution : microBa importe lui-même ce module.
+  const { computeMicroBaDeclaration } = await import("@/lib/declaration/microBa");
+  const declaration = await computeMicroBaDeclaration(referenceYear);
   const recettesParAnnee: Record<number, number> = {};
-
-  for (const year of years) {
-    const { start, end } = currentYearRange(year);
-    // Maraîchage combine facturation ET vente directe : les deux comptent
-    // dans le CA du seuil, même si elles restent deux lignes distinctes dans
-    // le livre des recettes affiché (jamais fusionnées à l'affichage).
-    const [invoiced, cashJournal] = await Promise.all([
-      sumInvoicedTotal("BA_MARAICHAGE", start, end),
-      sumCashJournalTotal("BA_MARAICHAGE", start, end),
-    ]);
-    recettesParAnnee[year] = invoiced + cashJournal;
-  }
-
-  // Moyenne sur les seules années où l'activité a généré des recettes
-  // (approximation raisonnable en l'absence de date de création connue) —
-  // à affiner une fois l'historique complet disponible.
-  const activeYears = years.filter((y) => recettesParAnnee[y] > 0);
-  const consideredYears = activeYears.length > 0 ? activeYears : years;
-  const moyenneTriennale =
-    consideredYears.reduce((sum, y) => sum + recettesParAnnee[y], 0) / consideredYears.length;
+  for (const r of declaration.history) recettesParAnnee[r.year] = r.total;
+  const consideredYears = declaration.yearsAveraged;
+  const moyenneTriennale = declaration.moyenne;
 
   return {
     yearsConsidered: consideredYears,

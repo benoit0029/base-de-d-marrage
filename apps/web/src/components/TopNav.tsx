@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { topLevelNav } from "@/lib/nav";
+import { topLevelNav, type ActivityNav } from "@/lib/nav";
 import { logout } from "@/app/actions/auth";
 
 const AUTH_PATHS = ["/login", "/setup", "/2fa"];
@@ -19,8 +19,9 @@ const mobileLabels: Record<string, string> = {
   synthese: "Synthèse",
 };
 
-export default function TopNav() {
+export default function TopNav({ hidden = [] }: { hidden?: ActivityNav["slug"][] }) {
   const pathname = usePathname();
+  const nav = topLevelNav.filter((item) => !hidden.includes(item.slug as ActivityNav["slug"]));
 
   if (AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return null;
@@ -34,7 +35,7 @@ export default function TopNav() {
           Compta ferme &amp; activités
         </Link>
         <nav className="flex gap-1">
-          {topLevelNav.map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.slug}
               href={`/${item.slug}`}
@@ -79,8 +80,11 @@ export default function TopNav() {
       </header>
 
       {/* Mobile bottom tab bar */}
-      <nav className="fixed bottom-0 inset-x-0 z-20 grid grid-cols-4 border-t bg-white md:hidden">
-        {topLevelNav.map((item) => (
+      <nav
+        className="fixed bottom-0 inset-x-0 z-20 grid border-t bg-white md:hidden"
+        style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}
+      >
+        {nav.map((item) => (
           <Link
             key={item.slug}
             href={`/${item.slug}`}

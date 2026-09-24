@@ -1,13 +1,16 @@
 import SubNav from "@/components/SubNav";
+import { notFound } from "next/navigation";
 import { activities } from "@/lib/nav";
+import { isActivityHidden } from "@/lib/visibility";
 
 const activity = activities.find((a) => a.slug === "maraichage")!;
 
-export default function MaraichageLayout({
+export default async function MaraichageLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  if (await isActivityHidden("maraichage")) notFound();
   return (
     <div>
       <div className="px-4 pt-6 md:px-6">

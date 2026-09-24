@@ -7,6 +7,7 @@ import { getBicVatSettings } from "@/lib/tva/bic";
 import { asBicSocialRegime, BIC_SOCIAL_LABEL } from "@/lib/bic/social";
 import { computeBicMemo } from "@/lib/bic/memo";
 import BicMemo from "@/components/BicMemo";
+import { isActivityHidden } from "@/lib/visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ interface Obligation {
   links: { href: string; tab: string }[];
   status: string;
   tone: Tone;
+  reventeOnly?: boolean; // masquée si la Revente est masquée (installation du partenaire)
 }
 
 const TONE_CLASS: Record<Tone, string> = {
@@ -38,7 +40,7 @@ export default async function Page() {
   const year = today.getFullYear();
   const bic = ["BIC_FRUITS_LEGUMES", "BIC_PHOTOBOOTH"] as const;
 
-  const [pendingRecettes, pendingDepenses, openInvoices, vat, company, pa, memo] = await Promise.all([
+  const [pendingRecettes, pendingDepenses, openInvoices, vat, company, pa, memo, reventeHidden] = await Promise.all([
     prisma.cashJournalEntry.count({ where: { tenantId, activity: "BIC_FRUITS_LEGUMES", status: "PENDING", deletedAt: null } }),
     prisma.entry.count({ where: { tenantId, activity: { in: [...bic] }, status: "PENDING", deletedAt: null } }),
     prisma.invoice.count({ where: { tenantId, activity: { in: [...bic] }, type: "FACTURE", status: "SENT", paidAt: null } }),
@@ -46,6 +48,7 @@ export default async function Page() {
     getCompanySettings(),
     getPaConnection(),
     computeBicMemo(year),
+    isActivityHidden("fruits-legumes"),
   ]);
   const regime = asBicSocialRegime(company?.bicSocialRegime);
   const declarationYear = today.getMonth() < 6 ? year - 1 : year;
@@ -59,6 +62,7 @@ export default async function Page() {
           links: [{ href: "/fruits-legumes/recettes", tab: "Revente → Recettes" }],
           status: pendingRecettes > 0 ? `${pendingRecettes} saisie(s) à valider` : "À jour",
           tone: pendingRecettes > 0 ? "todo" : "ok",
+          reventeOnly: true,
         },
         {
           label: "Saisir et valider les dépenses",
@@ -92,6 +96,7 @@ export default async function Page() {
           links: [{ href: "/fruits-legumes/registre-achats", tab: "Revente → Registre des achats" }],
           status: "Rempli automatiquement",
           tone: "ok",
+          reventeOnly: true,
         },
         {
           label: "Conserver les pièces (10 ans pour une activité commerciale)",
@@ -166,10 +171,23 @@ export default async function Page() {
     },
   ];
 
+  // Installation sans Revente (partenaire) : ni lignes ni liens Revente.
+  const visibleSections = sections.map((section) => ({
+    ...section,
+    items: section.items
+      .filter((item) => !(reventeHidden && item.reventeOnly))
+      .map((item) => ({
+        ...item,
+        links: reventeHidden ? item.links.filter((l) => !l.href.startsWith("/fruits-legumes")) : item.links,
+      })),
+  }));
+
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="rounded-lg border bg-white p-4">
-        <p className="text-sm font-medium text-slate-700">Toutes tes obligations — micro-BIC (Revente + Kerbooth)</p>
+        <p className="text-sm font-medium text-slate-700">
+          Toutes tes obligations — micro-BIC{reventeHidden ? " (Kerbooth)" : " (Revente + Kerbooth)"}
+        </p>
         <p className="mt-1 text-xs text-slate-500">
           Une seule micro-entreprise (même SIRET) : livres et saisies par activité, déclarations communes ici. Règles
           connues, non relues sur les textes officiels depuis l&apos;outil : en cas de doute, vérifier avant
@@ -177,7 +195,7 @@ export default async function Page() {
         </p>
       </div>
       <BicMemo year={year} lines={memo} msa={regime === "MSA"} />
-      {sections.map((section) => (
+      {visibleSections.map((section) => (
         <div key={section.title} className="rounded-lg border bg-white">
           <p className="border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{section.title}</p>
           <ul className="divide-y divide-slate-100">

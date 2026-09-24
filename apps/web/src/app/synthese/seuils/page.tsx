@@ -3,19 +3,23 @@ import ThresholdBar from "@/components/ThresholdBar";
 import { computeBaThreshold, computeBicThresholds } from "@/lib/thresholds";
 import { detectBicVatLiability, getBicVatSettings } from "@/lib/tva/bic";
 import { formatEuro } from "@/lib/format";
+import { isActivityHidden } from "@/lib/visibility";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [bic, ba, vatSettings, vatDetection] = await Promise.all([
-    computeBicThresholds(),
-    computeBaThreshold(),
-    getBicVatSettings(),
-    detectBicVatLiability(),
-  ]);
+  const [bic, ba, vatSettings, vatDetection, maraichageHidden] =
+    await Promise.all([
+      computeBicThresholds(),
+      computeBaThreshold(),
+      getBicVatSettings(),
+      detectBicVatLiability(),
+      isActivityHidden("maraichage"),
+    ]);
   const vatToConfirm =
     vatDetection.status !== "franchise" &&
-    (!vatSettings.liableFrom || vatSettings.liableFrom.getTime() > vatDetection.effectiveDate.getTime());
+    (!vatSettings.liableFrom ||
+      vatSettings.liableFrom.getTime() > vatDetection.effectiveDate.getTime());
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -42,7 +46,9 @@ export default async function Page() {
           </p>
         </div>
         <div className="rounded-lg border bg-white p-4">
-          <p className="text-xs uppercase text-slate-500">CA cumulé micro-BIC</p>
+          <p className="text-xs uppercase text-slate-500">
+            CA cumulé micro-BIC
+          </p>
           <p className="mt-1 text-xl font-semibold text-synthese">
             {formatEuro(bic.caTotal)}
           </p>
@@ -59,7 +65,9 @@ export default async function Page() {
         href="/synthese/tva"
         className={`block rounded-lg border p-4 ${vatToConfirm ? "border-red-200 bg-red-50" : "bg-white"}`}
       >
-        <p className="text-sm font-medium text-slate-700">TVA de la micro-BIC →</p>
+        <p className="text-sm font-medium text-slate-700">
+          TVA de la micro-BIC →
+        </p>
         <p className="mt-1 text-sm text-slate-500">
           {vatSettings.liableFrom
             ? `Assujetti depuis le ${vatSettings.liableFrom.toLocaleDateString("fr-FR")} — déclaration CA12 (3517-S-SD).`
@@ -69,18 +77,24 @@ export default async function Page() {
         </p>
       </Link>
 
-      <div className="rounded-lg border bg-white p-4">
-        <p className="text-sm font-medium text-slate-700">
-          Micro-BA — Maraîchage (pour information)
-        </p>
-        <p className="mt-1 text-xs text-slate-500">
-          Régime distinct (activité agricole séparée) : le seuil pertinent est
-          la moyenne des recettes HT validées sur {ba.yearsConsidered.length === 1 ? "la dernière année disponible" : `les années ${ba.yearsConsidered.join(", ")}`}.
-        </p>
-        <div className="mt-3">
-          <ThresholdBar threshold={ba.check} />
+      {!maraichageHidden && (
+        <div className="rounded-lg border bg-white p-4">
+          <p className="text-sm font-medium text-slate-700">
+            Micro-BA — Maraîchage (pour information)
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Régime distinct (activité agricole séparée) : le seuil pertinent est
+            la moyenne des recettes HT validées sur{" "}
+            {ba.yearsConsidered.length === 1
+              ? "la dernière année disponible"
+              : `les années ${ba.yearsConsidered.join(", ")}`}
+            .
+          </p>
+          <div className="mt-3">
+            <ThresholdBar threshold={ba.check} />
+          </div>
         </div>
-      </div>
+      )}
 
       <p className="text-xs text-slate-400">
         Seuils indicatifs (barème 2026-2028) — à vérifier sur impots.gouv.fr

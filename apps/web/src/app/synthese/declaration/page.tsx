@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { bicRevenueOfYear } from "@/lib/bic/revenue";
 import { formatEuro } from "@/lib/format";
+import { isActivityHidden } from "@/lib/visibility";
 import { ABATTEMENT_SERVICES, ABATTEMENT_VENTES, bicTaxable as taxable } from "@/lib/bic/social";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
   const { year: yearParam } = await searchParams;
   const currentYear = new Date().getFullYear();
   const year = yearParam && Number.isInteger(Number(yearParam)) ? Number(yearParam) : currentYear - 1;
-  const ca = await bicRevenueOfYear(year);
+  const [ca, reventeHidden] = await Promise.all([bicRevenueOfYear(year), isActivityHidden("fruits-legumes")]);
 
-  const rows = [
+  const allRows = [
     {
       label: "Ventes de marchandises (Revente fruits/légumes)",
       box: "5KO",
@@ -28,6 +29,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ y
       rate: ABATTEMENT_SERVICES,
     },
   ];
+  // Installation sans Revente (partenaire) : seule la case services.
+  const rows = reventeHidden ? allRows.filter((r) => r.box !== "5KO") : allRows;
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">

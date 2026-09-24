@@ -1,13 +1,16 @@
 import SubNav from "@/components/SubNav";
+import { notFound } from "next/navigation";
 import { activities } from "@/lib/nav";
+import { isActivityHidden } from "@/lib/visibility";
 
 const activity = activities.find((a) => a.slug === "fruits-legumes")!;
 
-export default function FruitsLegumesLayout({
+export default async function FruitsLegumesLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  if (await isActivityHidden("fruits-legumes")) notFound();
   return (
     <div>
       <div className="px-4 pt-6 md:px-6">
