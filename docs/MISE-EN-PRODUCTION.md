@@ -254,8 +254,9 @@ les [crochets] avant l'envoi.
 2. **Au moment de quitter ta plateforme actuelle** (idéalement au
    1er janvier, pour ne pas couper l'année en deux) : créer le compte Abby
    (offre gratuite si elle suffit pour recevoir les factures fournisseurs)
-   et changer l'inscription à l'annuaire. Le 1er septembre 2026 est passé :
-   aucun trou sans plateforme pour la réception.
+   et changer l'inscription à l'annuaire. La réception est obligatoire
+   depuis le 1er septembre 2026 : ne jamais rester un seul jour sans
+   plateforme (ouvrir Abby avant de fermer l'ancienne).
 3. **Vers mai–juin 2027** : souscrire **Maîtriser** pour le Maraîchage
    (période d'essai si elle existe), puis tester en vrai : une facture à un
    professionnel, un avoir, un envoi d'e-reporting.
