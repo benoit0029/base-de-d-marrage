@@ -99,9 +99,11 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
 - **D-023** — Sauvegardes chiffrées automatiques : **pas encore en place,
   bloquant** avant de se fier à l'appli seule. Stockage chez un autre
   hébergeur que le VPS (Scaleway possible, bucket séparé).
-- **D-024 (14-15/09)** — Mistral AI pour la lecture des documents, compte
-  au nom de l'entreprise ; limites de l'offre gratuite atteintes le 15/09
-  (erreurs 429). ❓ offre actuelle (gratuite ou payante) à vérifier.
+- **D-024 (14-15/09, précisé 24/09)** — Mistral AI pour la lecture des
+  documents, compte au nom de l'entreprise, **offre gratuite** 👤. Limites
+  atteintes le 15/09 (erreurs 429). L'appli ne réessaie pas
+  automatiquement après une erreur 429. ❓ conditions d'utilisation des
+  données sur l'offre gratuite : à vérifier dans les réglages Mistral.
 - **D-025 (24/09)** — Réglage `HIDDEN_ACTIVITIES` pour masquer des
   activités dans une installation (vide chez Benoît).
 
@@ -164,9 +166,9 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
 - **D-060 (22/09)** — **Import manuel** du relevé (CSV, ou Excel enregistré
   en CSV) dans l'onglet Relevé bancaire de l'activité. Pas de lecture des
   mails de la banque ni d'agent de tri (écarté, voir §16).
-- **D-061 (22/09)** — Comptes bancaires : aujourd'hui **2 comptes pro**
-  (Maraîchage ; Revente + Kerbooth). Un 3ᵉ compte dédié à Kerbooth est
-  recommandé. ❓ ouvert ou non : à confirmer.
+- **D-061 (22/09, confirmé 24/09)** — **3 comptes bancaires pro**, un par
+  activité (Maraîchage, Revente, Kerbooth) 👤 → un onglet Relevé bancaire
+  par activité, import dans le bon onglet.
 - **D-062 (14/09)** — Rapprochement dans les deux sens : dépenses ↔ débits,
   recettes ↔ crédits ; candidats proposés sur une fenêtre de dates (des
   échéances peuvent aller jusqu'à 2 mois).
