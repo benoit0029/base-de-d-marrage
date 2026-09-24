@@ -52,7 +52,7 @@ les seuils et les déclarations.
 - **Numérotation des factures** : le même jour, après suppression des
   factures de test, remettre à zéro les compteurs (table
   `InvoiceSequence`) pour que la première vraie facture soit bien
-  FA2026-001 (ou FA2027-001). Les factures de test créées avant le
+  FA-M2026-001 / FA-K2026-001 (ou 2027). Les factures de test créées avant le
   24/09/2026 gardent leur ancien numéro tant qu'elles existent.
 
 ## 3. Sortie de franchise TVA micro-BIC (Revente + Kerbooth) — CONSTRUIT
@@ -201,7 +201,9 @@ les [crochets] avant l'envoi.
 >    des particuliers, parfois des professionnels.
 >
 > Mes factures et avoirs sont déjà produits par mon propre logiciel de
-> comptabilité (numérotation légale continue FA2026-001, AV2026-001, PDF).
+> comptabilité (deux suites continues sous le même SIRET : FA-M2026-001
+> pour le maraîchage, FA-K2026-001 pour la micro-BIC ; avoirs AV-M… et
+> AV-K… ; PDF).
 > Je souhaite garder ce logiciel et utiliser Abby uniquement pour la
 > transmission (factures électroniques, e-reporting, réception des factures
 > fournisseurs).
@@ -302,8 +304,9 @@ Reste :
   activités dans une installation — chez le partenaire
   `HIDDEN_ACTIVITIES=maraichage,fruits-legumes`. Vide chez Benoît.
 
-- **Numéros de facture** : FA2026-001, avoirs AV2026-001, devis
-  DE2026-001 ; une suite par entreprise (micro-BA d'un côté, micro-BIC
+- **Numéros de facture** (modifié le 24/09/2026 : un seul SIRET pour les
+  trois activités) : FA-M2026-001 pour le Maraîchage, FA-K2026-001 pour la
+  micro-BIC ; avoirs AV-M… / AV-K…, devis DE-M… / DE-K… ; deux suites (micro-BA d'un côté, micro-BIC
   Revente + Kerbooth de l'autre), sans trou, remise à 001 chaque année.
   L'appli refuse une facture datée avant la dernière facture de la même
   suite.

@@ -2,11 +2,12 @@ import type { Activity, InvoiceType, Prisma } from "@prisma/client";
 
 // Numérotation légale des factures : chronologique et continue, sans trou
 // ni réattribution (mention obligatoire, art. 242 nonies A de l'annexe II au
-// CGI — règle connue, non relue sur le texte depuis l'outil). Une suite par
-// ENTREPRISE (SIRET) : "BA" pour le Maraîchage (exploitation agricole), "BIC"
-// pour Revente + Kerbooth (une seule micro-entreprise → une seule suite).
-// Format choisi par Benoît : FA2026-001 (facture), AV2026-001 (avoir),
-// DE2026-001 (devis, pas d'obligation légale mais même logique).
+// CGI — règle connue, non relue sur le texte depuis l'outil). Deux suites
+// sous le même SIRET : "BA" pour le Maraîchage (micro-BA), "BIC" pour
+// Revente + Kerbooth (micro-BIC). Chaque suite a sa lettre dans le numéro,
+// pour qu'aucun numéro ne soit en double dans l'entreprise (choix de Benoît,
+// 24/09/2026) : FA-M2026-001 / FA-K2026-001 (factures), AV-M… / AV-K…
+// (avoirs), DE-M… / DE-K… (devis, pas d'obligation légale mais même logique).
 
 export type InvoiceSeries = "BA" | "BIC";
 
@@ -16,8 +17,10 @@ export function seriesOf(activity: Activity): InvoiceSeries {
 
 const KIND: Record<InvoiceType, "FA" | "AV" | "DE"> = { FACTURE: "FA", AVOIR: "AV", DEVIS: "DE" };
 
-export function formatInvoiceNumber(type: InvoiceType, year: number, sequence: number): string {
-  return `${KIND[type]}${year}-${String(sequence).padStart(3, "0")}`;
+const SERIES_LETTER: Record<InvoiceSeries, "M" | "K"> = { BA: "M", BIC: "K" };
+
+export function formatInvoiceNumber(type: InvoiceType, series: InvoiceSeries, year: number, sequence: number): string {
+  return `${KIND[type]}-${SERIES_LETTER[series]}${year}-${String(sequence).padStart(3, "0")}`;
 }
 
 /**
@@ -42,5 +45,5 @@ export async function nextInvoiceNumber(
     create: { tenantId, series, kind, year, lastNumber: 1 },
     update: { lastNumber: { increment: 1 } },
   });
-  return { series, number: formatInvoiceNumber(type, year, seq.lastNumber) };
+  return { series, number: formatInvoiceNumber(type, series, year, seq.lastNumber) };
 }

@@ -74,7 +74,7 @@ export default async function Page() {
           tone: pendingDepenses > 0 ? "todo" : "ok",
         },
         {
-          label: "Factures numérotées (FA2026-001…, avoirs AV…) — une seule suite pour la micro-entreprise",
+          label: "Factures numérotées (FA-K2026-001…, avoirs AV-K…) — une suite pour la micro-BIC, distincte du Maraîchage (FA-M…)",
           links: [
             { href: "/photobooth/factures", tab: "Kerbooth → Factures" },
             { href: "/fruits-legumes/factures", tab: "Revente → Factures" },

@@ -206,7 +206,7 @@ export class CreditNoteError extends Error {}
 /**
  * Annule une facture par une FACTURE D'AVOIR (une facture émise n'est
  * jamais modifiée ni supprimée) : avoir total, mêmes lignes en négatif,
- * numéroté dans sa propre suite (AV2026-001…), à une date qui respecte
+ * numéroté dans sa propre suite (AV-M2026-001 ou AV-K2026-001…), à une date qui respecte
  * l'ordre chronologique. Effet comptable (comptabilité de caisse) :
  * - facture pas encore encaissée → elle passe « annulée », l'avoir n'a aucun
  *   effet sur le chiffre d'affaires ;
