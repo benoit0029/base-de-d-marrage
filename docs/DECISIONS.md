@@ -318,6 +318,9 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   juridique) tenu à jour à chaque évolution ; chez lui
   `HIDDEN_ACTIVITIES=maraichage,fruits-legumes`, numéros FA-K…, régime
   URSSAF mensuel ou trimestriel.
+- **D-133 (24/09)** — Guide et mémo du zip rangés dans `docs/partenaire/`
+  (avec la façon de régénérer le zip) ; zip ressorti quand Benoît le
+  demande.
 
 ## 15. Historique de l'appli (journal d'audit)
 
