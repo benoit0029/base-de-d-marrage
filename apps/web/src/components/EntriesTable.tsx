@@ -4,6 +4,7 @@ import { entryCashLabel } from "@/lib/cashStatus";
 import { yearOfIsoDate } from "@/lib/fiscalYear/rowYear";
 import RegisterActions from "@/components/RegisterActions";
 import MarkPaidButton from "@/components/MarkPaidButton";
+import ReclassifyEntryButton from "@/components/ReclassifyEntryButton";
 
 const sourceLabel: Record<FakeEntry["source"], string> = {
   email: "📧 Email",
@@ -62,7 +63,12 @@ export default function EntriesTable({
               <td className="px-4 py-2.5 whitespace-nowrap">
                 {formatDate(entry.date)}
               </td>
-              <td className="px-4 py-2.5">{typeLabel[entry.type]}</td>
+              <td className="px-4 py-2.5">
+                {typeLabel[entry.type]}
+                {entry.type !== "recette" && !locked && (
+                  <ReclassifyEntryButton entryId={entry.id} type={entry.type} />
+                )}
+              </td>
               <td className="px-4 py-2.5">
                 {entry.counterpartyName}
                 {entry.possibleDuplicate && (

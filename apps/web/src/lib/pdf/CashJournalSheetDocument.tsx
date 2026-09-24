@@ -38,6 +38,8 @@ const styles = StyleSheet.create({
   fieldLineCompact: { flex: 1, borderBottomWidth: 1, borderBottomColor: "#0f172a", height: 19 },
   splitLabel: { fontSize: 11, width: 136, color: "#1e293b" },
   splitGap: { width: 16 },
+  dateLabel: { fontSize: 12, width: 110, color: "#1e293b" },
+  placeLabel: { fontSize: 12, width: 34, color: "#1e293b" },
   totalLabel: { fontSize: 12, width: 165, color: "#0f172a", fontWeight: 700 },
 });
 
@@ -60,7 +62,13 @@ function Sheet({ activityLabel, hasCheck }: { activityLabel: string; hasCheck: b
 
       {hasCheck ? (
         <>
-          <CompactField label="Date de la vente" />
+          <View style={styles.fieldRowCompact}>
+            <Text style={styles.dateLabel}>Date de la vente</Text>
+            <View style={styles.fieldLineCompact} />
+            <View style={styles.splitGap} />
+            <Text style={styles.placeLabel}>Lieu</Text>
+            <View style={styles.fieldLineCompact} />
+          </View>
           <CompactField label="Espèces (€)" />
           <CompactField label="Chèques (€)" />
           <CompactField label="CB (€)" />
@@ -77,6 +85,10 @@ function Sheet({ activityLabel, hasCheck }: { activityLabel: string; hasCheck: b
         <>
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Date de la vente</Text>
+            <View style={styles.fieldLine} />
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Lieu (marché, ferme…)</Text>
             <View style={styles.fieldLine} />
           </View>
           <View style={styles.fieldRow}>

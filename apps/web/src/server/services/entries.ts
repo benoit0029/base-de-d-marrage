@@ -182,3 +182,39 @@ export async function correctEntry(
 
   return updated;
 }
+
+export class EntryNotReclassifiableError extends Error {}
+
+/**
+ * Corrige le classement d'une dépense entre achat courant et immobilisation
+ * (la lecture automatique peut se tromper) — seul le type change, jamais les
+ * montants, y compris sur une écriture déjà validée ; tracé dans le journal
+ * d'audit. Refusé si la dépense est payée dans un exercice déjà clôturé.
+ */
+export async function reclassifyEntry(
+  entryId: string,
+  userId: string | null,
+  type: "ACHAT" | "IMMOBILISATION"
+): Promise<Entry> {
+  const entry = await prisma.entry.findUnique({ where: { id: entryId } });
+  if (!entry || entry.deletedAt) throw new EntryNotFoundError(entryId);
+  if (entry.type !== "ACHAT" && entry.type !== "IMMOBILISATION") throw new EntryNotReclassifiableError(entryId);
+  if (entry.type === type) return entry;
+  await assertDateNotInClosedYear(entry.paidAt, "cette dépense");
+
+  const [updated] = await prisma.$transaction([
+    prisma.entry.update({ where: { id: entryId }, data: { type } }),
+    prisma.auditLog.create({
+      data: {
+        tenantId: entry.tenantId,
+        userId,
+        action: "ENTRY_RECLASSIFIED",
+        entityType: "Entry",
+        entityId: entryId,
+        before: JSON.parse(JSON.stringify(entry)),
+        after: { type },
+      },
+    }),
+  ]);
+  return updated;
+}

@@ -84,6 +84,8 @@ déclaration par Cerfrance.
 passe (clés de test / sandbox).
 
 **Quand** : après les retours INPI, assurance et SIRET définitifs.
+INPI : **réponse favorable reçue le 24/09/2026** — restent l'assurance et le
+SIRET définitif.
 
 **Comment** :
 1. Stripe : activer le compte (pièces d'identité, IBAN), récupérer les clés
@@ -155,8 +157,9 @@ Fiscal / Social / Abby), d'après le document « Obligations micro-BA » :
 Reste :
 - le seuil micro-BA de la page Synthèse compte encore la vente directe en
   TTC au lieu du HT ;
-- les immobilisations sont classées par la lecture automatique des pièces,
-  sans bouton pour corriger le classement dans Dépenses ;
+- les immobilisations sont classées par la lecture automatique des pièces ;
+  bouton « Corriger » dans Dépenses (achat ↔ immobilisation) ajouté le
+  24/09/2026 ;
 - facture électronique : l'outil produit le PDF ; si Abby exige un fichier
   structuré (Factur-X) pour le dépôt, il faudra l'ajouter ;
 - remarques sur le document : il appelle « CA12 » la déclaration agricole,
