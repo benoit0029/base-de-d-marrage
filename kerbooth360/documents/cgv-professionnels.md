@@ -1,10 +1,8 @@
 # Conditions générales de location — clients professionnels (Kerbooth 360°)
 
-> **PROJET — à valider par Benoît** (et idéalement par Cerfrance ou un juriste) avant tout envoi à un vrai client. Rédigé le 25/09/2026 (D-161). Tant qu’il n’est pas validé, le PDF porte la mention « PROJET ».
+> Rédigées le 25/09/2026 à la demande de Benoît (D-161, D-163), chaque règle sourcée ci-dessous. Annexées au **contrat de location professionnels**, signé dans la même fenêtre Yousign que le devis. Les CGV du site kerbooth360.fr (particuliers) ne changent pas.
 >
-> Source utilisée par l’appli : `apps/web/src/lib/kerbooth/cgvPro.ts` — garder les deux fichiers identiques. Les CGV du site kerbooth360.fr (particuliers) ne changent pas.
-
-Ces conditions sont annexées au **contrat de location professionnels**, signé dans la même fenêtre Yousign que le devis.
+> Source utilisée par l’appli : `apps/web/src/lib/kerbooth/cgvPro.ts` — garder les deux fichiers identiques.
 
 ## Article 1 — Objet et champ d'application
 
@@ -16,11 +14,11 @@ Chaque location fait l'objet d'un devis personnalisé, valable 15 jours à compt
 
 ## Article 3 — Prix
 
-Les prix sont ceux du devis signé, en euros. Tant que le Loueur bénéficie de la franchise en base, la TVA n'est pas applicable (art. 293 B du CGI). Les frais de livraison hors zone, s'il y en a, figurent sur le devis.
+Les prix sont ceux du devis signé, en euros. Tant que le Loueur bénéficie de la franchise en base, la TVA n'est pas applicable (art. 293 B du CGI). Les frais de livraison hors zone, s'il y en a, figurent sur le devis. Aucune remise, ristourne ou réduction n'est accordée en dehors de celles figurant sur le devis.
 
 ## Article 4 — Facturation et paiement
 
-La facture est émise à la signature du devis et du contrat. Elle est payable par virement sur le compte indiqué sur la facture, au plus tard à la date d'échéance qui y figure. Aucun escompte n'est accordé pour paiement anticipé. Tout retard de paiement entraîne de plein droit, dès le lendemain de l'échéance et sans rappel préalable, des pénalités de retard égales à trois fois le taux d'intérêt légal en vigueur, ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 € (art. L441-10 du Code de commerce) ; une indemnité complémentaire peut être demandée sur justificatif si les frais de recouvrement exposés sont supérieurs. En cas d'impayé, le Loueur peut suspendre toute autre prestation prévue pour le Client.
+La facture est émise à la signature du devis et du contrat. Elle est payable par virement sur le compte indiqué sur la facture, au plus tard à la date d'échéance qui y figure. Aucun escompte n'est accordé pour paiement anticipé. Tout retard de paiement entraîne de plein droit, dès le lendemain de l'échéance et sans rappel préalable, des pénalités de retard égales à trois fois le taux d'intérêt légal en vigueur, ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 € par facture (art. L441-10 et D441-5 du Code de commerce) ; une indemnité complémentaire peut être demandée sur justificatif si les frais de recouvrement exposés sont supérieurs. En cas d'impayé, le Loueur peut suspendre toute autre prestation prévue pour le Client.
 
 ## Article 5 — Annulation et report
 
@@ -52,13 +50,20 @@ Aucune des parties n'est responsable d'un manquement causé par un cas de force 
 
 ## Article 12 — Droit applicable et litiges
 
-Les présentes conditions sont soumises au droit français. Les parties recherchent une solution amiable avant toute action. À défaut, le litige est porté devant les juridictions du ressort du domicile professionnel du Loueur, dans la mesure permise par la loi.
+Les présentes conditions sont soumises au droit français. Les parties recherchent une solution amiable avant toute action. À défaut, le litige est porté devant la juridiction compétente selon les règles de droit commun.
 
 ---
 
-## Points à faire confirmer (statut de vérification)
+## Sources et statut de vérification
 
-- ❓ Pénalités de retard au minimum de 3 fois le taux d’intérêt légal et indemnité de 40 € (art. L441-10 du Code de commerce) : de mémoire, non vérifié sur Légifrance depuis l’outil. 👤 Benoît dit avoir vérifié les mentions de la facture le 25/09/2026.
-- ❓ Délai de paiement maximum entre professionnels (60 jours) : non vérifié.
-- ❓ Clause limitant la responsabilité au prix de la prestation (article 8) et clause de juridiction (article 12) : à faire relire, leur validité dépend du client (entreprise, association, collectivité).
-- Choix de Benoît à confirmer : annulation par le client = prix dû en totalité (article 5), comme pour les particuliers.
+Les sites officiels (Légifrance, service-public, economie.gouv) sont bloqués depuis l’outil : chaque point est **🔎 sourcé par des sites secondaires** qui citent les textes officiels. Relecture Cerfrance conseillée à l’occasion, mais rien n’est connu comme faux.
+
+| Article | Règle | Texte | Sources |
+|---|---|---|---|
+| 3 | CGV entre professionnels : conditions de règlement, prix, réductions | art. L441-1 C. com. | [economie.gouv.fr (DGCCRF)](https://www.economie.gouv.fr/entreprises/gerer-sa-comptabilite-et-ses-demarches/conditions-generales-de-vente-entre), [CCI Paris IDF](https://www.entreprises.cci-paris-idf.fr/web/reglementation/developpement-entreprise/droit-affaires/conditions-generales-vente-entre-professionnels) |
+| 4 | Pénalités ≥ 3 fois le taux d’intérêt légal, dues sans rappel dès le lendemain de l’échéance ; indemnité de 40 € par facture ; délai max. 60 jours après la facture (ou 45 jours fin de mois) | art. L441-10 et D441-5 C. com. | [Kohen avocats](https://kohenavocats.fr/2026/05/24/68-delais-paiement-professionnels-l-441-10-penalites-retard-recouvrement/), [Lebouard avocats](https://www.lebouard-avocats.fr/post/penalites-retard-transactions-commerciales-france) |
+| 5 | Prix dû en cas d’annulation : valable, mais c’est une **clause pénale** que le juge peut réduire si elle est manifestement excessive (on ne peut pas l’exclure) | art. 1231-5 C. civ. | [CG Legal](https://www.cglegal.fr/actualites/clause-penale-contrat-1231-5.html), [Kohen avocats](https://kohenavocats.fr/2024/12/21/article-1231-5-du-code-civil/) |
+| 8 | Le locataire répond des dégradations et pertes, sauf à prouver qu’elles ont eu lieu sans sa faute | art. 1732 C. civ. | [Uplex](https://uplex.fr/responsabilite-du-locataire-en-cas-de-degradations-article-1732-du-code-civil/) |
+| 8 | Limitation de responsabilité valable entre professionnels, sauf faute lourde ou dolosive et si elle ne vide pas l’obligation essentielle | art. 1170 C. civ. | [CMS](https://cms.law/fr/fra/news-information/clauses-limitatives-de-responsabilite-pour-un-retour-au-droit-civil), [Gdroit (arrêts Faurecia)](https://gdroit.fr/grands-arrets/arrets-faurecia/) |
+| 11 | Force majeure : empêchement temporaire → suspension ; définitif → contrat résolu | art. 1218 C. civ. | [Fiches-droit](https://fiches-droit.com/force-majeure) |
+| 12 | Clause de tribunal imposé valable **seulement entre commerçants** → retirée (associations, collectivités) : tribunal selon le droit commun | art. 48 CPC | [Village de la Justice](https://www.village-justice.com/articles/validite-clause-attributive-juridiction-inseree-dans-des-conditions-generales,38037.html) |

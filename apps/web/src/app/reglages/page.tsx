@@ -21,7 +21,8 @@ const activityBySlug: Record<string, "BA_MARAICHAGE" | "BIC_FRUITS_LEGUMES" | "B
   photobooth: "BIC_PHOTOBOOTH",
 };
 
-const abEligible = new Set(["BA_MARAICHAGE", "BIC_FRUITS_LEGUMES"]);
+// Certification AB : Maraîchage uniquement (D-079).
+const abEligible = new Set(["BA_MARAICHAGE"]);
 
 export default async function Page() {
   const [company, activitySettings, mailboxConnections, paConnection, closures, blockers, nextClosableYear, kerboothUnits] =

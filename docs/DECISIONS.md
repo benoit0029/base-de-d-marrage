@@ -213,8 +213,8 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   régler par virement ; une facture payée le jour même (carte, site) porte
   « Facture acquittée le … » à la place.
 - **D-079 (25/09)** — Code du certificateur AB **FR-BIO-01** dans les
-  coordonnées de l'en-tête des factures du Maraîchage (réglage « Code
-  organisme certificateur AB » de l'activité). La case « logo AB » ne sert
+  coordonnées de l'en-tête des factures, **Maraîchage uniquement** 👤
+  (réglage « Code organisme certificateur AB », retiré de la Revente). La case « logo AB » ne sert
   plus qu'au futur logo (D-071).
 
 ## 9. TVA du Maraîchage (micro-BA)
@@ -339,14 +339,23 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   chèque de 1 500 € par photobooth**, aussi pour les entreprises.
   Workflows : `kerbooth-quote-send`, `kerbooth-quote-daily`, branche
   « devis » ajoutée à `kerbooth-yousign-contract-signed`.
-- **D-161 (25/09)** — **Contrat de location et conditions générales de
-  location pour les professionnels** rédigés par Claude à la demande de
-  Benoît (`kerbooth360/documents/cgv-professionnels.md`) : **PROJET à
-  valider** par Benoît (et Cerfrance/juriste), mention « PROJET » sur le
-  PDF tant que ce n'est pas fait. ❓ non vérifié. Les CGV du site ne
-  changent pas.
+- **D-161 (25/09)** — *Remplacée par D-163.* Contrat de location et
+  conditions générales de location pour les professionnels rédigés par
+  Claude (`kerbooth360/documents/cgv-professionnels.md`), d'abord en
+  « PROJET » à valider. Les CGV du site ne changent pas.
 - **D-162 (25/09)** — Les mails Kerbooth partent de **kerbooth@kalonia.fr**
   (variable `SMTP_FROM` de n8n) 👤.
+- **D-163 (25/09)** — Benoît : « écris-les dès que tout est sourcé » →
+  CGV professionnels **définitives** (plus de mention « PROJET »), chaque
+  règle sourcée 🔎 (sites secondaires citant Légifrance, tableau des
+  sources dans le fichier). Changements dus aux sources : clause de
+  tribunal imposé **retirée** (valable seulement entre commerçants,
+  art. 48 CPC) ; 40 € **par facture** ; « aucune remise hors devis »
+  (art. L441-1). Annulation = prix dû : c'est une clause pénale que le juge
+  peut réduire (art. 1231-5). Relecture Cerfrance conseillée, non bloquante.
+- **D-164 (25/09)** — Mail de confirmation des réservations du **site** :
+  la facture est **jointe en PDF** (l'ancien lien demandait de se connecter
+  à l'appli, le client ne pouvait pas l'ouvrir).
 
 ## 14. Partenaire Kerbooth
 

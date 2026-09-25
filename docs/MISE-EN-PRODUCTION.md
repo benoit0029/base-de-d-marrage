@@ -119,12 +119,14 @@ envoyée par mail, payable par virement (RIB sur la facture).
 1. **Réglages** → Kerbooth 360 (et les autres activités) : saisir l'**IBAN**
    et le **BIC** du compte pro ; Maraîchage : vérifier que le code
    certificateur AB est **FR-BIO-01**.
-2. **Relire et valider** les conditions générales de location aux
-   professionnels : `kerbooth360/documents/cgv-professionnels.md` (idéalement
-   avec Cerfrance). Tant que ce n'est pas fait, le contrat porte « PROJET ».
+2. Conditions générales de location aux professionnels : définitives et
+   sourcées (`kerbooth360/documents/cgv-professionnels.md`) ; relecture
+   Cerfrance conseillée à l'occasion, non bloquante.
 3. **n8n** : importer `kerbooth-quote-send.json` et
    `kerbooth-quote-daily.json`, **réimporter**
-   `kerbooth-yousign-contract-signed.json`, activer, vérifier
+   `kerbooth-yousign-contract-signed.json` et
+   `kerbooth-stripe-payment-received.json` (facture jointe au mail du site),
+   activer, vérifier
    `SMTP_FROM = kerbooth@kalonia.fr`.
 4. **Test complet en sandbox** avec ta propre adresse mail comme client :
    devis → envoi → signature → facture reçue ; puis un devis laissé sans

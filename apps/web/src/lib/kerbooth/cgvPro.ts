@@ -1,14 +1,13 @@
 // Conditions générales de location aux PROFESSIONNELS — Kerbooth 360°
-// (D-161). Annexées au contrat de location envoyé avec chaque devis
-// entreprise. Texte rédigé le 25/09/2026 à la demande de Benoît : À VALIDER
-// par lui (et idéalement par Cerfrance / un juriste) avant tout envoi à un
-// vrai client — tant que CGV_PRO_VALIDATED vaut false, le PDF porte la
-// mention « PROJET ». Copie lisible : kerbooth360/documents/cgv-professionnels.md
-// (garder les deux identiques).
+// (D-161, D-163). Annexées au contrat de location envoyé avec chaque devis
+// entreprise. Rédigées le 25/09/2026 à la demande de Benoît, chaque règle
+// sourcée (sites secondaires citant Légifrance — voir la copie lisible
+// kerbooth360/documents/cgv-professionnels.md, à garder identique).
+// Passer CGV_PRO_VALIDATED à false remet la mention « PROJET » sur le PDF.
 //
 // Les CGV du site kerbooth360.fr (particuliers) ne sont pas modifiées.
 
-export const CGV_PRO_VALIDATED = false;
+export const CGV_PRO_VALIDATED = true;
 
 export const CGV_PRO_TITLE = "Conditions générales de location — clients professionnels";
 
@@ -34,7 +33,8 @@ export const CGV_PRO_ARTICLES: Array<{ title: string; text: string }> = [
     title: "Article 3 — Prix",
     text:
       "Les prix sont ceux du devis signé, en euros. Tant que le Loueur bénéficie de la franchise en base, la TVA " +
-      "n'est pas applicable (art. 293 B du CGI). Les frais de livraison hors zone, s'il y en a, figurent sur le devis.",
+      "n'est pas applicable (art. 293 B du CGI). Les frais de livraison hors zone, s'il y en a, figurent sur le devis. " +
+      "Aucune remise, ristourne ou réduction n'est accordée en dehors de celles figurant sur le devis.",
   },
   {
     title: "Article 4 — Facturation et paiement",
@@ -43,7 +43,8 @@ export const CGV_PRO_ARTICLES: Array<{ title: string; text: string }> = [
       "indiqué sur la facture, au plus tard à la date d'échéance qui y figure. Aucun escompte n'est accordé pour " +
       "paiement anticipé. Tout retard de paiement entraîne de plein droit, dès le lendemain de l'échéance et sans " +
       "rappel préalable, des pénalités de retard égales à trois fois le taux d'intérêt légal en vigueur, ainsi " +
-      "qu'une indemnité forfaitaire pour frais de recouvrement de 40 € (art. L441-10 du Code de commerce) ; une " +
+      "qu'une indemnité forfaitaire pour frais de recouvrement de 40 € par facture (art. L441-10 et D441-5 du Code " +
+      "de commerce) ; une " +
       "indemnité complémentaire peut être demandée sur justificatif si les frais de recouvrement exposés sont " +
       "supérieurs. En cas d'impayé, le Loueur peut suspendre toute autre prestation prévue pour le Client.",
   },
@@ -105,7 +106,7 @@ export const CGV_PRO_ARTICLES: Array<{ title: string; text: string }> = [
     title: "Article 12 — Droit applicable et litiges",
     text:
       "Les présentes conditions sont soumises au droit français. Les parties recherchent une solution amiable " +
-      "avant toute action. À défaut, le litige est porté devant les juridictions du ressort du domicile " +
-      "professionnel du Loueur, dans la mesure permise par la loi.",
+      "avant toute action. À défaut, le litige est porté devant la juridiction compétente selon les règles de " +
+      "droit commun.",
   },
 ];

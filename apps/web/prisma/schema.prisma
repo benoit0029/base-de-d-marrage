@@ -101,7 +101,7 @@ model ActivitySettings {
   activity               Activity
   logoUrl                String?
   accentColorHex         String? // utilisé en bandeau/liseré, jamais en fond plein
-  abCertificationCode    String? // format FR-BIO-XX, uniquement BA_MARAICHAGE / BIC_FRUITS_LEGUMES
+  abCertificationCode    String? // format FR-BIO-XX, BA_MARAICHAGE uniquement (D-079)
   abLogoEnabled          Boolean  @default(false) // désactivé par défaut : à activer seulement après vérification du guide INAO "Règles d'usage de la marque AB"
   legalMentions          String?  @db.Text
   invoicingEnabled       Boolean  @default(false) // actif par défaut pour Maraîchage & Photobooth ; Fruits/Légumes reste 100% vente directe, jamais facturé
