@@ -1,4 +1,5 @@
 import { activities } from "@/lib/nav";
+import { formatIban } from "@/lib/invoicing/iban";
 import { getCompanySettings, listActivitySettings } from "@/server/services/settings";
 import { listMailboxConnections } from "@/server/services/mailboxes";
 import CompanySettingsForm from "@/components/settings/CompanySettingsForm";
@@ -91,6 +92,8 @@ export default async function Page() {
                     invoicingEnabled: s?.invoicingEnabled ?? false,
                     contactEmail: s?.contactEmail ?? "",
                     tvaInstallmentsEnabled: s?.tvaInstallmentsEnabled ?? true,
+                    bankIban: s?.bankIban ? formatIban(s.bankIban) : "",
+                    bankBic: s?.bankBic ?? "",
                   }}
                 />
               </div>

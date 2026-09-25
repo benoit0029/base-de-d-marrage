@@ -107,7 +107,30 @@ reste l'assurance.
    un nœud).
 4. Faire une vraie réservation test de faible montant, puis la rembourser.
 
-## 5. Arrivée du partenaire (Phase 2 — pas avant qu'il crée sa micro)
+## 4bis. Devis entreprise par mail (construit le 25/09/2026, D-160)
+
+**Ce qui est en place** : Kerbooth 360 → Factures → Devis (e-mail, formule
+libre, nombre de photobooths, dates, lieu, délai de paiement) → bouton
+« Envoyer au client » (photobooths bloqués) → devis + contrat signés dans
+la même fenêtre Yousign → relances J+3 / J+10, expiration J+15 → facture
+envoyée par mail, payable par virement (RIB sur la facture).
+
+**À faire de ton côté, dans cet ordre** :
+1. **Réglages** → Kerbooth 360 (et les autres activités) : saisir l'**IBAN**
+   et le **BIC** du compte pro ; Maraîchage : vérifier que le code
+   certificateur AB est **FR-BIO-01**.
+2. **Relire et valider** les conditions générales de location aux
+   professionnels : `kerbooth360/documents/cgv-professionnels.md` (idéalement
+   avec Cerfrance). Tant que ce n'est pas fait, le contrat porte « PROJET ».
+3. **n8n** : importer `kerbooth-quote-send.json` et
+   `kerbooth-quote-daily.json`, **réimporter**
+   `kerbooth-yousign-contract-signed.json`, activer, vérifier
+   `SMTP_FROM = kerbooth@kalonia.fr`.
+4. **Test complet en sandbox** avec ta propre adresse mail comme client :
+   devis → envoi → signature → facture reçue ; puis un devis laissé sans
+   signature pour voir la relance.
+
+ (Phase 2 — pas avant qu'il crée sa micro)
 
 Tout est préparé dans l'archive `kerbooth-partenaire-jourJ.zip` (code +
 guide de déploiement + mémo juridique) et dans le mémo en ligne "Kerbooth —

@@ -5,15 +5,20 @@ import StatusBadge from "@/components/StatusBadge";
 import SendToPaButton from "@/components/invoicing/SendToPaButton";
 import MarkPaidButton from "@/components/MarkPaidButton";
 import CreditNoteButton from "@/components/invoicing/CreditNoteButton";
+import KerboothQuoteActions from "@/components/invoicing/KerboothQuoteActions";
+import { quoteStatusLabel, type KerboothQuoteView } from "@/lib/kerbooth/quoteView";
 
 const TYPE_LABEL: Record<FakeInvoice["type"], string> = { facture: "Facture", devis: "Devis", avoir: "Avoir" };
 
 export default function InvoicesTable({
   invoices,
   paConnected,
+  quotesByInvoiceId = {},
 }: {
   invoices: FakeInvoice[];
   paConnected: boolean;
+  // Devis entreprise Kerbooth, par id du devis.
+  quotesByInvoiceId?: Record<string, KerboothQuoteView>;
 }) {
   if (invoices.length === 0) {
     return (
@@ -85,6 +90,8 @@ export default function InvoicesTable({
                   >
                     {invoiceCashLabel(invoice)}
                   </span>
+                ) : quotesByInvoiceId[invoice.id] ? (
+                  <span className="text-xs text-slate-600">{quoteStatusLabel(quotesByInvoiceId[invoice.id])}</span>
                 ) : (
                   <StatusBadge status={invoice.status} />
                 )}
@@ -124,6 +131,7 @@ export default function InvoicesTable({
                 </a>
               </td>
               <td className="space-y-1 px-4 py-2.5 text-right">
+                {quotesByInvoiceId[invoice.id] && <KerboothQuoteActions quote={quotesByInvoiceId[invoice.id]} />}
                 {invoice.type === "facture" && invoice.status !== "cancelled" && !creditNoteOf.has(invoice.id) && (
                   <CreditNoteButton invoiceId={invoice.id} invoiceNumber={invoice.number} />
                 )}

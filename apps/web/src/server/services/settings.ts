@@ -46,6 +46,8 @@ export async function listActivitySettings() {
         invoicingEnabled: false,
         contactEmail: null,
         tvaInstallmentsEnabled: true,
+        bankIban: null,
+        bankBic: null,
         updatedAt: new Date(),
       }
   );
@@ -59,6 +61,8 @@ export interface ActivitySettingsInput {
   legalMentions?: string | null;
   contactEmail?: string | null;
   tvaInstallmentsEnabled?: boolean;
+  bankIban?: string | null;
+  bankBic?: string | null;
 }
 
 export async function saveActivitySettings(activity: Activity, input: ActivitySettingsInput) {

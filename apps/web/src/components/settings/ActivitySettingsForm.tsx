@@ -22,6 +22,8 @@ export default function ActivitySettingsForm({
     invoicingEnabled: boolean;
     contactEmail: string;
     tvaInstallmentsEnabled: boolean;
+    bankIban: string;
+    bankBic: string;
   };
 }) {
   const boundAction = submitActivitySettings.bind(null, activity);
@@ -118,6 +120,30 @@ export default function ActivitySettingsForm({
           uniquement si la facturation est active pour cette activité.
         </span>
       </label>
+
+      <label className="text-sm">
+        <span className="text-slate-600">IBAN du compte pro de cette activité</span>
+        <input
+          name="bankIban"
+          defaultValue={initial.bankIban}
+          placeholder="FR76 …"
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono"
+        />
+      </label>
+      <label className="text-sm">
+        <span className="text-slate-600">BIC</span>
+        <input
+          name="bankBic"
+          defaultValue={initial.bankBic}
+          placeholder="AGRIFRPP…"
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono"
+        />
+      </label>
+      <p className="-mt-1 text-xs text-slate-400 sm:col-span-2">
+        Imprimé sur les factures à régler par virement (pas sur celles déjà
+        payées par carte au moment de la facture). Laissez vide pour ne pas
+        l&apos;afficher.
+      </p>
 
       <div className="sm:col-span-2 flex items-center gap-3">
         <button

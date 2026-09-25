@@ -122,6 +122,7 @@ export function toClientView(client: Client): FakeClient {
     address: client.address,
     siret: client.siret,
     vatNumber: client.vatNumber,
+    email: client.email,
   };
 }
 

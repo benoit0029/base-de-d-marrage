@@ -5,6 +5,7 @@ import { InvoiceDocument, type InvoicePdfData } from "@/lib/pdf/InvoiceDocument"
 import { ClosingReportDocument, type ClosingReportData } from "@/lib/pdf/ClosingReportDocument";
 import { ClosureRecapDocument, type ClosureRecapData } from "@/lib/pdf/ClosureRecapDocument";
 import { ContractDocument, type ContractPdfData } from "@/lib/pdf/ContractDocument";
+import { BusinessContractDocument, type BusinessContractPdfData } from "@/lib/pdf/BusinessContractDocument";
 import { CashJournalSheetDocument, type CashJournalSheetData } from "@/lib/pdf/CashJournalSheetDocument";
 
 const mimeByExt: Record<string, string> = {
@@ -50,4 +51,8 @@ export async function renderContractPdf(data: ContractPdfData): Promise<Buffer> 
 
 export async function renderCashJournalSheetsPdf(data: CashJournalSheetData): Promise<Buffer> {
   return renderToBuffer(CashJournalSheetDocument(data));
+}
+
+export async function renderBusinessContractPdf(data: BusinessContractPdfData): Promise<Buffer> {
+  return renderToBuffer(BusinessContractDocument(data));
 }

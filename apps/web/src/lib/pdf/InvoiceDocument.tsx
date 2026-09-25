@@ -29,10 +29,31 @@ export interface InvoicePdfData {
     siren: string;
     vatNumber?: string;
     contactEmail?: string;
+    // Organisme certificateur AB (ex. FR-BIO-01), dans les coordonnées.
+    abCertificationCode?: string;
   };
   client: {
     name: string;
     address?: string;
+    siren?: string;
+    vatNumber?: string;
+  };
+  // RIB imprimé sur les factures à régler par virement.
+  bank?: { holder: string; iban: string; bic?: string };
+  // Facture réglée le jour même de son émission (paiement en ligne) :
+  // « acquittée » au lieu du RIB.
+  paidOnIssueDate?: string;
+  // Devis : date limite d'acceptation.
+  validUntil?: string;
+  // Devis Kerbooth entreprise : détail de la prestation et zone de signature
+  // « bon pour accord » (ancre Yousign, voir kerbooth/quotes).
+  kerboothQuote?: {
+    formulaLabel: string;
+    photoboothCount: number;
+    periods: string[];
+    eventLocation: string;
+    depositPerUnit: number;
+    paymentTermDays: number;
   };
   lines: InvoicePdfLine[];
   totalHt: number;
@@ -45,6 +66,15 @@ export interface InvoicePdfData {
   // docs/ARCHITECTURE.md. Une fois confirmé, remplacer par une <Image>.
   abMentionText?: string;
   extraLegalMentions?: string;
+}
+
+// Ancre de signature Yousign (« smart anchor ») : texte blanc minuscule,
+// invisible à l'impression, remplacé par le champ de signature quand le
+// document est envoyé avec parse_anchors=true. s1 = premier signataire.
+export const YOUSIGN_SIGNATURE_ANCHOR = "{{s1|signature|180|60}}";
+
+export function YousignAnchor() {
+  return <Text style={{ color: "#ffffff", fontSize: 4 }}>{YOUSIGN_SIGNATURE_ANCHOR}</Text>;
 }
 
 interface VatGroup {
@@ -129,6 +159,8 @@ const styles = StyleSheet.create({
     fontWeight: 700,
   },
   legal: { marginTop: 28, fontSize: 8, color: "#475569", lineHeight: 1.5 },
+  bankBlock: { marginTop: 20, padding: 8, borderWidth: 1, borderColor: "#cbd5e1", fontSize: 9 },
+  signatureBlock: { marginTop: 24, width: 240, minHeight: 90, borderTopWidth: 1, borderTopColor: "#94a3b8", paddingTop: 6 },
 });
 
 export function InvoiceDocument(data: InvoicePdfData) {
@@ -146,6 +178,11 @@ export function InvoiceDocument(data: InvoicePdfData) {
             <Text style={styles.meta}>{data.company.address}</Text>
             <Text style={styles.meta}>SIREN : {data.company.siren}</Text>
             {data.company.vatNumber && <Text style={styles.meta}>TVA : {data.company.vatNumber}</Text>}
+            {data.company.abCertificationCode && (
+              <Text style={styles.meta}>
+                Certification Agriculture Biologique : {data.company.abCertificationCode}
+              </Text>
+            )}
             {data.company.contactEmail && <Text style={styles.meta}>{data.company.contactEmail}</Text>}
           </View>
           <View>
@@ -155,6 +192,7 @@ export function InvoiceDocument(data: InvoicePdfData) {
             <Text style={styles.meta}>Date : {data.issueDate}</Text>
             {data.creditNoteFor && <Text style={styles.meta}>{data.creditNoteFor}</Text>}
             {data.dueDate && <Text style={styles.meta}>Échéance : {data.dueDate}</Text>}
+            {data.validUntil && <Text style={styles.meta}>Valable jusqu&apos;au : {data.validUntil}</Text>}
           </View>
         </View>
 
@@ -163,8 +201,27 @@ export function InvoiceDocument(data: InvoicePdfData) {
           <View style={styles.clientBlock}>
             <Text>{data.client.name}</Text>
             {data.client.address && <Text style={styles.meta}>{data.client.address}</Text>}
+            {data.client.siren && <Text style={styles.meta}>SIREN/SIRET : {data.client.siren}</Text>}
+            {data.client.vatNumber && <Text style={styles.meta}>TVA : {data.client.vatNumber}</Text>}
           </View>
         </View>
+
+        {data.kerboothQuote && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Prestation</Text>
+            <Text>
+              Formule : {data.kerboothQuote.formulaLabel} — {data.kerboothQuote.photoboothCount}{" "}
+              photobooth{data.kerboothQuote.photoboothCount > 1 ? "s" : ""} 360°
+            </Text>
+            {data.kerboothQuote.periods.map((p, i) => (
+              <Text key={i} style={styles.meta}>
+                {data.kerboothQuote!.periods.length > 1 ? `Prestation ${i + 1} : ` : "Date : "}
+                {p}
+              </Text>
+            ))}
+            <Text style={styles.meta}>Lieu d&apos;installation : {data.kerboothQuote.eventLocation}</Text>
+          </View>
+        )}
 
         <View style={styles.table}>
           <View style={styles.tableHeaderRow}>
@@ -216,18 +273,64 @@ export function InvoiceDocument(data: InvoicePdfData) {
           </View>
         </View>
 
+        {data.paidOnIssueDate ? (
+          <View style={styles.legal}>
+            <Text style={{ fontWeight: 700 }}>Facture acquittée le {data.paidOnIssueDate}.</Text>
+          </View>
+        ) : (
+          data.bank &&
+          data.documentTitle === "Facture" && (
+            <View style={styles.bankBlock}>
+              <Text style={styles.sectionLabel}>Règlement par virement</Text>
+              <Text>Titulaire : {data.bank.holder}</Text>
+              <Text>IBAN : {data.bank.iban}</Text>
+              {data.bank.bic && <Text>BIC : {data.bank.bic}</Text>}
+              <Text style={styles.meta}>Référence à indiquer : {data.number}</Text>
+            </View>
+          )
+        )}
+
+        {data.kerboothQuote && (
+          <View style={styles.legal}>
+            <Text>
+              Règlement par virement, à réception de la facture émise à la signature, au plus
+              tard {data.kerboothQuote.paymentTermDays} jours après celle-ci. Caution : chèque
+              de {euro(data.kerboothQuote.depositPerUnit)} par photobooth (soit{" "}
+              {euro(data.kerboothQuote.depositPerUnit * data.kerboothQuote.photoboothCount)}),
+              remis à la livraison et restitué à la récupération du matériel. Conditions :
+              contrat de location et conditions générales de location aux professionnels
+              joints.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.legal}>
           {!data.vatApplicable && <Text>TVA non applicable, art. 293 B du CGI.</Text>}
           {!data.creditNoteFor && (
             <Text>
-              Délai de règlement : 30 jours à compter de la date de facture. Pénalité de
-              retard : taux d&apos;intérêt légal en vigueur. Indemnité forfaitaire pour
-              frais de recouvrement en cas de retard de paiement : 40 € (professionnels).
+              Délai de règlement :{" "}
+              {data.dueDate
+                ? `au plus tard le ${data.dueDate}`
+                : data.kerboothQuote
+                  ? "voir ci-dessus"
+                  : "30 jours à compter de la date de facture"}
+              .
+              Pénalités de retard : trois fois le taux d&apos;intérêt légal en vigueur.
+              Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement :
+              40 € (professionnels). Pas d&apos;escompte pour paiement anticipé.
             </Text>
           )}
           {data.abMentionText && <Text>{data.abMentionText}</Text>}
           {data.extraLegalMentions && <Text>{data.extraLegalMentions}</Text>}
         </View>
+
+        {data.kerboothQuote && (
+          <View style={styles.signatureBlock} wrap={false}>
+            <Text style={{ fontWeight: 700 }}>Bon pour accord — le Client</Text>
+            <Text style={styles.meta}>Signature électronique (Yousign) valant acceptation du devis</Text>
+            <YousignAnchor />
+          </View>
+        )}
       </Page>
     </Document>
   );

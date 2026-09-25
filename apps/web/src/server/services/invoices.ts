@@ -76,6 +76,10 @@ export interface CreateInvoiceInput {
   type: InvoiceType;
   clientName: string;
   clientAddress?: string;
+  clientSiren?: string;
+  clientVatNumber?: string;
+  // Seulement pour compléter le répertoire (n'apparaît pas sur la facture).
+  clientEmail?: string;
   issueDate: Date;
   dueDate?: Date;
   lines: InvoiceLineInput[];
@@ -123,7 +127,13 @@ export async function createInvoice(input: CreateInvoiceInput) {
   // jamais un pré-requis bloquant — un échec ici ne doit jamais empêcher la
   // création de la facture elle-même.
   try {
-    await upsertClient(input.activity, { name: input.clientName, address: input.clientAddress });
+    await upsertClient(input.activity, {
+      name: input.clientName,
+      address: input.clientAddress,
+      siret: input.clientSiren,
+      vatNumber: input.clientVatNumber,
+      email: input.clientEmail,
+    });
     await Promise.all(
       lines.map((l) =>
         ensureProduct(input.activity, {
@@ -152,6 +162,8 @@ export async function createInvoice(input: CreateInvoiceInput) {
         number,
         clientName: input.clientName,
         clientAddress: input.clientAddress,
+        clientSiren: input.clientSiren || null,
+        clientVatNumber: input.clientVatNumber || null,
         issueDate: input.issueDate,
         dueDate: input.dueDate,
         status: input.type === "DEVIS" ? "DRAFT" : "SENT",
@@ -240,6 +252,8 @@ export async function createCreditNote(invoiceId: string, issueDate: Date, userI
         number,
         clientName: invoice.clientName,
         clientAddress: invoice.clientAddress,
+        clientSiren: invoice.clientSiren,
+        clientVatNumber: invoice.clientVatNumber,
         issueDate,
         status: "SENT",
         vatApplicable: invoice.vatApplicable,

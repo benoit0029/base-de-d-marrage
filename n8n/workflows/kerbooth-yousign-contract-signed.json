@@ -1,5 +1,5 @@
 {
-  "name": "Kerbooth 360° — Contrat signé (Yousign) → envoi du paiement",
+  "name": "Kerbooth 360° — Contrat signé (Yousign) → paiement (site) ou facture (devis entreprise)",
   "nodes": [
     {
       "parameters": {
@@ -12,7 +12,10 @@
       "name": "Webhook Yousign (signature_request.done)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        120,
+        300
+      ],
       "webhookId": "kerbooth-yousign-contract-signed",
       "notes": "À configurer côté Yousign : webhook sur l'événement signature_request.done. Le bookingId doit être passé en métadonnée externe (external_id) à la création de la demande de signature (voir workflow kerbooth-booking-request, qui envoie désormais le contrat AVANT le paiement — revu le 20/09/2026) pour être retrouvé ici."
     },
@@ -23,8 +26,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -36,7 +45,10 @@
       "name": "Passer la réservation en attente de paiement",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300]
+      "position": [
+        820,
+        560
+      ]
     },
     {
       "parameters": {
@@ -48,20 +60,50 @@
         "specifyBody": "keypair",
         "bodyParameters": {
           "parameters": [
-            { "name": "mode", "value": "payment" },
-            { "name": "ui_mode", "value": "embedded_page" },
-            { "name": "return_url", "value": "https://kerbooth360.fr/?paiement=confirme" },
-            { "name": "customer_email", "value": "={{ $json.clientEmail }}" },
-            { "name": "line_items[0][price_data][currency]", "value": "eur" },
-            { "name": "line_items[0][price_data][unit_amount]", "value": "={{ Math.round($json.totalAmount * 100) }}" },
-            { "name": "line_items[0][price_data][product_data][name]", "value": "=Location Kerbooth 360° — {{ $json.formula }}" },
-            { "name": "line_items[0][quantity]", "value": "1" },
-            { "name": "metadata[bookingId]", "value": "={{ $json.id }}" }
+            {
+              "name": "mode",
+              "value": "payment"
+            },
+            {
+              "name": "ui_mode",
+              "value": "embedded_page"
+            },
+            {
+              "name": "return_url",
+              "value": "https://kerbooth360.fr/?paiement=confirme"
+            },
+            {
+              "name": "customer_email",
+              "value": "={{ $json.clientEmail }}"
+            },
+            {
+              "name": "line_items[0][price_data][currency]",
+              "value": "eur"
+            },
+            {
+              "name": "line_items[0][price_data][unit_amount]",
+              "value": "={{ Math.round($json.totalAmount * 100) }}"
+            },
+            {
+              "name": "line_items[0][price_data][product_data][name]",
+              "value": "=Location Kerbooth 360° — {{ $json.formula }}"
+            },
+            {
+              "name": "line_items[0][quantity]",
+              "value": "1"
+            },
+            {
+              "name": "metadata[bookingId]",
+              "value": "={{ $json.id }}"
+            }
           ]
         },
         "options": {
           "response": {
-            "response": { "neverError": true, "fullResponse": true }
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
           }
         }
       },
@@ -69,7 +111,10 @@
       "name": "Créer la page de paiement (Stripe)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 300],
+      "position": [
+        1040,
+        560
+      ],
       "notes": "ui_mode \"embedded_page\" (revu le 22/09/2026, parcours embarqué ; ex-\"embedded\", renommé par Stripe en mars 2026) : le client paie directement sur kerbooth360.fr au lieu d'être redirigé vers checkout.stripe.com — le site récupère le client_secret via l'endpoint de statut (workflow kerbooth-booking-status) pendant qu'il patiente sur la page après signature. return_url ne sert que de repli pour les moyens de paiement qui exigent une redirection (pas la carte bancaire en usage normal). Body construit dynamiquement à partir de la réservation renvoyée par le nœud précédent (paiement direct en une fois, plus d'acompte/solde séparés) : montant total en centimes, email client, bookingId en métadonnée (pour que le webhook checkout.session.completed, workflow kerbooth-stripe-payment-received, retrouve la réservation)."
     },
     {
@@ -79,8 +124,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.INGEST_API_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -92,7 +143,10 @@
       "name": "Enregistrer le client_secret (app compta)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 300],
+      "position": [
+        1260,
+        560
+      ],
       "notes": "Rend le client_secret disponible pour le site via GET .../status (workflow kerbooth-booking-status), pendant que le client patiente sur la page de réservation après avoir signé."
     },
     {
@@ -108,25 +162,366 @@
       "name": "Envoyer la confirmation de signature au client",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [1120, 300],
+      "position": [
+        1480,
+        560
+      ],
       "notes": "Email de repli uniquement (revu le 22/09/2026, parcours embarqué) : plus de lien de paiement cliquable, ui_mode \"embedded_page\" ne fournit pas d'URL Stripe hébergée. Le parcours normal reste sur la page kerbooth360.fr, cet email couvre juste le cas où le client aurait fermé l'onglet."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c3ee3a67-1868-5447-9c88-19248fecbc82",
+              "leftValue": "={{ String($('Webhook Yousign (signature_request.done)').item.json.body.data.signature_request.external_id || '').startsWith('devis:') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8784142b-1277-5613-9960-2e4289e52c49",
+      "name": "Devis entreprise ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        360,
+        300
+      ],
+      "notes": "Ajouté le 25/09/2026 (D-160) : external_id \"devis:<id>\" = devis entreprise envoyé par mail (workflow kerbooth-quote-send). Sinon : réservation du site, parcours inchangé (branche « faux »)."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/quotes/{{ $('Webhook Yousign (signature_request.done)').item.json.body.data.signature_request.external_id.slice(6) }}/signed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ yousignRequestId: $('Webhook Yousign (signature_request.done)').item.json.body.data.signature_request.id, signedAt: new Date().toISOString() }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "6c5b0082-85a0-5c9d-ac45-555955a3632e",
+      "name": "Devis signé (app compta)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        120
+      ],
+      "notes": "Réservations confirmées et facture émise (virement, RIB sur la facture). Réponse 409 si le devis avait expiré ou été annulé : rien n'est facturé."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "6e0d1782-676a-536f-a46e-9ccfe98d6ac6",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f40218f1-33f8-5ce8-a496-dc709ffe4269",
+      "name": "Facture émise ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        820,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "833ca341-d165-56df-b114-283c82116538",
+              "leftValue": "={{ $json.body.alreadyProcessed }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "04b5d601-2915-57dd-97cf-f89d3e5b85e4",
+      "name": "Premier passage ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        40
+      ],
+      "notes": "Webhook rejoué par Yousign : la facture existe déjà, pas de second mail."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}{{ $('Devis signé (app compta)').item.json.body.invoicePdfPath }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "ea8af604-c3a1-52eb-b555-10bb11983f4b",
+      "name": "Télécharger la facture (PDF)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1260,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $('Devis signé (app compta)').item.json.body.clientEmail }}",
+        "subject": "=Kerbooth 360° — réservation confirmée, facture {{ $('Devis signé (app compta)').item.json.body.invoiceNumber }}",
+        "emailFormat": "text",
+        "text": "=Bonjour,\n\nMerci ! Le devis {{ $('Devis signé (app compta)').item.json.body.devisNumber }} et le contrat de location sont signés : votre réservation Kerbooth 360° est confirmée ({{ $('Devis signé (app compta)').item.json.body.periods.join(', ') }}).\n\nVous trouverez ci-joint la facture {{ $('Devis signé (app compta)').item.json.body.invoiceNumber }} ({{ $('Devis signé (app compta)').item.json.body.totalTtc.toFixed(2).replace('.', ',') }} €), à régler par virement — coordonnées bancaires sur la facture — au plus tard le {{ $('Devis signé (app compta)').item.json.body.dueDate }}. Les documents signés vous sont envoyés par Yousign.\n\nRappel : un chèque de caution de 1 500 € par photobooth ({{ $('Devis signé (app compta)').item.json.body.depositTotal }} € au total) est à remettre à la livraison.\n\nÀ bientôt,\nKerbooth 360°",
+        "options": {
+          "attachments": "data"
+        }
+      },
+      "id": "d3aade0e-2946-5241-be7b-43f72bb99ed7",
+      "name": "Envoyer la facture au client",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1480,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
+        "subject": "=Kerbooth 360° — devis {{ $('Devis signé (app compta)').item.json.body.devisNumber }} signé",
+        "emailFormat": "text",
+        "text": "={{ $('Devis signé (app compta)').item.json.body.clientName }} a signé le devis {{ $('Devis signé (app compta)').item.json.body.devisNumber }}. Facture {{ $('Devis signé (app compta)').item.json.body.invoiceNumber }} envoyée ({{ $('Devis signé (app compta)').item.json.body.totalTtc }} €, échéance {{ $('Devis signé (app compta)').item.json.body.dueDate }}). Réservations confirmées : {{ $('Devis signé (app compta)').item.json.body.periods.join(', ') }}.",
+        "options": {}
+      },
+      "id": "1269617d-bc3f-5a17-a29e-d51851180227",
+      "name": "Prévenir Benoît (devis signé)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1700,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
+        "subject": "Kerbooth 360° — signature d'un devis à vérifier",
+        "emailFormat": "text",
+        "text": "=Yousign a reçu une signature, mais l'appli n'a rien facturé : {{ $json.body.error }}\n\nDemande Yousign : {{ $('Webhook Yousign (signature_request.done)').item.json.body.data.signature_request.id }}",
+        "options": {}
+      },
+      "id": "5a88792a-2003-566c-969e-612585c77d54",
+      "name": "Prévenir Benoît (signature refusée)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        220
+      ]
     }
   ],
   "connections": {
     "Webhook Yousign (signature_request.done)": {
-      "main": [[{ "node": "Passer la réservation en attente de paiement", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Devis entreprise ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Passer la réservation en attente de paiement": {
-      "main": [[{ "node": "Créer la page de paiement (Stripe)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Créer la page de paiement (Stripe)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Créer la page de paiement (Stripe)": {
-      "main": [[{ "node": "Enregistrer le client_secret (app compta)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enregistrer le client_secret (app compta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enregistrer le client_secret (app compta)": {
-      "main": [[{ "node": "Envoyer la confirmation de signature au client", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Envoyer la confirmation de signature au client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Devis entreprise ?": {
+      "main": [
+        [
+          {
+            "node": "Devis signé (app compta)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Passer la réservation en attente de paiement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Devis signé (app compta)": {
+      "main": [
+        [
+          {
+            "node": "Facture émise ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facture émise ?": {
+      "main": [
+        [
+          {
+            "node": "Premier passage ?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prévenir Benoît (signature refusée)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Premier passage ?": {
+      "main": [
+        [
+          {
+            "node": "Télécharger la facture (PDF)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Télécharger la facture (PDF)": {
+      "main": [
+        [
+          {
+            "node": "Envoyer la facture au client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envoyer la facture au client": {
+      "main": [
+        [
+          {
+            "node": "Prévenir Benoît (devis signé)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "id": "f1f1f1f1-0003-4000-8000-000000000001"
 }

@@ -201,6 +201,21 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   en négatif à la date du remboursement.
 - **D-076** — Le jour du nettoyage des données de test : remettre les
   compteurs de numéros à zéro.
+- **D-077 (25/09)** — Mentions pour les **clients professionnels** sur
+  toutes les factures et devis : pénalités de retard à **3 fois le taux
+  d'intérêt légal** (au lieu du taux légal), « **pas d'escompte pour
+  paiement anticipé** », **SIREN/SIRET et n° de TVA du client** (figés sur
+  la facture, repris du répertoire), alerte si l'**adresse du client** est
+  vide. La date d'échéance, quand elle existe, remplace « 30 jours ».
+  👤 Benoît a vérifié (25/09) ; ❓ de mon côté, non vérifié sur Légifrance.
+- **D-078 (25/09)** — **RIB sur les factures** : IBAN + BIC par activité
+  (Réglages, un compte pro par activité, D-061), imprimé sur les factures à
+  régler par virement ; une facture payée le jour même (carte, site) porte
+  « Facture acquittée le … » à la place.
+- **D-079 (25/09)** — Code du certificateur AB **FR-BIO-01** dans les
+  coordonnées de l'en-tête des factures du Maraîchage (réglage « Code
+  organisme certificateur AB » de l'activité). La case « logo AB » ne sert
+  plus qu'au futur logo (D-071).
 
 ## 9. TVA du Maraîchage (micro-BA)
 
@@ -308,6 +323,30 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   « Form URL Encoded » (non conservé à l'import).
 - **D-129 (20/09)** — Rappel URSSAF mensuel : désormais inactif en régime
   MSA (D-095).
+- **D-160 (25/09)** — **Devis entreprise par mail** (complète D-124, qui
+  reste la règle pour les particuliers du site) : les entreprises ne
+  réservent jamais sur le site, c'est **toujours Benoît qui fait le devis**
+  (Kerbooth 360 → Factures → Devis). Le devis porte : e-mail du client,
+  **formule en texte libre** (1 jour, 1 semaine, 3 mois, 3 prestations…),
+  **nombre de photobooths**, une ou plusieurs **dates de prestation**, lieu,
+  délai de paiement. Bouton « **Envoyer au client** » → **unités bloquées
+  dès l'envoi** (une réservation par photobooth et par prestation) → n8n
+  envoie **devis + contrat de location dans la même fenêtre Yousign**, par
+  mail → **relances J+3 et J+10** → **expiration à J+15** (unités
+  libérées, Benoît prévenu). À la signature : réservations confirmées,
+  **facture émise et envoyée par mail**, payable **par virement** (RIB sur
+  la facture, D-078) ; encaissement pointé au relevé bancaire. **Caution :
+  chèque de 1 500 € par photobooth**, aussi pour les entreprises.
+  Workflows : `kerbooth-quote-send`, `kerbooth-quote-daily`, branche
+  « devis » ajoutée à `kerbooth-yousign-contract-signed`.
+- **D-161 (25/09)** — **Contrat de location et conditions générales de
+  location pour les professionnels** rédigés par Claude à la demande de
+  Benoît (`kerbooth360/documents/cgv-professionnels.md`) : **PROJET à
+  valider** par Benoît (et Cerfrance/juriste), mention « PROJET » sur le
+  PDF tant que ce n'est pas fait. ❓ non vérifié. Les CGV du site ne
+  changent pas.
+- **D-162 (25/09)** — Les mails Kerbooth partent de **kerbooth@kalonia.fr**
+  (variable `SMTP_FROM` de n8n) 👤.
 
 ## 14. Partenaire Kerbooth
 
@@ -339,5 +378,13 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
 - **D-152 (20/09)** — Lien d'annulation avec remboursement automatique :
   retiré (contradictoire avec D-123).
 - **D-153 (20/09)** — Supabase / Abby pour Kerbooth dès maintenant : non.
+- **D-154 (25/09)** — **Idée gardée pour plus tard** (quand le CA sera
+  important) : un sous-traitant en micro-BIC qui livre, installe, nettoie
+  et répare le matériel. Points relevés : ses factures ne réduisent pas
+  l'impôt ni les cotisations en micro (abattement forfaitaire) → comparer
+  avec le réel ; risque de requalification en salariat ; attestation de
+  vigilance URSSAF tous les 6 mois dès 5 000 € HT/an ; assurances (sa RC
+  pro, matériel transporté, véhicule). ❓ à voir avec Cerfrance le moment
+  venu.
 - **D-154 (24/09)** — **SaaS** (vendre l'outil à d'autres agriculteurs) :
   **abandonné** par Benoît (trop compliqué).

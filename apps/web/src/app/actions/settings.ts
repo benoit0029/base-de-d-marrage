@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { normalizeIban } from "@/lib/invoicing/iban";
 import { saveLogoFile } from "@/lib/storage";
 import { saveActivitySettings, saveCompanySettings } from "@/server/services/settings";
 import type { Activity } from "@prisma/client";
@@ -46,6 +47,7 @@ const abCodeSchema = z
 
 const activityContactEmailSchema = z.string().email().optional().or(z.literal(""));
 
+
 export async function submitActivitySettings(
   activity: Activity,
   _prev: SettingsFormState,
@@ -59,6 +61,16 @@ export async function submitActivitySettings(
   const contactEmail = activityContactEmailSchema.safeParse(formData.get("contactEmail") || "");
   if (!contactEmail.success) {
     return { status: "error", message: "Email de contact invalide." };
+  }
+
+  const rawIban = formData.get("bankIban")?.toString().trim() ?? "";
+  const bankIban = rawIban ? normalizeIban(rawIban) : null;
+  if (rawIban && !bankIban) {
+    return { status: "error", message: "IBAN invalide (vérifie qu'il est recopié sans erreur)." };
+  }
+  const rawBic = formData.get("bankBic")?.toString().replace(/\s+/g, "").toUpperCase() ?? "";
+  if (rawBic && !/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(rawBic)) {
+    return { status: "error", message: "BIC invalide (8 ou 11 caractères)." };
   }
 
   const logoFile = formData.get("logo");
@@ -75,6 +87,8 @@ export async function submitActivitySettings(
     abLogoEnabled: formData.get("abLogoEnabled") === "on",
     invoicingEnabled: formData.get("invoicingEnabled") === "on",
     contactEmail: contactEmail.data || null,
+    bankIban,
+    bankBic: rawBic || null,
     // Case rendue seulement pour BA_MARAICHAGE (voir ActivitySettingsForm) :
     // absente du formulaire des autres activités, jamais écrasée pour elles.
     ...(activity === "BA_MARAICHAGE"

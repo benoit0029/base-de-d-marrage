@@ -40,6 +40,7 @@ export async function submitClient(
     address: formData.get("address")?.toString() || undefined,
     siret: formData.get("siret")?.toString() || undefined,
     vatNumber: formData.get("vatNumber")?.toString() || undefined,
+    email: formData.get("email")?.toString().trim() || undefined,
   };
 
   try {
@@ -67,7 +68,7 @@ export type QuickCreateClientResult =
 // rejoint le répertoire et remplit aussitôt le client de la facture.
 export async function quickCreateClient(
   activity: Activity,
-  raw: { name?: string; address?: string; siret?: string; vatNumber?: string }
+  raw: { name?: string; address?: string; siret?: string; vatNumber?: string; email?: string }
 ): Promise<QuickCreateClientResult> {
   const name = raw.name?.trim();
   if (!name) return { status: "error", message: "Nom du client obligatoire." };
@@ -78,6 +79,7 @@ export async function quickCreateClient(
       address: raw.address?.trim() || undefined,
       siret: raw.siret?.trim() || undefined,
       vatNumber: raw.vatNumber?.trim() || undefined,
+      email: raw.email?.trim() || undefined,
     });
     revalidatePath(activityFacturationPath[activity]);
     return { status: "success", client: toClientView(client) };

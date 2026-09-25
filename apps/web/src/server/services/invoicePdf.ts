@@ -2,6 +2,9 @@ import { getInvoiceWithLines } from "@/server/services/invoices";
 import { getCompanySettings, listActivitySettings } from "@/server/services/settings";
 import { renderInvoicePdf } from "@/lib/pdf/render";
 import { activities } from "@/lib/nav";
+import { formatIban } from "@/lib/invoicing/iban";
+import { KERBOOTH_DEPOSIT_PER_UNIT, formatPeriod } from "@/lib/kerbooth/quotes";
+import { prisma } from "@/server/db/client";
 
 const activityLabel: Record<string, string> = {
   BA_MARAICHAGE: "Maraîchage",
@@ -45,6 +48,14 @@ export async function renderInvoicePdfBuffer(
     listActivitySettings(),
   ]);
   const activitySettings = activitySettingsList.find((s) => s.activity === invoice.activity);
+  const kerboothQuote =
+    invoice.type === "DEVIS"
+      ? await prisma.kerboothQuote.findUnique({
+          where: { quoteInvoiceId: invoice.id },
+          include: { periods: { orderBy: { position: "asc" } } },
+        })
+      : null;
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   const navEntry = activities.find((a) => a.slug === activitySlugByDb[invoice.activity]);
 
   const buffer = await renderInvoicePdf({
@@ -63,8 +74,36 @@ export async function renderInvoicePdfBuffer(
       siren: company?.siren ?? "",
       vatNumber: company?.vatNumber ?? undefined,
       contactEmail: activitySettings?.contactEmail ?? company?.contactEmail ?? undefined,
+      abCertificationCode: activitySettings?.abCertificationCode ?? undefined,
     },
-    client: { name: invoice.clientName, address: invoice.clientAddress ?? undefined },
+    client: {
+      name: invoice.clientName,
+      address: invoice.clientAddress ?? undefined,
+      siren: invoice.clientSiren ?? undefined,
+      vatNumber: invoice.clientVatNumber ?? undefined,
+    },
+    bank: activitySettings?.bankIban
+      ? {
+          holder: company?.legalName ?? "",
+          iban: formatIban(activitySettings.bankIban),
+          bic: activitySettings.bankBic ?? undefined,
+        }
+      : undefined,
+    paidOnIssueDate:
+      invoice.type === "FACTURE" && invoice.paidAt && sameDay(invoice.paidAt, invoice.issueDate)
+        ? invoice.paidAt.toLocaleDateString("fr-FR")
+        : undefined,
+    validUntil: kerboothQuote?.expiresAt?.toLocaleDateString("fr-FR"),
+    kerboothQuote: kerboothQuote
+      ? {
+          formulaLabel: kerboothQuote.formulaLabel,
+          photoboothCount: kerboothQuote.photoboothCount,
+          periods: kerboothQuote.periods.map((p) => formatPeriod(p.start, p.end)),
+          eventLocation: kerboothQuote.eventLocation,
+          depositPerUnit: KERBOOTH_DEPOSIT_PER_UNIT,
+          paymentTermDays: kerboothQuote.paymentTermDays,
+        }
+      : undefined,
     lines: invoice.lines.map((l) => ({
       description: l.description,
       quantity: Number(l.quantity),
@@ -78,10 +117,9 @@ export async function renderInvoicePdfBuffer(
     totalTtc: Number(invoice.totalTtc),
     vatApplicable: invoice.vatApplicable,
     logoUrl: activitySettings?.logoUrl,
-    abMentionText:
-      activitySettings?.abLogoEnabled && activitySettings.abCertificationCode
-        ? `Certifié Agriculture Biologique — ${activitySettings.abCertificationCode}`
-        : undefined,
+    // Le code du certificateur AB figure désormais dans les coordonnées
+    // (abCertificationCode ci-dessus) ; abMentionText reste réservé au futur
+    // logo AB (case « Afficher le logo AB » dans Réglages).
     extraLegalMentions: activitySettings?.legalMentions ?? undefined,
   });
 

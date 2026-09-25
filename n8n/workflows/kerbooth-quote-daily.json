@@ -1,0 +1,254 @@
+{
+  "name": "Kerbooth 360° — Devis entreprise : relances J+3/J+10 et expiration J+15",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "095f3234-8faa-5455-a7a9-37f03f3e2e65",
+      "name": "Chaque matin (9 h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/quotes/daily",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9af012b5-03a6-51c9-a3b4-34f5fe28b241",
+      "name": "Tâches du jour (app compta)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "L'appli expire elle-même les devis non signés à J+15 (photobooths libérés) et renvoie : relances à faire (J+3, J+10), devis expirés, demandes Yousign à annuler. Chaque action n'est renvoyée qu'une fois."
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.first().json.reminders.map((r) => ({ json: r }));"
+      },
+      "id": "225fdc54-3ad1-5936-be8c-13a053a769ac",
+      "name": "Relances à faire",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $json.yousignRequestId }}/signers/{{ $json.yousignSignerId }}/send_reminder",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "be9fe88a-cf0c-5c6f-ae56-9ffb6b1e87c2",
+      "name": "Relancer le client (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        120
+      ],
+      "notes": "Relance officielle Yousign (mail au client avec le lien de signature). Possible seulement tant que la demande est « en cours » et le client « notifié »."
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $input.first().json.expired;\nreturn e.length ? [{ json: { expired: e } }] : [];"
+      },
+      "id": "7840515c-f869-571d-a8ba-d3b4bdd1d297",
+      "name": "Devis expirés",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.NOTIFICATIONS_TO_EMAIL }}",
+        "subject": "Kerbooth 360° — devis non signé(s), photobooths libérés",
+        "emailFormat": "text",
+        "text": "={{ $json.expired.map(e => `- ${e.number} (${e.clientName})`).join('\\n') }}\n\nCes devis n'ont pas été signés sous 15 jours : ils sont expirés et les photobooths sont à nouveau disponibles. Pour relancer le client, refaire un devis (Kerbooth 360 → Factures).",
+        "options": {}
+      },
+      "id": "99b2dbf3-10e7-59a2-a676-eb05e00fe935",
+      "name": "Prévenir Benoît (devis expirés)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.first().json.yousignToCancel.map((c) => ({ json: c }));"
+      },
+      "id": "1bb9495b-0e38-51b5-9d9d-ec38456ba174",
+      "name": "Demandes Yousign à annuler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $json.yousignRequestId }}/cancel",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ reason: \"contractualization_aborted\", custom_note: \"Devis expiré ou annulé.\" }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "c323d442-15e1-55a5-a7e8-4bb239bb65f7",
+      "name": "Annuler la demande (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        480
+      ],
+      "notes": "Le client ne peut plus signer un devis expiré ou annulé par Benoît."
+    }
+  ],
+  "connections": {
+    "Chaque matin (9 h)": {
+      "main": [
+        [
+          {
+            "node": "Tâches du jour (app compta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tâches du jour (app compta)": {
+      "main": [
+        [
+          {
+            "node": "Relances à faire",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Devis expirés",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Demandes Yousign à annuler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Relances à faire": {
+      "main": [
+        [
+          {
+            "node": "Relancer le client (Yousign)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Devis expirés": {
+      "main": [
+        [
+          {
+            "node": "Prévenir Benoît (devis expirés)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demandes Yousign à annuler": {
+      "main": [
+        [
+          {
+            "node": "Annuler la demande (Yousign)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "f1f1f1f1-0011-4000-8000-000000000001"
+}

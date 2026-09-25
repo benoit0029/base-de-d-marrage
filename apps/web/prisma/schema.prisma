@@ -20,19 +20,19 @@ model Tenant {
   name      String
   createdAt DateTime @default(now())
 
-  users             User[]
-  companySettings   CompanySettings?
-  activitySettings  ActivitySettings[]
-  documents         Document[]
-  entries           Entry[]
-  invoices          Invoice[]
-  payrollEmployees  PayrollEmployee[]
-  tvaDeclarations   TvaDeclaration[]
+  users              User[]
+  companySettings    CompanySettings?
+  activitySettings   ActivitySettings[]
+  documents          Document[]
+  entries            Entry[]
+  invoices           Invoice[]
+  payrollEmployees   PayrollEmployee[]
+  tvaDeclarations    TvaDeclaration[]
   thresholdSnapshots ThresholdSnapshot[]
-  paConnections     PaConnection[]
+  paConnections      PaConnection[]
   mailboxConnections MailboxConnection[]
-  notificationLogs  NotificationLog[]
-  auditLogs         AuditLog[]
+  notificationLogs   NotificationLog[]
+  auditLogs          AuditLog[]
   cashJournalEntries CashJournalEntry[]
   simpleImports      SimpleImport[]
   bankTransactions   BankTransaction[]
@@ -42,6 +42,7 @@ model Tenant {
   fiscalYearClosures FiscalYearClosure[]
   kerboothUnits      KerboothUnit[]
   kerboothBookings   KerboothBooking[]
+  kerboothQuotes     KerboothQuote[]
   priorYearRevenues  PriorYearRevenue[]
   staffRegister      StaffRegisterEntry[]
   invoiceSequences   InvoiceSequence[]
@@ -62,14 +63,14 @@ model User {
 }
 
 model CompanySettings {
-  id            String   @id @default(cuid())
-  tenantId      String   @unique
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  legalName     String
-  address       String
-  siren         String
-  vatNumber     String? // TVA intracommunautaire
-  contactEmail  String? // valeur par défaut, reprise par activité si non précisée (voir ActivitySettings.contactEmail)
+  id               String    @id @default(cuid())
+  tenantId         String    @unique
+  tenant           Tenant    @relation(fields: [tenantId], references: [id])
+  legalName        String
+  address          String
+  siren            String
+  vatNumber        String? // TVA intracommunautaire
+  contactEmail     String? // valeur par défaut, reprise par activité si non précisée (voir ActivitySettings.contactEmail)
   // Fin de la franchise en base de TVA de la micro-BIC (Revente + Kerbooth,
   // une seule micro-entreprise) : null = franchise, factures "TVA non
   // applicable, art. 293 B". Détectée automatiquement par l'appli (voir
@@ -84,7 +85,7 @@ model CompanySettings {
   // la MSA — cas de Benoît), "URSSAF_MENSUEL" / "URSSAF_TRIMESTRIEL" =
   // micro-entrepreneur qui déclare son chiffre d'affaires à l'URSSAF.
   bicSocialRegime  String?
-  updatedAt     DateTime @updatedAt
+  updatedAt        DateTime  @updatedAt
 }
 
 enum Activity {
@@ -94,25 +95,29 @@ enum Activity {
 }
 
 model ActivitySettings {
-  id                 String   @id @default(cuid())
-  tenantId           String
-  tenant             Tenant   @relation(fields: [tenantId], references: [id])
-  activity           Activity
-  logoUrl            String?
-  accentColorHex     String? // utilisé en bandeau/liseré, jamais en fond plein
-  abCertificationCode String? // format FR-BIO-XX, uniquement BA_MARAICHAGE / BIC_FRUITS_LEGUMES
-  abLogoEnabled      Boolean  @default(false) // désactivé par défaut : à activer seulement après vérification du guide INAO "Règles d'usage de la marque AB"
-  legalMentions      String?  @db.Text
-  invoicingEnabled   Boolean  @default(false) // actif par défaut pour Maraîchage & Photobooth ; Fruits/Légumes reste 100% vente directe, jamais facturé
-  contactEmail       String?  // email affiché sur les factures de cette activité ; vide = reprend CompanySettings.contactEmail
+  id                     String   @id @default(cuid())
+  tenantId               String
+  tenant                 Tenant   @relation(fields: [tenantId], references: [id])
+  activity               Activity
+  logoUrl                String?
+  accentColorHex         String? // utilisé en bandeau/liseré, jamais en fond plein
+  abCertificationCode    String? // format FR-BIO-XX, uniquement BA_MARAICHAGE / BIC_FRUITS_LEGUMES
+  abLogoEnabled          Boolean  @default(false) // désactivé par défaut : à activer seulement après vérification du guide INAO "Règles d'usage de la marque AB"
+  legalMentions          String?  @db.Text
+  invoicingEnabled       Boolean  @default(false) // actif par défaut pour Maraîchage & Photobooth ; Fruits/Légumes reste 100% vente directe, jamais facturé
+  contactEmail           String? // email affiché sur les factures de cette activité ; vide = reprend CompanySettings.contactEmail
   // Acomptes trimestriels de TVA (régime simplifié agricole, BA_MARAICHAGE
   // uniquement) : dispensés de plein droit si la TVA due l'année précédente
   // était inférieure à 1 000 € (à vérifier chaque année par l'exploitant,
   // ce champ n'automatise pas cette vérification). Vrai par défaut (cas le
   // plus courant), jamais un comportement forcé — voir lib/tva et
   // app/maraichage/acomptes.
-  tvaInstallmentsEnabled Boolean @default(true)
-  updatedAt          DateTime @updatedAt
+  tvaInstallmentsEnabled Boolean  @default(true)
+  // RIB du compte bancaire pro de l'activité (un compte par activité, D-061),
+  // imprimé sur les factures à régler par virement.
+  bankIban               String?
+  bankBic                String?
+  updatedAt              DateTime @updatedAt
 
   @@unique([tenantId, activity])
 }
@@ -137,21 +142,21 @@ enum DocumentStatus {
 }
 
 model Document {
-  id             String         @id @default(cuid())
-  tenantId       String
-  tenant         Tenant         @relation(fields: [tenantId], references: [id])
-  source         DocumentSource
-  status         DocumentStatus @default(RECEIVED)
-  fileUrl        String // chemin du fichier stocké (volume local ou S3-compatible)
-  mimeType       String
-  emailFrom      String?
-  emailSubject   String?
+  id                    String         @id @default(cuid())
+  tenantId              String
+  tenant                Tenant         @relation(fields: [tenantId], references: [id])
+  source                DocumentSource
+  status                DocumentStatus @default(RECEIVED)
+  fileUrl               String // chemin du fichier stocké (volume local ou S3-compatible)
+  mimeType              String
+  emailFrom             String?
+  emailSubject          String?
   // Boîte mail d'origine quand source = EMAIL (une boîte IMAP dédiée par
   // activité, voir .env.example) : indice quasi certain de l'activité,
   // transmis à l'agent de classement en priorité sur l'analyse du contenu.
   sourceMailboxActivity Activity?
-  receivedAt     DateTime       @default(now())
-  extractionJson Json? // dernier résultat structuré de l'agent d'extraction
+  receivedAt            DateTime       @default(now())
+  extractionJson        Json? // dernier résultat structuré de l'agent d'extraction
 
   // Détection de doublon (un même document peut arriver par email ET par
   // capture manuelle) : hash du fichier calculé à l'ingestion, comparé aux
@@ -208,23 +213,23 @@ enum EntryStatus {
 }
 
 model Entry {
-  id              String      @id @default(cuid())
-  tenantId        String
-  tenant          Tenant      @relation(fields: [tenantId], references: [id])
-  activity        Activity
-  type            EntryType
-  status          EntryStatus @default(PENDING)
-  date            DateTime
-  amountHt        Decimal     @db.Decimal(12, 2)
-  amountVat       Decimal     @db.Decimal(12, 2)
-  amountTtc       Decimal     @db.Decimal(12, 2)
+  id               String      @id @default(cuid())
+  tenantId         String
+  tenant           Tenant      @relation(fields: [tenantId], references: [id])
+  activity         Activity
+  type             EntryType
+  status           EntryStatus @default(PENDING)
+  date             DateTime
+  amountHt         Decimal     @db.Decimal(12, 2)
+  amountVat        Decimal     @db.Decimal(12, 2)
+  amountTtc        Decimal     @db.Decimal(12, 2)
   counterpartyName String
-  nature          String
-  sourceDocumentId String?    @unique
-  sourceDocument  Document?   @relation(fields: [sourceDocumentId], references: [id])
-  validatedById   String?
-  validatedAt     DateTime?
-  createdAt       DateTime    @default(now())
+  nature           String
+  sourceDocumentId String?     @unique
+  sourceDocument   Document?   @relation(fields: [sourceDocumentId], references: [id])
+  validatedById    String?
+  validatedAt      DateTime?
+  createdAt        DateTime    @default(now())
 
   // Comptabilité de caisse (micro-BA/micro-BIC) : c'est la date de PAIEMENT,
   // pas la date de facture ci-dessus, qui détermine l'exercice fiscal. Une
@@ -276,15 +281,15 @@ model CashJournalEntry {
   tenant           Tenant      @relation(fields: [tenantId], references: [id])
   activity         Activity
   date             DateTime
-  cashAmount       Decimal     @db.Decimal(12, 2) @default(0)
-  checkAmount      Decimal     @db.Decimal(12, 2) @default(0) // Maraîchage uniquement
-  cardAmount       Decimal     @db.Decimal(12, 2) @default(0) // Maraîchage uniquement
+  cashAmount       Decimal     @default(0) @db.Decimal(12, 2)
+  checkAmount      Decimal     @default(0) @db.Decimal(12, 2) // Maraîchage uniquement
+  cardAmount       Decimal     @default(0) @db.Decimal(12, 2) // Maraîchage uniquement
   // Part DÉJÀ INCLUSE dans cashAmount+checkAmount+cardAmount (pas un montant
   // en plus) correspondant à de la vente de plants, taxée à 10 % — le reste
   // du total du jour est considéré vendu à 5,5 % (fruits/légumes). Maraîchage
   // uniquement ; sert au calcul de la TVA collectée sur vente directe (voir
   // lib/tva, déclaration CA12A/3517-AGR-SD).
-  plantSalesAmount Decimal     @db.Decimal(12, 2) @default(0)
+  plantSalesAmount Decimal     @default(0) @db.Decimal(12, 2)
   location         String? // lieu de vente (marché, ferme…), noté sur la fiche du jour
   // Photo prise CHAQUE jour de vente (comptage de caisse manuscrit ou ticket
   // Z) — PAS le bordereau de dépôt bancaire, qui est hebdomadaire et ne
@@ -338,22 +343,26 @@ enum InvoiceStatus {
 }
 
 model Invoice {
-  id             String        @id @default(cuid())
-  tenantId       String
-  tenant         Tenant        @relation(fields: [tenantId], references: [id])
-  activity       Activity
-  type           InvoiceType
+  id              String        @id @default(cuid())
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  activity        Activity
+  type            InvoiceType
   // Numérotation légale chronologique et continue, par entreprise : série
   // "BA" (Maraîchage, exploitation agricole) ou "BIC" (Revente + Kerbooth,
   // une seule micro-entreprise → une seule suite). Format FA2026-001 (facture),
   // AV2026-001 (avoir), DE2026-001 (devis) — voir lib/invoicing/numbering.
-  series         String        @default("BIC")
-  number         String
-  clientName     String
-  clientAddress  String?
-  issueDate      DateTime
-  dueDate        DateTime?
-  status         InvoiceStatus @default(DRAFT)
+  series          String        @default("BIC")
+  number          String
+  clientName      String
+  clientAddress   String?
+  // Copie figée au moment de la facture (une facture émise ne change plus,
+  // même si la fiche du répertoire est modifiée ensuite).
+  clientSiren     String? // SIREN ou SIRET du client professionnel
+  clientVatNumber String?
+  issueDate       DateTime
+  dueDate         DateTime?
+  status          InvoiceStatus @default(DRAFT)
   // Comptabilité de caisse : c'est la date d'ENCAISSEMENT effectif, pas
   // issueDate, qui détermine l'exercice fiscal (BOFiP BOI-BA-BASE-20-10 en
   // micro-BA, principe identique en micro-BIC). Une facture SENT sans
@@ -361,15 +370,15 @@ model Invoice {
   // n'entre dans aucun calcul de CA/seuil/TVA tant que paidAt est vide.
   // Renseignée manuellement, ou automatiquement au rapprochement bancaire
   // (voir reconcileBankTransaction) avec la date de l'opération pointée.
-  paidAt         DateTime?
-  vatApplicable  Boolean       @default(false) // false tant que franchise en base s'applique
-  abLabelShown   Boolean       @default(false)
-  totalHt        Decimal       @db.Decimal(12, 2)
-  totalVat       Decimal       @db.Decimal(12, 2)
-  totalTtc       Decimal       @db.Decimal(12, 2)
-  pdfUrl         String?
-  paExternalId   String? // référence côté PA (Abby) une fois transmise
-  createdAt      DateTime      @default(now())
+  paidAt          DateTime?
+  vatApplicable   Boolean       @default(false) // false tant que franchise en base s'applique
+  abLabelShown    Boolean       @default(false)
+  totalHt         Decimal       @db.Decimal(12, 2)
+  totalVat        Decimal       @db.Decimal(12, 2)
+  totalTtc        Decimal       @db.Decimal(12, 2)
+  pdfUrl          String?
+  paExternalId    String? // référence côté PA (Abby) une fois transmise
+  createdAt       DateTime      @default(now())
 
   // Rapprochement bancaire (une facture ↔ un crédit du relevé importé).
   bankTransactionId String?          @unique
@@ -407,7 +416,7 @@ model InvoiceLine {
   description String
   quantity    Decimal @db.Decimal(10, 2)
   unitPrice   Decimal @db.Decimal(12, 2)
-  vatRate     Decimal @db.Decimal(5, 2) @default(0)
+  vatRate     Decimal @default(0) @db.Decimal(5, 2)
   lineTotal   Decimal @db.Decimal(12, 2)
   unit        String? // kg, pièce, botte… (affiché à côté de la quantité)
 }
@@ -429,6 +438,7 @@ model Client {
   address   String?
   siret     String?
   vatNumber String? // TVA intracommunautaire, si applicable
+  email     String? // envoi du devis à signer (Kerbooth entreprises)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -445,8 +455,8 @@ model Product {
   activity         Activity
   label            String
   defaultUnitPrice Decimal  @db.Decimal(12, 2)
-  vatRate          Decimal  @db.Decimal(5, 2) @default(0)
-  unit             String?  // kg, pièce, botte…
+  vatRate          Decimal  @default(0) @db.Decimal(5, 2)
+  unit             String? // kg, pièce, botte…
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -458,27 +468,27 @@ model Product {
 // ---------------------------------------------------------------------------
 
 model PayrollEmployee {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  firstName String
-  lastName  String
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  firstName    String
+  lastName     String
   contractInfo Json? // type de contrat, temps de travail, taux horaire, etc.
-  createdAt DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   payslips Payslip[]
 }
 
 model Payslip {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   employeeId  String
   employee    PayrollEmployee @relation(fields: [employeeId], references: [id])
   period      String // ex. "2026-09"
-  grossAmount Decimal  @db.Decimal(12, 2)
-  netAmount   Decimal  @db.Decimal(12, 2)
-  dsnStatus   String?  // statut de transmission DSN
+  grossAmount Decimal         @db.Decimal(12, 2)
+  netAmount   Decimal         @db.Decimal(12, 2)
+  dsnStatus   String? // statut de transmission DSN
   pdfUrl      String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
 }
 
 // ---------------------------------------------------------------------------
@@ -545,13 +555,13 @@ model ThresholdSnapshot {
 // ---------------------------------------------------------------------------
 
 model PaConnection {
-  id             String   @id @default(cuid())
-  tenantId       String   @unique
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  provider       String   @default("ABBY")
+  id              String    @id @default(cuid())
+  tenantId        String    @unique
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  provider        String    @default("ABBY")
   apiKeyEncrypted String
-  status         String   @default("DISCONNECTED") // DISCONNECTED / CONNECTED / ERROR
-  connectedAt    DateTime?
+  status          String    @default("DISCONNECTED") // DISCONNECTED / CONNECTED / ERROR
+  connectedAt     DateTime?
 }
 
 // Boîte mail de capture dédiée à une activité (une par activité, saisie et
@@ -579,13 +589,13 @@ model MailboxConnection {
 // ---------------------------------------------------------------------------
 
 model NotificationLog {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  channel   String // "EMAIL" / "N8N"
-  type      String // ex. "ENTRY_PENDING_TOO_LONG", "THRESHOLD_ALERT", "DECLARATION_DUE"
-  payload   Json?
-  sentAt    DateTime @default(now())
+  id       String   @id @default(cuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  channel  String // "EMAIL" / "N8N"
+  type     String // ex. "ENTRY_PENDING_TOO_LONG", "THRESHOLD_ALERT", "DECLARATION_DUE"
+  payload  Json?
+  sentAt   DateTime @default(now())
 }
 
 // ---------------------------------------------------------------------------
@@ -682,8 +692,8 @@ model BankTransaction {
   deletedAt DateTime? // suppression douce (ligne déjà validée)
   createdAt DateTime  @default(now())
 
-  entry             Entry?
-  invoice           Invoice?
+  entry              Entry?
+  invoice            Invoice?
   // Plusieurs saisies de caisse (dépôt hebdomadaire regroupant plusieurs
   // jours de vente) peuvent pointer vers le même BankTransaction — voir
   // CashJournalEntry.bankTransactionId.
@@ -777,6 +787,10 @@ model KerboothBooking {
   tenant         Tenant                @relation(fields: [tenantId], references: [id])
   unitId         String?
   unit           KerboothUnit?         @relation(fields: [unitId], references: [id])
+  // Réservation créée par un devis entreprise (une par photobooth et par
+  // période) : bloque l'unité dès l'envoi du devis, voir KerboothQuote.
+  quoteId        String?
+  quote          KerboothQuote?        @relation(fields: [quoteId], references: [id])
   clientName     String
   clientEmail    String?
   clientPhone    String?
@@ -784,7 +798,7 @@ model KerboothBooking {
   eventDateEnd   DateTime
   // Adresse de livraison/installation — obligatoire au contrat (article 1,
   // voir kerbooth360/documents/documents-types-kerbooth360.md §5).
-  eventLocation  String  @default("")
+  eventLocation  String                @default("")
   formula        KerboothFormula
   durationDays   Int
   status         KerboothBookingStatus @default(PENDING_SIGNATURE)
@@ -792,8 +806,8 @@ model KerboothBooking {
 
   // Références externes posées par les workflows n8n au fil du parcours —
   // simples chaînes, jamais de FK vers un système tiers (Stripe/Yousign).
-  stripeCustomerId String?
-  yousignRequestId String?
+  stripeCustomerId           String?
+  yousignRequestId           String?
   // client_secret de la session Stripe Checkout embarquée (ui_mode:
   // "embedded") — lu par le site via l'endpoint de statut le temps que le
   // client reste sur la page après la signature (voir déclencheur 4bis,
@@ -808,11 +822,69 @@ model KerboothBooking {
 
   contractSignedAt DateTime?
   cancelledAt      DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([tenantId, eventDateStart, eventDateEnd])
   @@index([tenantId, status])
+  @@index([quoteId])
+}
+
+// Devis Kerbooth pour les entreprises (D-160, 25/09/2026) : toujours proposé
+// par Benoît (jamais sur le site). « Envoyer au client » bloque les unités,
+// puis n8n envoie devis + contrat dans une seule demande Yousign (par mail),
+// relance à J+3 et J+10, expiration à J+15. À la signature : réservations
+// confirmées et facture émise (paiement par virement, RIB sur la facture).
+enum KerboothQuoteStatus {
+  DRAFT // pas encore envoyé
+  TO_SEND // envoi demandé, en attente de n8n (unités déjà bloquées)
+  SENT // demande Yousign envoyée au client
+  SIGNED // devis et contrat signés, facture émise
+  EXPIRED // non signé sous 15 jours, unités libérées
+  CANCELLED // envoi annulé par Benoît, unités libérées
+}
+
+model KerboothQuote {
+  id                 String              @id @default(cuid())
+  tenantId           String
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  quoteInvoiceId     String              @unique // le devis lui-même (Invoice type DEVIS)
+  invoiceId          String?             @unique // facture émise à la signature
+  clientEmail        String
+  formulaLabel       String // libre : « 1 jour », « 3 mois », « 3 prestations »…
+  photoboothCount    Int                 @default(1)
+  eventLocation      String
+  paymentTermDays    Int                 @default(30)
+  status             KerboothQuoteStatus @default(DRAFT)
+  sendRequestedAt    DateTime?
+  sendClaimedAt      DateTime? // pris en charge par n8n (évite un double envoi)
+  sentAt             DateTime?
+  expiresAt          DateTime?
+  reminder1SentAt    DateTime?
+  reminder2SentAt    DateTime?
+  yousignRequestId   String?
+  yousignSignerId    String?
+  yousignCancelledAt DateTime?
+  signedAt           DateTime?
+  closedAt           DateTime? // expiré ou annulé
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  periods  KerboothQuotePeriod[]
+  bookings KerboothBooking[]
+
+  @@index([tenantId, status])
+}
+
+model KerboothQuotePeriod {
+  id       String        @id @default(cuid())
+  quoteId  String
+  quote    KerboothQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  start    DateTime
+  end      DateTime
+  position Int           @default(0)
+
+  @@index([quoteId])
 }
 
 // ---------------------------------------------------------------------------
@@ -855,23 +927,23 @@ model PriorYearRevenue {
 // départ. Mentions reprises du document « Obligations micro-BA » de Benoît
 // (non relues directement sur le code du travail depuis l'outil).
 model StaffRegisterEntry {
-  id             String    @id @default(cuid())
-  tenantId       String
-  tenant         Tenant    @relation(fields: [tenantId], references: [id])
-  lastName       String
-  firstName      String
-  nationality    String
-  birthDate      DateTime
-  sex            String // "F" / "M"
-  jobTitle       String // emploi
-  qualification  String?
-  contractType   String // ex. "CDD saisonnier", "CDI"
-  hireDate       DateTime
-  exitDate       DateTime?
-  workPermit     String? // salarié étranger : type et numéro du titre de travail
+  id              String    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  lastName        String
+  firstName       String
+  nationality     String
+  birthDate       DateTime
+  sex             String // "F" / "M"
+  jobTitle        String // emploi
+  qualification   String?
+  contractType    String // ex. "CDD saisonnier", "CDI"
+  hireDate        DateTime
+  exitDate        DateTime?
+  workPermit      String? // salarié étranger : type et numéro du titre de travail
   infoVisitDoneAt DateTime? // visite d'information et de prévention (3 mois après l'embauche)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([tenantId, hireDate])
 }

@@ -1,0 +1,491 @@
+{
+  "name": "Kerbooth 360° — Devis entreprise : envoi pour signature (Yousign)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "a8bf82e0-beeb-5ffc-a55b-3ba16d4c9285",
+      "name": "Toutes les 2 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/quotes/claim-to-send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "50b91d1f-1e6f-5f74-9491-9b055754aa3a",
+      "name": "Devis à envoyer (app compta)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "Devis entreprise pour lesquels Benoît a cliqué « Envoyer au client » (photobooths déjà bloqués). Chaque devis n'est renvoyé qu'une fois (pris en charge) ; s'il n'est pas confirmé comme envoyé sous 30 min, il est reproposé."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "quotes",
+        "options": {}
+      },
+      "id": "89eacaf5-9388-5780-bd16-e1b4b20f09eb",
+      "name": "Devis à envoyer (un par élément)",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ],
+      "notes": "Aucun devis → aucun élément, rien ne s'exécute après."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-sandbox.yousign.app/v3/signature_requests",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: `Devis ${$('Devis à envoyer (un par élément)').item.json.number} — Kerbooth 360°`, delivery_mode: \"email\", timezone: \"Europe/Paris\", expiration_date: $('Devis à envoyer (un par élément)').item.json.expirationDate, external_id: `devis:${$('Devis à envoyer (un par élément)').item.json.quoteId}` }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "d697f104-5d73-51d7-8c0f-bf345517b42c",
+      "name": "Créer la demande de signature (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ],
+      "notes": "delivery_mode \"email\" : c'est Yousign qui envoie au client le mail de signature (contrairement au site, où la signature est intégrée à la page). external_id = \"devis:<id>\" : le webhook de signature (workflow kerbooth-yousign-contract-signed) reconnaît ainsi un devis entreprise. expiration_date = fin de validité du devis (15 jours)."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}{{ $('Devis à envoyer (un par élément)').item.json.documents.devisPdfPath }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "035293a4-af2b-5432-995c-0252ff8d2feb",
+      "name": "Télécharger le devis (PDF)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $('Créer la demande de signature (Yousign)').item.json.body.id }}/documents",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "nature",
+              "value": "signable_document"
+            },
+            {
+              "name": "parse_anchors",
+              "value": "true"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "f345ba15-0e27-5caa-beca-f74b243234eb",
+      "name": "Attacher le devis (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        300
+      ],
+      "notes": "parse_anchors=true : le PDF contient une ancre invisible {{s1|signature|180|60}} sous « Bon pour accord » ; Yousign la remplace par le champ de signature du client. ⚠️ À vérifier au premier test sandbox : le champ doit apparaître à la bonne place (sinon le placer à la main dans l'aperçu Yousign et me prévenir)."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_URL }}{{ $('Devis à envoyer (un par élément)').item.json.documents.contractPdfPath }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "ebb40757-bf0a-5cf3-8ff3-3d390f0a6a91",
+      "name": "Télécharger le contrat (PDF)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        300
+      ],
+      "notes": "Contrat de location pour professionnels + conditions générales de location aux professionnels en annexe."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $('Créer la demande de signature (Yousign)').item.json.body.id }}/documents",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "nature",
+              "value": "signable_document"
+            },
+            {
+              "name": "parse_anchors",
+              "value": "true"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "0ddcc3d4-6e5b-5537-8ed4-81c419c7d895",
+      "name": "Attacher le contrat (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        300
+      ],
+      "notes": "Même demande que le devis : le client signe les deux documents dans la même fenêtre Yousign."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $('Créer la demande de signature (Yousign)').item.json.body.id }}/signers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ info: { first_name: $('Devis à envoyer (un par élément)').item.json.clientName.split(\" \")[0], last_name: $('Devis à envoyer (un par élément)').item.json.clientName.split(\" \").slice(1).join(\" \") || \"-\", email: $('Devis à envoyer (un par élément)').item.json.clientEmail, locale: \"fr\" }, signature_level: \"electronic_signature\", signature_authentication_mode: \"no_otp\" }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "4e12f137-d428-521c-8d69-e9b3cc3f8939",
+      "name": "Ajouter le client comme signataire (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        300
+      ],
+      "notes": "Pas de champ « fields » : les champs de signature viennent des ancres des deux PDF (s1 = ce premier signataire). ⚠️ Nom : le premier mot de la raison sociale sert de prénom — sans importance pour la signature, corrigeable dans Yousign si besoin."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api-sandbox.yousign.app/v3/signature_requests/{{ $('Créer la demande de signature (Yousign)').item.json.body.id }}/activate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.YOUSIGN_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "89c5b1c8-6aa6-53bd-a839-b9749f3d1b5f",
+      "name": "Activer et envoyer (Yousign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        300
+      ],
+      "notes": "Envoie réellement le mail de signature au client."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/kerbooth/quotes/{{ $('Devis à envoyer (un par élément)').item.json.quoteId }}/sent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ yousignRequestId: $('Créer la demande de signature (Yousign)').item.json.body.id, yousignSignerId: $('Ajouter le client comme signataire (Yousign)').item.json.body.id }) }}",
+        "options": {}
+      },
+      "id": "6230aa94-50fc-50ad-99f2-a49f69c81635",
+      "name": "Confirmer l'envoi (app compta)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        300
+      ],
+      "notes": "Le devis passe « envoyé » : départ du délai de 15 jours et des relances J+3 / J+10."
+    }
+  ],
+  "connections": {
+    "Toutes les 2 minutes": {
+      "main": [
+        [
+          {
+            "node": "Devis à envoyer (app compta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Devis à envoyer (app compta)": {
+      "main": [
+        [
+          {
+            "node": "Devis à envoyer (un par élément)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Devis à envoyer (un par élément)": {
+      "main": [
+        [
+          {
+            "node": "Créer la demande de signature (Yousign)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Créer la demande de signature (Yousign)": {
+      "main": [
+        [
+          {
+            "node": "Télécharger le devis (PDF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Télécharger le devis (PDF)": {
+      "main": [
+        [
+          {
+            "node": "Attacher le devis (Yousign)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attacher le devis (Yousign)": {
+      "main": [
+        [
+          {
+            "node": "Télécharger le contrat (PDF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Télécharger le contrat (PDF)": {
+      "main": [
+        [
+          {
+            "node": "Attacher le contrat (Yousign)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attacher le contrat (Yousign)": {
+      "main": [
+        [
+          {
+            "node": "Ajouter le client comme signataire (Yousign)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ajouter le client comme signataire (Yousign)": {
+      "main": [
+        [
+          {
+            "node": "Activer et envoyer (Yousign)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activer et envoyer (Yousign)": {
+      "main": [
+        [
+          {
+            "node": "Confirmer l'envoi (app compta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "f1f1f1f1-0010-4000-8000-000000000001"
+}

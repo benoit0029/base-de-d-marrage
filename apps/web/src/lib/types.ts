@@ -133,6 +133,7 @@ export interface FakeClient {
   address: string | null;
   siret: string | null;
   vatNumber: string | null;
+  email: string | null;
 }
 
 export interface FakeProduct {

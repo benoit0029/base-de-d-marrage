@@ -11,6 +11,7 @@ import UnitSuggestions from "@/components/invoicing/UnitSuggestions";
 import type { FakeClient, FakeProduct } from "@/lib/types";
 import type { Activity } from "@prisma/client";
 import { formatEuro } from "@/lib/format";
+import { DEFAULT_PAYMENT_TERM_DAYS, KERBOOTH_DEPOSIT_PER_UNIT, QUOTE_VALIDITY_DAYS } from "@/lib/kerbooth/quotes";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const num = (v: string) => Number(v.replace(",", "."));
@@ -75,6 +76,15 @@ export default function InvoiceForm({
   const [clientId, setClientId] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientAddress, setClientAddress] = useState("");
+  const [clientSiren, setClientSiren] = useState("");
+  const [clientVatNumber, setClientVatNumber] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  // Devis Kerbooth entreprise (D-160) : toujours à l'initiative de Benoît.
+  const [formulaLabel, setFormulaLabel] = useState("");
+  const [photoboothCount, setPhotoboothCount] = useState("1");
+  const [eventLocation, setEventLocation] = useState("");
+  const [paymentTermDays, setPaymentTermDays] = useState(String(DEFAULT_PAYMENT_TERM_DAYS));
+  const [periods, setPeriods] = useState<Array<{ start: string; end: string }>>([{ start: "", end: "" }]);
   const [issueDate, setIssueDate] = useState(todayIso());
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
@@ -86,7 +96,14 @@ export default function InvoiceForm({
   const allProducts = mergeById(products, addedProducts).sort((a, b) => a.label.localeCompare(b.label, "fr"));
 
   // Petite fiche de création rapide (client, ou produit pour la ligne n°).
-  const [newClient, setNewClient] = useState<{ name: string; address: string; siret: string; vatNumber: string } | null>(null);
+  const [newClient, setNewClient] = useState<{
+    name: string;
+    address: string;
+    siret: string;
+    vatNumber: string;
+    email: string;
+  } | null>(null);
+  const isKerboothQuote = activity === "BIC_PHOTOBOOTH" && type === "DEVIS";
   const [newProduct, setNewProduct] = useState<{
     line: number;
     label: string;
@@ -123,16 +140,21 @@ export default function InvoiceForm({
   function selectClient(id: string) {
     setQuickError(null);
     if (id === NEW) {
-      setNewClient({ name: "", address: "", siret: "", vatNumber: "" });
+      setNewClient({ name: "", address: "", siret: "", vatNumber: "", email: "" });
       return;
     }
     setNewClient(null);
     setClientId(id);
     const client = allClients.find((c) => c.id === id);
-    if (client) {
-      setClientName(client.name);
-      setClientAddress(client.address ?? "");
-    }
+    if (client) fillClient(client);
+  }
+
+  function fillClient(client: FakeClient) {
+    setClientName(client.name);
+    setClientAddress(client.address ?? "");
+    setClientSiren(client.siret ?? "");
+    setClientVatNumber(client.vatNumber ?? "");
+    setClientEmail(client.email ?? "");
   }
 
   function selectProduct(index: number, id: string) {
@@ -163,8 +185,7 @@ export default function InvoiceForm({
       }
       setAddedClients((prev) => [...prev, result.client]);
       setClientId(result.client.id);
-      setClientName(result.client.name);
-      setClientAddress(result.client.address ?? "");
+      fillClient(result.client);
       setNewClient(null);
       setQuickError(null);
       router.refresh();
@@ -195,11 +216,33 @@ export default function InvoiceForm({
     e.preventDefault();
     setMessage(null);
 
+    // L'adresse du client est une mention obligatoire de la facture.
+    if (
+      !clientAddress.trim() &&
+      !window.confirm(
+        "L'adresse du client est vide : elle est obligatoire sur une facture ou un devis. Créer quand même ?"
+      )
+    ) {
+      return;
+    }
+
     const input: CreateInvoiceActionInput = {
       activity,
       type,
       clientName,
       clientAddress: clientAddress || undefined,
+      clientSiren: clientSiren.trim() || undefined,
+      clientVatNumber: clientVatNumber.trim() || undefined,
+      kerboothQuote: isKerboothQuote
+        ? {
+            clientEmail: clientEmail.trim(),
+            formulaLabel,
+            photoboothCount: Number(photoboothCount),
+            eventLocation,
+            paymentTermDays: Number(paymentTermDays),
+            periods: periods.map((p) => ({ start: p.start, end: p.end || p.start })),
+          }
+        : undefined,
       issueDate,
       lines: lines.map((l) => ({
         description: l.description,
@@ -220,6 +263,14 @@ export default function InvoiceForm({
       setClientId("");
       setClientName("");
       setClientAddress("");
+      setClientSiren("");
+      setClientVatNumber("");
+      setClientEmail("");
+      setFormulaLabel("");
+      setPhotoboothCount("1");
+      setEventLocation("");
+      setPaymentTermDays(String(DEFAULT_PAYMENT_TERM_DAYS));
+      setPeriods([{ start: "", end: "" }]);
       setLines([emptyLine()]);
       router.refresh();
     });
@@ -295,6 +346,13 @@ export default function InvoiceForm({
                 onChange={(e) => setNewClient({ ...newClient, vatNumber: e.target.value })}
                 className={inputClass}
               />
+              <input
+                type="email"
+                placeholder="E-mail (envoi des devis à signer)"
+                value={newClient.email}
+                onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                className={`sm:col-span-2 ${inputClass}`}
+              />
             </div>
             <QuickActions
               pending={quickPending}
@@ -327,6 +385,27 @@ export default function InvoiceForm({
             onChange={(e) => setClientAddress(e.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
           />
+          {!clientAddress.trim() && clientName.trim() && (
+            <span className="mt-1 block text-xs text-amber-700">
+              Adresse obligatoire sur une facture ou un devis.
+            </span>
+          )}
+        </label>
+        <label className="text-sm">
+          <span className="text-slate-600">SIREN/SIRET du client (professionnels)</span>
+          <input
+            value={clientSiren}
+            onChange={(e) => setClientSiren(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="text-slate-600">N° TVA du client (si assujetti)</span>
+          <input
+            value={clientVatNumber}
+            onChange={(e) => setClientVatNumber(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
         </label>
         <label className="text-sm">
           <span className="text-slate-600">Date</span>
@@ -339,6 +418,23 @@ export default function InvoiceForm({
           />
         </label>
       </div>
+
+      {isKerboothQuote && (
+        <KerboothQuoteFields
+          clientEmail={clientEmail}
+          setClientEmail={setClientEmail}
+          formulaLabel={formulaLabel}
+          setFormulaLabel={setFormulaLabel}
+          photoboothCount={photoboothCount}
+          setPhotoboothCount={setPhotoboothCount}
+          eventLocation={eventLocation}
+          setEventLocation={setEventLocation}
+          paymentTermDays={paymentTermDays}
+          setPaymentTermDays={setPaymentTermDays}
+          periods={periods}
+          setPeriods={setPeriods}
+        />
+      )}
 
       <div className="space-y-2">
         <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-500">
@@ -496,6 +592,139 @@ export default function InvoiceForm({
         )}
       </div>
     </form>
+  );
+}
+
+// Devis entreprise Kerbooth : prestation, dates (une ou plusieurs), nombre
+// de photobooths, e-mail qui reçoit le devis et le contrat à signer.
+function KerboothQuoteFields(props: {
+  clientEmail: string;
+  setClientEmail: (v: string) => void;
+  formulaLabel: string;
+  setFormulaLabel: (v: string) => void;
+  photoboothCount: string;
+  setPhotoboothCount: (v: string) => void;
+  eventLocation: string;
+  setEventLocation: (v: string) => void;
+  paymentTermDays: string;
+  setPaymentTermDays: (v: string) => void;
+  periods: Array<{ start: string; end: string }>;
+  setPeriods: (v: Array<{ start: string; end: string }>) => void;
+}) {
+  const { periods, setPeriods } = props;
+  const count = Math.max(1, Number(props.photoboothCount) || 1);
+  const updatePeriod = (i: number, patch: Partial<{ start: string; end: string }>) =>
+    setPeriods(periods.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  return (
+    <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+      <p className="text-sm font-medium text-slate-700">Devis entreprise — envoi pour signature</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm sm:col-span-2">
+          <span className="text-slate-600">E-mail du client (reçoit le devis et le contrat à signer) *</span>
+          <input
+            type="email"
+            value={props.clientEmail}
+            onChange={(e) => props.setClientEmail(e.target.value)}
+            required
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="text-slate-600">Formule (texte libre) *</span>
+          <input
+            value={props.formulaLabel}
+            onChange={(e) => props.setFormulaLabel(e.target.value)}
+            placeholder="1 jour, 1 semaine, 3 mois, 3 prestations…"
+            required
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="text-slate-600">Nombre de photobooths *</span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={props.photoboothCount}
+            onChange={(e) => props.setPhotoboothCount(e.target.value)}
+            required
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <label className="text-sm sm:col-span-2">
+          <span className="text-slate-600">Lieu d&apos;installation *</span>
+          <input
+            value={props.eventLocation}
+            onChange={(e) => props.setEventLocation(e.target.value)}
+            required
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
+      </div>
+
+      <div className="space-y-2">
+        <span className="text-sm text-slate-600">Dates de prestation *</span>
+        {periods.map((p, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="w-24 text-slate-500">Prestation {i + 1}</span>
+            <span className="text-slate-500">du</span>
+            <input
+              type="date"
+              value={p.start}
+              onChange={(e) => updatePeriod(i, { start: e.target.value })}
+              required
+              className={inputClass}
+            />
+            <span className="text-slate-500">au</span>
+            <input
+              type="date"
+              value={p.end}
+              min={p.start || undefined}
+              onChange={(e) => updatePeriod(i, { end: e.target.value })}
+              className={inputClass}
+            />
+            {periods.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setPeriods(periods.filter((_, j) => j !== i))}
+                className="text-red-500"
+                aria-label="Retirer cette prestation"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setPeriods([...periods, { start: "", end: "" }])}
+          className="text-sm font-medium text-slate-600"
+        >
+          + Ajouter une prestation
+        </button>
+        <p className="text-xs text-slate-400">Date de fin vide = un seul jour.</p>
+      </div>
+
+      <label className="block text-sm">
+        <span className="text-slate-600">Paiement par virement sous (jours après la signature)</span>
+        <input
+          type="number"
+          min="0"
+          max="60"
+          step="1"
+          value={props.paymentTermDays}
+          onChange={(e) => props.setPaymentTermDays(e.target.value)}
+          className="mt-1 w-32 rounded-md border border-slate-300 px-3 py-2"
+        />
+      </label>
+
+      <p className="text-xs text-slate-500">
+        Caution : chèque de {formatEuro(KERBOOTH_DEPOSIT_PER_UNIT)} par photobooth, soit{" "}
+        {formatEuro(KERBOOTH_DEPOSIT_PER_UNIT * count)}. Devis valable {QUOTE_VALIDITY_DAYS} jours
+        après l&apos;envoi (relances automatiques à J+3 et J+10). Pense à décrire la prestation
+        et sa date dans les lignes du devis.
+      </p>
+    </div>
   );
 }
 

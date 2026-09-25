@@ -73,6 +73,15 @@ export default function ClientRepository({
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
           />
         </label>
+        <label className="text-sm sm:col-span-2">
+          <span className="text-slate-600">E-mail (envoi des devis à signer)</span>
+          <input
+            name="email"
+            type="email"
+            defaultValue={editing?.email ?? ""}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+          />
+        </label>
         <div className="flex items-center gap-3 sm:col-span-2">
           <button
             type="submit"

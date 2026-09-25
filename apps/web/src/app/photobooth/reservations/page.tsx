@@ -5,7 +5,7 @@ import type { KerboothBookingStatus, KerboothFormula } from "@prisma/client";
 export const dynamic = "force-dynamic";
 
 const statusLabel: Record<KerboothBookingStatus, string> = {
-  PENDING_SIGNATURE: "En attente de signature",
+  PENDING_SIGNATURE: "En attente de signature (photobooth bloqué si devis)",
   PENDING_PAYMENT: "En attente de paiement",
   CONFIRMED: "Confirmée",
   CANCELLED: "Annulée",
@@ -64,9 +64,14 @@ export default async function Page() {
                 {b.eventDateEnd.getTime() !== b.eventDateStart.getTime() &&
                   ` → ${b.eventDateEnd.toLocaleDateString("fr-FR")}`}
               </td>
-              <td className="px-4 py-2.5">{formulaLabel[b.formula]}</td>
+              <td className="px-4 py-2.5">
+                {formulaLabel[b.formula]}
+                {b.quote && <div className="text-xs text-slate-400">Devis : {b.quote.formulaLabel}</div>}
+              </td>
               <td className="px-4 py-2.5">{b.unit?.label ?? "—"}</td>
-              <td className="px-4 py-2.5 text-right">{formatEuro(Number(b.totalAmount))}</td>
+              <td className="px-4 py-2.5 text-right">
+                {b.quote ? <span className="text-xs text-slate-500">voir le devis</span> : formatEuro(Number(b.totalAmount))}
+              </td>
               <td className="px-4 py-2.5">
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass[b.status]}`}>
                   {statusLabel[b.status]}

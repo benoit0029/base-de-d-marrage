@@ -93,6 +93,32 @@ manuellement, mais sans remboursement automatisé.
 | `kerbooth-stripe-payment-received.json` | Webhook Stripe (`checkout.session.completed`) | Crée et marque payée la facture dans l'outil compta, confirme la réservation, envoie la facture au client par email |
 | `kerbooth-urssaf-reminder.json` | Planifié (1er de chaque mois) | Selon le régime choisi dans Synthèse micro-BIC → Cotisations sociales : URSSAF mensuel ou trimestriel → rappel avec le CA micro-BIC encaissé de la période (ventes et services séparés) et les cotisations estimées (taux à vérifier), à déclarer sur autoentrepreneur.urssaf.fr ; régime MSA ou pas encore choisi → aucun mail |
 
+### Devis entreprise par mail (ajouté le 25/09/2026, D-160)
+
+Les entreprises ne réservent pas sur le site : Benoît fait le devis dans
+l'appli (Kerbooth 360 → Factures → Devis) puis clique « Envoyer au client ».
+
+| Fichier | Déclencheur | Rôle |
+|---|---|---|
+| `kerbooth-quote-send.json` | Planifié (toutes les 2 min) | Récupère les devis à envoyer (`/api/kerbooth/quotes/claim-to-send`), crée **une** demande Yousign **par mail** (`delivery_mode: "email"`, `external_id: "devis:<id>"`, expiration = fin de validité du devis) avec le devis **et** le contrat de location pro (+ CGV pro en annexe), ajoute le client comme signataire, active, puis confirme l'envoi à l'appli (`/sent`) |
+| `kerbooth-quote-daily.json` | Planifié (9 h) | `/api/kerbooth/quotes/daily` : l'appli expire les devis non signés à J+15 (photobooths libérés) ; n8n envoie les relances Yousign J+3 et J+10 (`send_reminder`), annule les demandes Yousign des devis expirés/annulés et prévient Benoît |
+| `kerbooth-yousign-contract-signed.json` (modifié) | Webhook Yousign | Nouveau nœud « Devis entreprise ? » en tête : `external_id` commençant par `devis:` → `/api/kerbooth/quotes/<id>/signed` (réservations confirmées, facture émise), puis mail au client avec la facture PDF en pièce jointe (RIB dessus) et mail à Benoît. Sinon : parcours du site **inchangé** |
+
+À vérifier au premier test (Yousign **sandbox**) :
+- **Emplacement des signatures** : les PDF contiennent une ancre invisible
+  `{{s1|signature|180|60}}` (sous « Bon pour accord » sur le devis, sous
+  « Le Locataire » sur le contrat), lue grâce à `parse_anchors=true` à
+  l'envoi des documents. Syntaxe de l'ancre et association au signataire
+  écrites d'après la doc Yousign, pas encore vérifiées en vrai : si le champ
+  n'apparaît pas, le placer à la main dans l'aperçu Yousign et me prévenir.
+- **Pièce jointe** du mail « Envoyer la facture au client » : option
+  *Attachments* = `data` (nom du champ binaire téléchargé juste avant).
+- Le signataire doit être « notifié » pour que `send_reminder` marche
+  (sinon Yousign répond une erreur, visible dans l'historique n8n).
+- `SMTP_FROM` = `kerbooth@kalonia.fr` (D-162).
+- Nœuds Yousign en **sandbox** (`api-sandbox.yousign.app`) comme les autres :
+  à passer en production en même temps (voir `docs/MISE-EN-PRODUCTION.md` §4).
+
 **⚠️ Ces 4 workflows sont nettement moins mûrs que les 7 premiers** : ils
 n'ont pu être vérifiés ni contre une vraie instance n8n, ni contre les API
 réelles de Stripe/Yousign/HubSpot (comptes pas encore créés au moment de

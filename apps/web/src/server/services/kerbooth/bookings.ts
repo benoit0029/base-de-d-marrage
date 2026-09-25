@@ -225,7 +225,7 @@ export async function listBookings() {
   const tenantId = await getDefaultTenantId();
   return prisma.kerboothBooking.findMany({
     where: { tenantId },
-    include: { unit: true },
+    include: { unit: true, quote: true },
     orderBy: { eventDateStart: "desc" },
   });
 }

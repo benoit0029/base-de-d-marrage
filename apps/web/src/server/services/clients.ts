@@ -12,6 +12,7 @@ export interface ClientInput {
   address?: string;
   siret?: string;
   vatNumber?: string;
+  email?: string;
 }
 
 /**
@@ -36,11 +37,13 @@ export async function upsertClient(activity: Activity, input: ClientInput) {
       address: input.address,
       siret: input.siret,
       vatNumber: input.vatNumber,
+      email: input.email,
     },
     update: {
       address: input.address || existing?.address,
       siret: input.siret || existing?.siret,
       vatNumber: input.vatNumber || existing?.vatNumber,
+      email: input.email || existing?.email,
     },
   });
 }
@@ -58,6 +61,7 @@ export async function updateClient(id: string, input: ClientInput) {
       address: input.address,
       siret: input.siret,
       vatNumber: input.vatNumber,
+      email: input.email,
     },
   });
 }
@@ -83,6 +87,7 @@ export async function createClient(activity: Activity, input: ClientInput) {
       address: input.address,
       siret: input.siret,
       vatNumber: input.vatNumber,
+      email: input.email,
     },
   });
 }
