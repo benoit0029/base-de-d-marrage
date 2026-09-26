@@ -122,11 +122,9 @@ envoyée par mail, payable par virement (RIB sur la facture).
 2. Conditions générales de location aux professionnels : définitives et
    sourcées (`kerbooth360/documents/cgv-professionnels.md`) ; relecture
    Cerfrance conseillée à l'occasion, non bloquante.
-3. **n8n** : importer `kerbooth-quote-send.json` et
-   `kerbooth-quote-daily.json`, **réimporter**
-   `kerbooth-yousign-contract-signed.json` et
-   `kerbooth-stripe-payment-received.json` (facture jointe au mail du site),
-   activer, vérifier
+3. **n8n**, une seule commande sur le serveur : `./scripts/n8n-import.sh`
+   (devis entreprise, relances, facture jointe au mail du site, formulaire
+   de contact du site ; sauvegarde automatique avant). Vérifier
    `SMTP_FROM = kerbooth@kalonia.fr`.
 4. **Test complet en sandbox** avec ta propre adresse mail comme client :
    devis → envoi → signature → facture reçue ; puis un devis laissé sans

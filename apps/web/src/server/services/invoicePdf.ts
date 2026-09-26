@@ -74,6 +74,7 @@ export async function renderInvoicePdfBuffer(
       siren: company?.siren ?? "",
       vatNumber: company?.vatNumber ?? undefined,
       contactEmail: activitySettings?.contactEmail ?? company?.contactEmail ?? undefined,
+      websiteUrl: activitySettings?.websiteUrl ?? undefined,
       // Certification AB : Maraîchage uniquement (D-079).
       abCertificationCode:
         invoice.activity === "BA_MARAICHAGE" ? (activitySettings?.abCertificationCode ?? undefined) : undefined,

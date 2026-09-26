@@ -57,6 +57,7 @@
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "stripeApi",
         "sendBody": true,
+        "contentType": "form-urlencoded",
         "specifyBody": "keypair",
         "bodyParameters": {
           "parameters": [
@@ -115,7 +116,7 @@
         1040,
         560
       ],
-      "notes": "ui_mode \"embedded_page\" (revu le 22/09/2026, parcours embarqué ; ex-\"embedded\", renommé par Stripe en mars 2026) : le client paie directement sur kerbooth360.fr au lieu d'être redirigé vers checkout.stripe.com — le site récupère le client_secret via l'endpoint de statut (workflow kerbooth-booking-status) pendant qu'il patiente sur la page après signature. return_url ne sert que de repli pour les moyens de paiement qui exigent une redirection (pas la carte bancaire en usage normal). Body construit dynamiquement à partir de la réservation renvoyée par le nœud précédent (paiement direct en une fois, plus d'acompte/solde séparés) : montant total en centimes, email client, bookingId en métadonnée (pour que le webhook checkout.session.completed, workflow kerbooth-stripe-payment-received, retrouve la réservation)."
+      "notes": "ui_mode \"embedded_page\" (revu le 22/09/2026, parcours embarqué ; ex-\"embedded\", renommé par Stripe en mars 2026) : le client paie directement sur kerbooth360.fr au lieu d'être redirigé vers checkout.stripe.com — le site récupère le client_secret via l'endpoint de statut (workflow kerbooth-booking-status) pendant qu'il patiente sur la page après signature. return_url ne sert que de repli pour les moyens de paiement qui exigent une redirection (pas la carte bancaire en usage normal). Body construit dynamiquement à partir de la réservation renvoyée par le nœud précédent (paiement direct en une fois, plus d'acompte/solde séparés) : montant total en centimes, email client, bookingId en métadonnée (pour que le webhook checkout.session.completed, workflow kerbooth-stripe-payment-received, retrouve la réservation). — « Body Content Type » = Form URL Encoded est maintenant enregistré dans ce fichier (25/09/2026) : plus besoin de le régler à la main après import."
     },
     {
       "parameters": {
@@ -155,7 +156,7 @@
         "toEmail": "={{ $node[\"Passer la réservation en attente de paiement\"].json.clientEmail }}",
         "subject": "Kerbooth 360° — Contrat signé, dernière étape avant votre réservation",
         "emailFormat": "text",
-        "text": "=Votre contrat de location est signé. Retournez sur l'onglet kerbooth360.fr resté ouvert pour régler le paiement et confirmer définitivement votre réservation. Si vous avez fermé la page entre-temps, écrivez-nous à kerbooth@kalonia.fr et nous vous enverrons un nouveau lien de paiement.",
+        "text": "=Votre contrat de location est signé. Retournez sur l'onglet kerbooth360.fr resté ouvert pour régler le paiement et confirmer définitivement votre réservation. Si vous avez fermé la page entre-temps, écrivez-nous à kerbooth@kalonia.fr et nous vous enverrons un nouveau lien de paiement.\n\nKerbooth 360° — https://kerbooth360.fr",
         "options": {}
       },
       "id": "e1e1e1e1-0003-4000-8000-000000000004",
@@ -341,7 +342,7 @@
         "toEmail": "={{ $('Devis signé (app compta)').item.json.body.clientEmail }}",
         "subject": "=Kerbooth 360° — réservation confirmée, facture {{ $('Devis signé (app compta)').item.json.body.invoiceNumber }}",
         "emailFormat": "text",
-        "text": "=Bonjour,\n\nMerci ! Le devis {{ $('Devis signé (app compta)').item.json.body.devisNumber }} et le contrat de location sont signés : votre réservation Kerbooth 360° est confirmée ({{ $('Devis signé (app compta)').item.json.body.periods.join(', ') }}).\n\nVous trouverez ci-joint la facture {{ $('Devis signé (app compta)').item.json.body.invoiceNumber }} ({{ $('Devis signé (app compta)').item.json.body.totalTtc.toFixed(2).replace('.', ',') }} €), à régler par virement — coordonnées bancaires sur la facture — au plus tard le {{ $('Devis signé (app compta)').item.json.body.dueDate }}. Les documents signés vous sont envoyés par Yousign.\n\nRappel : un chèque de caution de 1 500 € par photobooth ({{ $('Devis signé (app compta)').item.json.body.depositTotal }} € au total) est à remettre à la livraison.\n\nÀ bientôt,\nKerbooth 360°",
+        "text": "=Bonjour,\n\nMerci ! Le devis {{ $('Devis signé (app compta)').item.json.body.devisNumber }} et le contrat de location sont signés : votre réservation Kerbooth 360° est confirmée ({{ $('Devis signé (app compta)').item.json.body.periods.join(', ') }}).\n\nVous trouverez ci-joint la facture {{ $('Devis signé (app compta)').item.json.body.invoiceNumber }} ({{ $('Devis signé (app compta)').item.json.body.totalTtc.toFixed(2).replace('.', ',') }} €), à régler par virement — coordonnées bancaires sur la facture — au plus tard le {{ $('Devis signé (app compta)').item.json.body.dueDate }}. Les documents signés vous sont envoyés par Yousign.\n\nRappel : un chèque de caution de 1 500 € par photobooth ({{ $('Devis signé (app compta)').item.json.body.depositTotal }} € au total) est à remettre à la livraison.\n\nÀ bientôt,\nKerbooth 360° — https://kerbooth360.fr",
         "options": {
           "attachments": "data"
         }

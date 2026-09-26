@@ -24,6 +24,7 @@ export default function ActivitySettingsForm({
     tvaInstallmentsEnabled: boolean;
     bankIban: string;
     bankBic: string;
+    websiteUrl: string;
   };
 }) {
   const boundAction = submitActivitySettings.bind(null, activity);
@@ -119,6 +120,16 @@ export default function ActivitySettingsForm({
           {companyContactEmail ? ` (${companyContactEmail})` : ""}. Utile
           uniquement si la facturation est active pour cette activité.
         </span>
+      </label>
+
+      <label className="text-sm sm:col-span-2">
+        <span className="text-slate-600">Site web affiché sur les devis et factures</span>
+        <input
+          name="websiteUrl"
+          defaultValue={initial.websiteUrl}
+          placeholder="https://kerbooth360.fr"
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+        />
       </label>
 
       <label className="text-sm">

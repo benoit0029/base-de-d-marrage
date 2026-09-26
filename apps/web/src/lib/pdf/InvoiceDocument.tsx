@@ -1,4 +1,4 @@
-import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, Link, StyleSheet } from "@react-pdf/renderer";
 import { euro, percent } from "@/lib/pdf/format";
 
 // Moteur de template unique pour toutes les activités : seules les données
@@ -29,6 +29,7 @@ export interface InvoicePdfData {
     siren: string;
     vatNumber?: string;
     contactEmail?: string;
+    websiteUrl?: string;
     // Organisme certificateur AB (ex. FR-BIO-01), dans les coordonnées.
     abCertificationCode?: string;
   };
@@ -184,6 +185,11 @@ export function InvoiceDocument(data: InvoicePdfData) {
               </Text>
             )}
             {data.company.contactEmail && <Text style={styles.meta}>{data.company.contactEmail}</Text>}
+            {data.company.websiteUrl && (
+              <Link src={data.company.websiteUrl} style={[styles.meta, { textDecoration: "none" }]}>
+                {data.company.websiteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+              </Link>
+            )}
           </View>
           <View>
             <Text style={[styles.title, { color: data.accentColorHex }]}>{data.documentTitle}</Text>

@@ -1,0 +1,151 @@
+{
+  "name": "Kerbooth 360° — Formulaire de contact du site → mail",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kerbooth-contact",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://kerbooth360.fr,https://www.kerbooth360.fr"
+        }
+      },
+      "id": "14f7e140-5b7b-5bee-8e5b-502516b24c90",
+      "name": "Formulaire du site (contact / devis)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "kerbooth-contact",
+      "notes": "Appelé par les deux formulaires de kerbooth360.fr (« Une question ? » et « Demande de devis » entreprise). Adresse publique : https://kalonia.fr/webhook/kerbooth-contact (même hôte que la réservation)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "1aaa6764-e02c-5b2a-b8f7-860d68a5aef6",
+              "leftValue": "={{ $('Formulaire du site (contact / devis)').item.json.body.website || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "43767c78-2053-592c-a711-b7843ea23738",
+              "leftValue": "={{ $('Formulaire du site (contact / devis)').item.json.body.email || '' }}",
+              "rightValue": "@",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a8838632-3380-5150-88d9-7271acef176b",
+      "name": "Vrai message ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "notes": "Écarte les robots (champ piège « website » rempli) et les messages sans e-mail."
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.SMTP_FROM }}",
+        "subject": "=Kerbooth 360° — {{ $('Formulaire du site (contact / devis)').item.json.body.kind === 'devis' ? 'Demande de devis' : 'Question' }} de {{ $('Formulaire du site (contact / devis)').item.json.body.name }}{{ $('Formulaire du site (contact / devis)').item.json.body.structure ? ' (' + $('Formulaire du site (contact / devis)').item.json.body.structure + ')' : '' }}",
+        "emailFormat": "text",
+        "text": "=Nouveau message depuis kerbooth360.fr ({{ $('Formulaire du site (contact / devis)').item.json.body.kind === 'devis' ? 'demande de devis entreprise' : 'formulaire de contact' }}).\n\nNom : {{ $('Formulaire du site (contact / devis)').item.json.body.name }}\n{{ $('Formulaire du site (contact / devis)').item.json.body.structure ? 'Structure : ' + $('Formulaire du site (contact / devis)').item.json.body.structure + '\\n' : '' }}E-mail : {{ $('Formulaire du site (contact / devis)').item.json.body.email }}\nTéléphone : {{ $('Formulaire du site (contact / devis)').item.json.body.phone || '—' }}\n{{ $('Formulaire du site (contact / devis)').item.json.body.date ? 'Date souhaitée : ' + new Date($('Formulaire du site (contact / devis)').item.json.body.date).toLocaleDateString('fr-FR') + '\\n' : '' }}\nMessage :\n{{ $('Formulaire du site (contact / devis)').item.json.body.message }}\n\n— Répondre à ce mail répond directement au client.",
+        "options": {
+          "replyTo": "={{ $('Formulaire du site (contact / devis)').item.json.body.email }}"
+        }
+      },
+      "id": "e6d8648f-7870-5fab-a5fc-7442c269a65b",
+      "name": "M'envoyer le message par mail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        460,
+        200
+      ],
+      "notes": "Envoyé à kerbooth@kalonia.fr (SMTP_FROM), avec « Répondre à » = l'adresse du client."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'ok' } }}",
+        "options": {}
+      },
+      "id": "8ac35f4f-97db-595a-97f4-6498fb5acf4e",
+      "name": "Répondre : envoyé",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Formulaire du site (contact / devis)": {
+      "main": [
+        [
+          {
+            "node": "Vrai message ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vrai message ?": {
+      "main": [
+        [
+          {
+            "node": "M'envoyer le message par mail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Répondre : envoyé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "M'envoyer le message par mail": {
+      "main": [
+        [
+          {
+            "node": "Répondre : envoyé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "f1f1f1f1-0012-4000-8000-000000000001"
+}

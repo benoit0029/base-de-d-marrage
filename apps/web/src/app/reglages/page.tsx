@@ -95,6 +95,7 @@ export default async function Page() {
                     tvaInstallmentsEnabled: s?.tvaInstallmentsEnabled ?? true,
                     bankIban: s?.bankIban ? formatIban(s.bankIban) : "",
                     bankBic: s?.bankBic ?? "",
+                    websiteUrl: s?.websiteUrl ?? "",
                   }}
                 />
               </div>

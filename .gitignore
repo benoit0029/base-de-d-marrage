@@ -8,3 +8,6 @@ out/
 apps/web/public/uploads/
 *.log
 .DS_Store
+
+# Sauvegardes automatiques des workflows n8n (scripts/n8n-import.sh)
+n8n/sauvegardes/

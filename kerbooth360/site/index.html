@@ -32,6 +32,7 @@
       <a href="#entreprise">Entreprise</a>
       <a href="#zone">Zone d'intervention</a>
       <a href="#reservation">Réservation</a>
+      <a href="#contact">Contact</a>
     </nav>
   </div>
 </header>
@@ -132,21 +133,24 @@
     <h2 style="color:var(--sand);">Entreprise, camping, salon — parlons de votre projet</h2>
   </div>
   <p style="max-width:60ch;color:#dfe7ef;">Chaque demande professionnelle est différente (durée, logo, nombre de jours, lieu) — pas de tarif automatique ici, on construit le devis ensemble.</p>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:28px;">
+  <div class="contact-grid">
     <div>
       <h3 style="color:var(--gold);font-size:1rem;">Par téléphone</h3>
-      <p style="font-size:1.3rem;font-family:'Fraunces',serif;">06 13 60 55 12</p>
+      <p style="font-size:1.3rem;font-family:'Fraunces',serif;"><a href="tel:+33613605512">06 13 60 55 12</a></p>
       <p style="color:#dfe7ef;font-size:0.9rem;">Du lundi au vendredi, 9h-18h</p>
     </div>
     <div>
-      <h3 style="color:var(--gold);font-size:1rem;">Par email</h3>
-      <form action="mailto:kerbooth@kalonia.fr" method="POST" enctype="text/plain">
-        <div style="margin-bottom:10px;"><input type="text" name="Structure" placeholder="Nom de votre structure" required></div>
-        <div style="margin-bottom:10px;"><input type="text" name="Contact" placeholder="Votre nom" required></div>
-        <div style="margin-bottom:10px;"><input type="email" name="Email" placeholder="Votre email" required></div>
-        <div style="margin-bottom:10px;"><input type="date" name="DateSouhaitee" placeholder="Date souhaitée"></div>
-        <div style="margin-bottom:10px;"><textarea name="Besoin" rows="3" placeholder="Décrivez votre besoin (événement, dates, lieu...)" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(245,239,230,0.25);background:rgba(245,239,230,0.05);color:var(--sand);"></textarea></div>
+      <h3 style="color:var(--gold);font-size:1rem;">Demande de devis</h3>
+      <form class="contact-form" data-kind="devis">
+        <input type="text" name="structure" placeholder="Nom de votre structure" required aria-label="Nom de votre structure">
+        <input type="text" name="name" placeholder="Votre nom" required aria-label="Votre nom">
+        <input type="email" name="email" placeholder="Votre email" required aria-label="Votre email">
+        <input type="tel" name="phone" placeholder="Votre téléphone (optionnel)" aria-label="Votre téléphone">
+        <input type="date" name="date" aria-label="Date souhaitée">
+        <textarea name="message" rows="3" required placeholder="Décrivez votre besoin (événement, dates, lieu, nombre de photobooths...)" aria-label="Votre besoin"></textarea>
+        <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
         <button type="submit" class="btn-solid">Envoyer ma demande</button>
+        <p class="form-status" role="status"></p>
         <p class="form-privacy" style="color:#dfe7ef;">Vos informations servent uniquement à répondre à votre demande de devis. Voir notre <a href="confidentialite.html">politique de confidentialité</a>.</p>
       </form>
     </div>
@@ -227,7 +231,45 @@
     <div id="stripe-checkout-container"></div>
   </div>
 
-  <p style="color:var(--slate);font-size:0.85rem;margin-top:18px;max-width:520px;">Le paiement se fait en ligne une fois le contrat signé. Une question avant de réserver ? <a href="mailto:kerbooth@kalonia.fr" style="text-decoration:underline;">kerbooth@kalonia.fr</a></p>
+  <p style="color:var(--slate);font-size:0.85rem;margin-top:18px;max-width:520px;">Le paiement se fait en ligne une fois le contrat signé. Une question avant de réserver ? Appelez le <a href="tel:+33613605512" style="text-decoration:underline;">06 13 60 55 12</a> ou <a href="#contact" style="text-decoration:underline;">écrivez-nous</a>.</p>
+</section>
+
+<section class="contact" id="contact" style="background:var(--panel);">
+  <div class="section-head">
+    <div class="eyebrow" style="color:var(--gold);">Contact</div>
+    <h2>Une question ? Parlons-en</h2>
+  </div>
+  <div class="contact-grid">
+    <div>
+      <h3 style="color:var(--gold);font-size:1rem;">Par téléphone</h3>
+      <p style="font-size:1.3rem;font-family:'Fraunces',serif;"><a href="tel:+33613605512">06 13 60 55 12</a></p>
+      <p style="color:#dfe7ef;font-size:0.9rem;">Du lundi au vendredi, 9h-18h</p>
+      <h3 style="color:var(--gold);font-size:1rem;margin-top:24px;">Par email</h3>
+      <p><a href="mailto:kerbooth@kalonia.fr" style="text-decoration:underline;">kerbooth@kalonia.fr</a></p>
+    </div>
+    <form class="contact-form" data-kind="question">
+      <div>
+        <label for="c-name">Votre nom</label>
+        <input type="text" id="c-name" name="name" required>
+      </div>
+      <div>
+        <label for="c-email">Votre email</label>
+        <input type="email" id="c-email" name="email" required>
+      </div>
+      <div>
+        <label for="c-phone">Téléphone (optionnel)</label>
+        <input type="tel" id="c-phone" name="phone">
+      </div>
+      <div>
+        <label for="c-message">Votre message</label>
+        <textarea id="c-message" name="message" rows="4" required></textarea>
+      </div>
+      <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button type="submit">Envoyer</button>
+      <p class="form-status" role="status"></p>
+      <p class="form-privacy" style="color:#dfe7ef;">Vos informations servent uniquement à répondre à votre message. Voir notre <a href="confidentialite.html">politique de confidentialité</a>.</p>
+    </form>
+  </div>
 </section>
 
 <script>
@@ -380,8 +422,46 @@
 })();
 </script>
 
+<script>
+// Formulaires de contact (question et demande de devis) : envoyés à n8n
+// (workflow kerbooth-contact), qui transmet un e-mail à kerbooth@kalonia.fr.
+(function () {
+  var CONTACT_URL = "https://kalonia.fr/webhook/kerbooth-contact";
+  var forms = document.querySelectorAll(".contact-form");
+  Array.prototype.forEach.call(forms, function (form) {
+    var statusEl = form.querySelector(".form-status");
+    var button = form.querySelector("button[type=submit]");
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var payload = { kind: form.getAttribute("data-kind") };
+      Array.prototype.forEach.call(form.elements, function (el) {
+        if (el.name) payload[el.name] = el.value.trim();
+      });
+      if (payload.website) return; // champ piège anti-robots, invisible pour un humain
+      button.disabled = true;
+      statusEl.textContent = "Envoi en cours…";
+      fetch(CONTACT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error(String(res.status));
+          form.reset();
+          statusEl.textContent = "Merci, votre message est bien envoyé : nous vous répondons rapidement.";
+        })
+        .catch(function () {
+          statusEl.textContent = "L'envoi n'a pas fonctionné. Appelez-nous au 06 13 60 55 12 ou écrivez à kerbooth@kalonia.fr.";
+        })
+        .then(function () { button.disabled = false; });
+    });
+  });
+})();
+</script>
+
 <footer>
   Kerbooth 360° — Quimper, Finistère · Benoît Denais — SIRET 533 242 053 00015<br>
+  <a href="tel:+33613605512">06 13 60 55 12</a> · <a href="mailto:kerbooth@kalonia.fr">kerbooth@kalonia.fr</a> · <a href="index.html#contact">Contact</a><br>
   <a href="mentions-legales.html">Mentions légales</a> · <a href="cgv.html">CGV</a> · <a href="confidentialite.html">Politique de confidentialité</a>
 </footer>
 

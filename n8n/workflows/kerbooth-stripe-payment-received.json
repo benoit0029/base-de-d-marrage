@@ -87,7 +87,7 @@
         "toEmail": "={{ $('Marquer le paiement reçu (facture + confirmation)').item.json.clientEmail }}",
         "subject": "Kerbooth 360° — Réservation confirmée, votre facture",
         "emailFormat": "text",
-        "text": "=Votre réservation Kerbooth 360° est confirmée pour le {{ new Date($('Marquer le paiement reçu (facture + confirmation)').item.json.eventDateStart).toLocaleDateString('fr-FR') }}, merci !\n\nVous trouverez votre facture en pièce jointe.",
+        "text": "=Votre réservation Kerbooth 360° est confirmée pour le {{ new Date($('Marquer le paiement reçu (facture + confirmation)').item.json.eventDateStart).toLocaleDateString('fr-FR') }}, merci !\n\nVous trouverez votre facture en pièce jointe.\n\nKerbooth 360° — https://kerbooth360.fr",
         "options": {
           "attachments": "data"
         }

@@ -6,7 +6,23 @@ d'accès à l'instance n8n du VPS. Compter environ 30 min de vérification par
 workflow au premier import (davantage pour les 4 workflows Kerbooth, qui
 dépendent de Stripe/Yousign — voir section dédiée ci-dessous).
 
-## Import
+## Import en une commande (recommandé, 26/09/2026)
+
+Sur le serveur, dans le dossier de l'appli :
+
+```
+./scripts/n8n-import.sh
+```
+
+Le script trouve le conteneur n8n, **sauvegarde tous les workflows
+actuels** dans `n8n/sauvegardes/`, met à jour les workflows Kerbooth **à
+leur place** (jamais en double), **reprend les identifiants déjà choisis**
+(SMTP, Stripe…), les active et redémarre n8n (quelques secondes). Pour
+importer d'autres fichiers : `./scripts/n8n-import.sh capture-email-maraichage.json`.
+Si quelque chose ne va pas : la sauvegarde se réimporte dans n8n (Import
+from File).
+
+## Import à la main (ancienne méthode)
 
 Dans n8n : **Workflows → Import from File**, un fichier à la fois. Chaque
 workflow est importé désactivé (`active: false`) — l'activer seulement après
@@ -102,6 +118,7 @@ l'appli (Kerbooth 360 → Factures → Devis) puis clique « Envoyer au client �
 |---|---|---|
 | `kerbooth-quote-send.json` | Planifié (toutes les 2 min) | Récupère les devis à envoyer (`/api/kerbooth/quotes/claim-to-send`), crée **une** demande Yousign **par mail** (`delivery_mode: "email"`, `external_id: "devis:<id>"`, expiration = fin de validité du devis) avec le devis **et** le contrat de location pro (+ CGV pro en annexe), ajoute le client comme signataire, active, puis confirme l'envoi à l'appli (`/sent`) |
 | `kerbooth-quote-daily.json` | Planifié (9 h) | `/api/kerbooth/quotes/daily` : l'appli expire les devis non signés à J+15 (photobooths libérés) ; n8n envoie les relances Yousign J+3 et J+10 (`send_reminder`), annule les demandes Yousign des devis expirés/annulés et prévient Benoît |
+| `kerbooth-contact.json` | Webhook (formulaires du site) | « Une question ? » et « Demande de devis » de kerbooth360.fr → mail à `SMTP_FROM` (kerbooth@kalonia.fr) avec « Répondre à » = le client ; champ piège anti-robots ; CORS limité à kerbooth360.fr |
 | `kerbooth-yousign-contract-signed.json` (modifié) | Webhook Yousign | Nouveau nœud « Devis entreprise ? » en tête : `external_id` commençant par `devis:` → `/api/kerbooth/quotes/<id>/signed` (réservations confirmées, facture émise), puis mail au client avec la facture PDF en pièce jointe (RIB dessus) et mail à Benoît. Sinon : parcours du site **inchangé** |
 
 À vérifier au premier test (Yousign **sandbox**) :

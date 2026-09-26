@@ -73,6 +73,12 @@ export async function submitActivitySettings(
     return { status: "error", message: "BIC invalide (8 ou 11 caractères)." };
   }
 
+  const rawWebsite = formData.get("websiteUrl")?.toString().trim() ?? "";
+  const websiteUrl = rawWebsite && !/^https?:\/\//i.test(rawWebsite) ? `https://${rawWebsite}` : rawWebsite;
+  if (websiteUrl && !z.string().url().safeParse(websiteUrl).success) {
+    return { status: "error", message: "Adresse du site web invalide." };
+  }
+
   const logoFile = formData.get("logo");
   let logoUrl: string | undefined;
   if (logoFile instanceof File && logoFile.size > 0) {
@@ -89,6 +95,7 @@ export async function submitActivitySettings(
     contactEmail: contactEmail.data || null,
     bankIban,
     bankBic: rawBic || null,
+    websiteUrl: websiteUrl || null,
     // Case rendue seulement pour BA_MARAICHAGE (voir ActivitySettingsForm) :
     // absente du formulaire des autres activités, jamais écrasée pour elles.
     ...(activity === "BA_MARAICHAGE"

@@ -107,6 +107,11 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   données sur l'offre gratuite : à vérifier dans les réglages Mistral.
 - **D-025 (24/09)** — Réglage `HIDDEN_ACTIVITIES` pour masquer des
   activités dans une installation (vide chez Benoît).
+- **D-026 (26/09)** — **Import n8n en une commande** :
+  `./scripts/n8n-import.sh` (sauvegarde de tous les workflows avant, mise à
+  jour à la même place, identifiants SMTP/Stripe repris, activation,
+  redémarrage de n8n). Le réglage Stripe « Form URL Encoded » est
+  maintenant dans le fichier : plus de manipulation après import (D-128).
 
 ## 4. Saisie assistée par IA
 
@@ -353,6 +358,18 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   art. 48 CPC) ; 40 € **par facture** ; « aucune remise hors devis »
   (art. L441-1). Annulation = prix dû : c'est une clause pénale que le juge
   peut réduire (art. 1231-5). Relecture Cerfrance conseillée, non bloquante.
+- **D-165 (26/09)** — Lien **https://kerbooth360.fr** sur les devis et
+  factures Kerbooth (réglage « Site web » par activité, déjà rempli pour
+  Kerbooth) et en signature des mails envoyés aux clients Kerbooth.
+- **D-166 (26/09)** — Site : téléphone **06 13 60 55 12** cliquable
+  partout (pied de page de toutes les pages, réservation, contact) ;
+  nouvelle section « **Une question ?** » avec formulaire, et formulaire
+  « Demande de devis » entreprise qui marche vraiment : les deux arrivent
+  **par mail sur kerbooth@kalonia.fr** (workflow `kerbooth-contact`),
+  « Répondre » répond directement au client ; piège anti-robots. Remplace
+  l'ancien formulaire « mailto » (qui ouvrait seulement la messagerie du
+  visiteur). Politique de confidentialité inchangée (elle couvre déjà le
+  formulaire de contact).
 - **D-164 (25/09)** — Mail de confirmation des réservations du **site** :
   la facture est **jointe en PDF** (l'ancien lien demandait de se connecter
   à l'appli, le client ne pouvait pas l'ouvrir).
