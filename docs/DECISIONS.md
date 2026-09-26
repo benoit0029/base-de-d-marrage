@@ -112,6 +112,9 @@ Autres fichiers de référence : `CLAUDE.md` (règles de travail),
   jour à la même place, identifiants SMTP/Stripe repris, activation,
   redémarrage de n8n). Le réglage Stripe « Form URL Encoded » est
   maintenant dans le fichier : plus de manipulation après import (D-128).
+  Précisé le 26/09 (1er essai chez Benoît) : un workflow est aussi reconnu
+  par son **adresse de webhook** ; une ancienne copie importée à la main
+  sur la même adresse est **désactivée** (à supprimer ensuite dans n8n).
 
 ## 4. Saisie assistée par IA
 

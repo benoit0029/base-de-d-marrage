@@ -57,7 +57,8 @@ echo "→ Sauvegarde de tous les workflows actuels : $BACKUP"
 docker exec "$C" node "$T/merge.js" "$T/existants.json" "$T/in" "$T/out"
 # n8n refuse de remplacer un workflow actif : on le désactive juste avant
 # (réactivé à l'étape 4). Sans effet pour un workflow encore inexistant.
-for id in $(docker exec "$C" cat "$T/ids.txt"); do
+# Les anciennes copies en double (même adresse de webhook) restent désactivées.
+for id in $(docker exec "$C" cat "$T/ids.txt" "$T/deactivate.txt"); do
   docker exec "$C" n8n unpublish:workflow --id="$id" >/dev/null 2>&1 \
     || docker exec "$C" n8n update:workflow --id="$id" --active=false >/dev/null 2>&1 \
     || true
