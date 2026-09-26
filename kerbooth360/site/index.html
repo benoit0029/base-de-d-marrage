@@ -448,7 +448,7 @@
         .then(function (res) {
           if (!res.ok) throw new Error(String(res.status));
           form.reset();
-          statusEl.textContent = "Merci, votre message est bien envoyé : nous vous répondons rapidement.";
+          statusEl.textContent = "Votre message a bien été envoyé. Merci de l’intérêt que vous portez à Kerbooth 360° : nous revenons vers vous dans les meilleurs délais.";
         })
         .catch(function () {
           statusEl.textContent = "L'envoi n'a pas fonctionné. Appelez-nous au 06 13 60 55 12 ou écrivez à kerbooth@kalonia.fr.";
